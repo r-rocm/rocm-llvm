@@ -1,0 +1,129 @@
+From: CHEN Xuan <chenxuan@iscas.ac.cn>
+Date: Thu, 19 Dec 2024 11:19:36 +0800
+Subject: Not for upstream RISCV use fence rw rw insteadof fen
+
+---
+ llvm/lib/Target/RISCV/GISel/RISCVInstructionSelector.cpp | 5 +----
+ llvm/lib/Target/RISCV/RISCVInstrInfo.td                  | 9 ++-------
+ llvm/test/CodeGen/RISCV/atomic-fence.ll                  | 2 +-
+ llvm/test/MC/RISCV/Ztso.s                                | 4 ++--
+ llvm/test/MC/RISCV/rv32e-valid.s                         | 2 --
+ llvm/test/MC/RISCV/rv32i-invalid.s                       | 3 ---
+ llvm/test/MC/RISCV/rv32i-valid.s                         | 3 ---
+ 7 files changed, 6 insertions(+), 22 deletions(-)
+
+diff --git a/llvm/lib/Target/RISCV/GISel/RISCVInstructionSelector.cpp b/llvm/lib/Target/RISCV/GISel/RISCVInstructionSelector.cpp
+index 65a0a3e..94884af 100644
+--- a/llvm/lib/Target/RISCV/GISel/RISCVInstructionSelector.cpp
++++ b/llvm/lib/Target/RISCV/GISel/RISCVInstructionSelector.cpp
+@@ -1299,10 +1299,6 @@ void RISCVInstructionSelector::emitFence(AtomicOrdering FenceOrdering,
+   switch (FenceOrdering) {
+   default:
+     llvm_unreachable("Unexpected ordering");
+-  case AtomicOrdering::AcquireRelease:
+-    // fence acq_rel -> fence.tso
+-    MIB.buildInstr(RISCV::FENCE_TSO, {}, {});
+-    return;
+   case AtomicOrdering::Acquire:
+     // fence acquire -> fence r, rw
+     Pred = RISCVFenceField::R;
+@@ -1313,6 +1309,7 @@ void RISCVInstructionSelector::emitFence(AtomicOrdering FenceOrdering,
+     Pred = RISCVFenceField::R | RISCVFenceField::W;
+     Succ = RISCVFenceField::W;
+     break;
++  case AtomicOrdering::AcquireRelease:
+   case AtomicOrdering::SequentiallyConsistent:
+     // fence seq_cst -> fence rw, rw
+     Pred = RISCVFenceField::R | RISCVFenceField::W;
+diff --git a/llvm/lib/Target/RISCV/RISCVInstrInfo.td b/llvm/lib/Target/RISCV/RISCVInstrInfo.td
+index 792e0bb..3501db9 100644
+--- a/llvm/lib/Target/RISCV/RISCVInstrInfo.td
++++ b/llvm/lib/Target/RISCV/RISCVInstrInfo.td
+@@ -694,12 +694,6 @@ def FENCE : RVInstI<0b000, OPC_MISC_MEM, (outs),
+   let imm12 = {0b0000,pred,succ};
+ }
+ 
+-def FENCE_TSO : RVInstI<0b000, OPC_MISC_MEM, (outs), (ins), "fence.tso", "">, Sched<[]> {
+-  let rs1 = 0;
+-  let rd = 0;
+-  let imm12 = {0b1000,0b0011,0b0011};
+-}
+-
+ def FENCE_I : RVInstI<0b001, OPC_MISC_MEM, (outs), (ins), "fence.i", "">, Sched<[]> {
+   let rs1 = 0;
+   let rd = 0;
+@@ -1797,7 +1791,8 @@ def : Pat<(atomic_fence (XLenVT 4), (timm)), (FENCE 0b10, 0b11)>;
+ // fence release -> fence rw, w
+ def : Pat<(atomic_fence (XLenVT 5), (timm)), (FENCE 0b11, 0b1)>;
+ // fence acq_rel -> fence.tso
+-def : Pat<(atomic_fence (XLenVT 6), (timm)), (FENCE_TSO)>;
++// Force fence acq_rel -> fence.tso -> fence rw, rw
++def : Pat<(atomic_fence (XLenVT 6), (timm)), (FENCE 0b11, 0b11)>;
+ // fence seq_cst -> fence rw, rw
+ def : Pat<(atomic_fence (XLenVT 7), (timm)), (FENCE 0b11, 0b11)>;
+ 
+diff --git a/llvm/test/CodeGen/RISCV/atomic-fence.ll b/llvm/test/CodeGen/RISCV/atomic-fence.ll
+index 07e0cd0..44be6b1 100644
+--- a/llvm/test/CodeGen/RISCV/atomic-fence.ll
++++ b/llvm/test/CodeGen/RISCV/atomic-fence.ll
+@@ -43,7 +43,7 @@ define void @fence_release() nounwind {
+ define void @fence_acq_rel() nounwind {
+ ; WMO-LABEL: fence_acq_rel:
+ ; WMO:       # %bb.0:
+-; WMO-NEXT:    fence.tso
++; WMO-NEXT:    fence rw, rw
+ ; WMO-NEXT:    ret
+ ;
+ ; TSO-LABEL: fence_acq_rel:
+diff --git a/llvm/test/MC/RISCV/Ztso.s b/llvm/test/MC/RISCV/Ztso.s
+index fb4f08e..ed07930 100644
+--- a/llvm/test/MC/RISCV/Ztso.s
++++ b/llvm/test/MC/RISCV/Ztso.s
+@@ -9,7 +9,7 @@
+ 
+ # CHECK: fence iorw, iorw
+ fence iorw, iorw
+-# CHECK: fence.tso
+-fence.tso
++# CHECK: fence rw, rw
++fence rw, rw
+ # CHECK: fence.i
+ fence.i
+diff --git a/llvm/test/MC/RISCV/rv32e-valid.s b/llvm/test/MC/RISCV/rv32e-valid.s
+index ccb47f1..a32d726 100644
+--- a/llvm/test/MC/RISCV/rv32e-valid.s
++++ b/llvm/test/MC/RISCV/rv32e-valid.s
+@@ -98,8 +98,6 @@ and a0, s1, a3
+ 
+ # CHECK-ASM-AND-OBJ: fence iorw, iorw
+ fence iorw, iorw
+-# CHECK-ASM-AND-OBJ: fence.tso
+-fence.tso
+ # CHECK-ASM-AND-OBJ: fence.i
+ fence.i
+ 
+diff --git a/llvm/test/MC/RISCV/rv32i-invalid.s b/llvm/test/MC/RISCV/rv32i-invalid.s
+index c5e0657..3498eef 100644
+--- a/llvm/test/MC/RISCV/rv32i-invalid.s
++++ b/llvm/test/MC/RISCV/rv32i-invalid.s
+@@ -185,6 +185,3 @@ pause # CHECK: :[[@LINE]]:1: error: instruction requires the following: 'Zihintp
+ 
+ # Using floating point registers when integer registers are expected
+ addi a2, ft0, 24 # CHECK: :[[@LINE]]:10: error: invalid operand for instruction
+-
+-# fence.tso accepts no operands
+-fence.tso rw, rw # CHECK: :[[@LINE]]:11: error: invalid operand for instruction
+diff --git a/llvm/test/MC/RISCV/rv32i-valid.s b/llvm/test/MC/RISCV/rv32i-valid.s
+index f03c2e1..df775f2 100644
+--- a/llvm/test/MC/RISCV/rv32i-valid.s
++++ b/llvm/test/MC/RISCV/rv32i-valid.s
+@@ -326,9 +326,6 @@ fence r,w
+ # CHECK-ASM-AND-OBJ: fence w, ir
+ # CHECK-ASM: encoding: [0x0f,0x00,0xa0,0x01]
+ fence w,ir
+-# CHECK-ASM-AND-OBJ: fence.tso
+-# CHECK-ASM: encoding: [0x0f,0x00,0x30,0x83]
+-fence.tso
+ 
+ # CHECK-ASM-AND-OBJ: fence.i
+ # CHECK-ASM: encoding: [0x0f,0x10,0x00,0x00]

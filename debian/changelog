@@ -1,0 +1,5 @@
+rocm-llvm (6.2.4-1) unstable; urgency=medium
+
+  * Initial release.
+
+ -- CHEN Xuan <chenxuan@iscas.ac.cn>  Thu, 19 Dec 2024 11:00:34 +0800

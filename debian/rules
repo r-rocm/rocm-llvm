@@ -1,0 +1,90 @@
+#!/usr/bin/make -f
+
+export DH_VERBOSE = 1
+
+ROCM_VERSION=6.2.4
+ROCM_PATH=/opt/rocm-${ROCM_VERSION}
+MAKEOPTS := "-j 32"
+TOP_DIR := $(shell pwd)
+BUILD_PATH := build-llvm
+DEB_INST := $(TOP_DIR)/debian/rocm-llvm
+
+# TODO: No Test run. It is Dangerous
+
+%:
+	dh $@
+
+override_dh_auto_configure:
+	cmake \
+		-GNinja \
+		-DCMAKE_BUILD_TYPE=Release \
+		-DLLVM_PARALLEL_LINK_JOBS=4 \
+		-DCMAKE_INSTALL_PREFIX="/opt/rocm-${ROCM_VERSION}" \
+		-DCPACK_PACKAGING_INSTALL_PREFIX="/opt/rocm-${ROCM_VERSION}" \
+		-DCMAKE_VERBOSE_MAKEFILE=1 \
+		-DCMAKE_INSTALL_RPATH_USE_LINK_PATH=FALSE \
+		-DROCM_PATCH_VERSION=60204 \
+		-DLLVM_TARGETS_TO_BUILD="AMDGPU;X86;RISCV" \
+		-DLLVM_ENABLE_PROJECTS="clang;lld;clang-tools-extra;" \
+		-DLLVM_ENABLE_RUNTIMES="compiler-rt;libunwind;libcxx;libcxxabi" \
+		-DLLVM_ENABLE_ASSERTIONS=1 \
+		-DLLVM_ENABLE_ZLIB=ON \
+		-DLLVM_AMDGPU_ALLOW_NPI_TARGETS=ON \
+		-DSANITIZER_AMDGPU=1 \
+		-DPACKAGE_VENDOR="AMD" \
+		-DCMAKE_CXX_STANDARD=17 \
+		-DLIBCXX_ENABLE_SHARED=OFF \
+		-DLIBCXX_ENABLE_STATIC=ON \
+		-DLIBCXX_INSTALL_LIBRARY=OFF \
+		-DLIBCXX_INSTALL_HEADERS=OFF \
+		-DLIBCXXABI_ENABLE_SHARED=OFF \
+		-DLIBCXXABI_ENABLE_STATIC=ON \
+		-DLIBCXXABI_INSTALL_STATIC_LIBRARY=OFF \
+		-DLLVM_BUILD_DOCS=ON \
+		-DLLVM_ENABLE_SPHINX=ON \
+		-DSPHINX_WARNINGS_AS_ERRORS=OFF \
+		-DSPHINX_OUTPUT_MAN=ON \
+		-DLLVM_ENABLE_ASSERTIONS=0 \
+		-DLLVM_ENABLE_Z3_SOLVER=OFF \
+		-DCLANG_DEFAULT_LINKER=lld \
+		-DCLANG_DEFAULT_PIE_ON_LINUX=0 \
+		-DCLANG_DEFAULT_RTLIB=compiler-rt \
+		-DCLANG_DEFAULT_UNWINDLIB=libgcc \
+		-DCLANG_ENABLE_AMDCLANG=ON \
+		-DSANITIZER_COMGR_INCLUDE_PATH="${TOP_DIR}/amd/comgr/include" \
+		-DSANITIZER_HSA_INCLUDE_PATH="${ROCM_PATH}/include" \
+		-DLLVM_BUILD_LLVM_DYLIB=OFF \
+		-DLLVM_LINK_LLVM_DYLIB=OFF \
+		-DLLVM_ENABLE_LIBCXX=OFF \
+		-DCMAKE_SKIP_BUILD_RPATH=TRUE \
+		-DCMAKE_SKIP_INSTALL_RPATH=TRUE \
+		-DCMAKE_EXE_LINKER_FLAGS=-Wl,--enable-new-dtags,--build-id=sha1,--rpath,$ROCM_LLVM_EXE_RPATH \
+		-DCMAKE_SHARED_LINKER_FLAGS=-Wl,--enable-new-dtags,--build-id=sha1,--rpath,$ROCM_LLVM_LIB_RPATH \
+		-DCLANG_LINK_FLANG_LEGACY=ON \
+		-DFLANG_INCLUDE_DOCS=OFF \
+		-S "llvm/" \
+		-B $(BUILD_PATH)
+# -DROCM_LLVM_BACKWARD_COMPAT_LINK="/opt/rocm-${ROCM_VERSION}/lib/llvm"
+# -DROCM_LLVM_BACKWARD_COMPAT_LINK_TARGET="./lib/llvm"
+
+
+override_dh_auto_build: \
+	stamps/clang \
+	stamps/runtimes \
+	stamps/clang-tidy \
+	stamps/ocaml_doc
+
+stamps/clang:
+	cmake --build $(BUILD_PATH) -- ${MAKEOPTS} clang lld compiler-rt
+
+stamps/runtimes:
+	cmake --build $(BUILD_PATH) -- ${MAKEOPTS} runtimes cxx
+
+stamps/clang-tidy:
+	cmake --build $(BUILD_PATH) -- ${MAKEOPTS} clang-tidy
+
+stamps/ocaml_doc:
+	cmake --build $(BUILD_PATH) -- ${MAKEOPTS} ocaml_doc
+
+override_dh_auto_install:
+	DESTDIR=$(DEB_INST)/ cmake --build $(BUILD_PATH) -- ${MAKEOPTS} install
