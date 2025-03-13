@@ -2,7 +2,7 @@
 
 export DH_VERBOSE = 1
 
-ROCM_VERSION=6.2.4
+ROCM_VERSION=$(shell cat /opt/REVYOS_ROCM_VERSION)
 ROCM_PATH=/opt/rocm-${ROCM_VERSION}
 MAKEOPTS := "-j 32"
 TOP_DIR := $(shell pwd)

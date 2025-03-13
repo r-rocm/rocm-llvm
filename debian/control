@@ -26,6 +26,7 @@ Build-Depends:
  libpfm4-dev, python3-setuptools, libz3-dev,
  wasi-libc,
  hsa-dev-rocm,
+ rocm-env,
 Standards-Version: 4.6.2
 Vcs-Git: https://github.com/r-rocm/rocm-llvm
 
@@ -34,4 +35,5 @@ Architecture: any
 Depends:
  ${shlibs:Depends},
  ${misc:Depends},
+ rocm-env,
 Description: rocm-llvm
