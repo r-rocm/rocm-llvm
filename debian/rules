@@ -4,7 +4,7 @@ export DH_VERBOSE = 1
 
 ROCM_VERSION=$(shell cat /opt/REVYOS_ROCM_VERSION)
 ROCM_PATH=/opt/rocm-${ROCM_VERSION}
-MAKEOPTS := "-j 32"
+MAKEOPTS := "-j $$(($$(nproc) / 2))"
 TOP_DIR := $(shell pwd)
 BUILD_PATH := build-llvm
 DEB_INST := $(TOP_DIR)/debian/rocm-llvm
@@ -75,7 +75,9 @@ override_dh_auto_build: \
 	stamps/ocaml_doc
 
 stamps/clang:
-	cmake --build $(BUILD_PATH) -- ${MAKEOPTS} clang lld compiler-rt
+	cmake --build $(BUILD_PATH) -- ${MAKEOPTS} clang
+	cmake --build $(BUILD_PATH) -- ${MAKEOPTS} lld
+	cmake --build $(BUILD_PATH) -- ${MAKEOPTS} compiler-rt
 
 stamps/runtimes:
 	cmake --build $(BUILD_PATH) -- ${MAKEOPTS} runtimes cxx
