@@ -90,3 +90,8 @@ stamps/ocaml_doc:
 
 override_dh_auto_install:
 	DESTDIR=$(DEB_INST)/ cmake --build $(BUILD_PATH) -- ${MAKEOPTS} install
+
+# Double up the limit of debug information entries:
+# https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=946255
+override_dh_dwz:
+	dh_dwz -- -L 100000000
