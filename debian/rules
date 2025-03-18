@@ -94,4 +94,4 @@ override_dh_auto_install:
 # Double up the limit of debug information entries:
 # https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=946255
 override_dh_dwz:
-	dh_dwz -- -L 100000000
+	dh_dwz -- -L 500000000
