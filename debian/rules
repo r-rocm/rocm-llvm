@@ -13,7 +13,7 @@ PKG_NAME=rocm-llvm
 ROCM_VERSION=$(shell cat /opt/REVYOS_ROCM_VERSION)
 ROCM_PATH=/opt/rocm-$(ROCM_VERSION)
 
-MAKEOPTS="-j$$(($$(nproc) / 2))"
+MAKEOPTS="-j$$(($$(nproc) / 3))"
 
 TOP_DIR := $(shell pwd)
 SRC_PATH := $(TOP_DIR)
@@ -49,28 +49,11 @@ override_dh_auto_configure:
 # -DROCM_LLVM_BACKWARD_COMPAT_LINK_TARGET="./lib/llvm"
 
 
-override_dh_auto_build: \
-	stamps/clang \
-	stamps/runtimes \
-	stamps/clang-tidy \
-	stamps/ocaml_doc
-
-stamps/clang:
-	cmake --build $(BUILD_PATH) -- ${MAKEOPTS} clang
-	cmake --build $(BUILD_PATH) -- ${MAKEOPTS} lld
-	cmake --build $(BUILD_PATH) -- ${MAKEOPTS} compiler-rt
-
-stamps/runtimes:
-	cmake --build $(BUILD_PATH) -- ${MAKEOPTS} runtimes cxx
-
-stamps/clang-tidy:
-	cmake --build $(BUILD_PATH) -- ${MAKEOPTS} clang-tidy
-
-stamps/ocaml_doc:
-	cmake --build $(BUILD_PATH) -- ${MAKEOPTS} ocaml_doc
+override_dh_auto_build:
+	cmake --build $(BUILD_PATH) -- ${MAKEOPTS}
 
 override_dh_auto_install:
-	DESTDIR=$(DEB_INST)/ cmake --build $(BUILD_PATH) -- ${MAKEOPTS} install
+	DESTDIR=$(DEB_INST_DIR)/ cmake --build $(BUILD_PATH) -- ${MAKEOPTS} install
 
 # Double up the limit of debug information entries:
 # https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=946255

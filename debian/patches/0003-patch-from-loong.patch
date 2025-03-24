@@ -1,0 +1,124 @@
+From: Sakura286 <sakura286@outlook.com>
+Date: Mon, 24 Mar 2025 12:13:33 +0800
+Subject: patch from loong
+
+---
+ amd/comgr/CMakeLists.txt                           | 22 +++++++++++++++++++++-
+ amd/comgr/test/CMakeLists.txt                      |  2 +-
+ amd/hipcc/src/hipBin_amd.h                         |  2 +-
+ clang/lib/Driver/ToolChains/HIPUtility.cpp         |  4 ++++
+ .../clang-linker-wrapper/ClangLinkerWrapper.cpp    |  5 ++++-
+ llvm/tools/llvm-split/CMakeLists.txt               |  1 +
+ 6 files changed, 32 insertions(+), 4 deletions(-)
+
+diff --git a/amd/comgr/CMakeLists.txt b/amd/comgr/CMakeLists.txt
+index 8994b18..f8dea7f 100644
+--- a/amd/comgr/CMakeLists.txt
++++ b/amd/comgr/CMakeLists.txt
+@@ -362,7 +362,12 @@ install(FILES
+ 
+ if(TARGET clangFrontendTool)
+   set(CLANG_LIBS
+-    clangFrontendTool)
++    clangFrontendTool
++    clangFrontend
++    clangDriver
++    clangSerialization
++    clangBasic
++    )
+ else()
+   set(CLANG_LIBS
+     clang-cpp)
+@@ -377,6 +382,21 @@ if (LLVM_LINK_LLVM_DYLIB)
+ else()
+   llvm_map_components_to_libnames(LLVM_LIBS
+     ${LLVM_TARGETS_TO_BUILD}
++    Core
++    CodeGen
++    Option
++    MCParser
++    MC
++    TargetParser
++    Support
++    BinaryFormat
++    MCDisassembler
++    Object
++    Linker
++    BitWriter
++    IRReader
++    BitReader
++    Demangle
+     DebugInfoDWARF
+     Symbolize)
+ endif()
+diff --git a/amd/comgr/test/CMakeLists.txt b/amd/comgr/test/CMakeLists.txt
+index f0e4df4..65e4d4f 100644
+--- a/amd/comgr/test/CMakeLists.txt
++++ b/amd/comgr/test/CMakeLists.txt
+@@ -42,7 +42,7 @@ macro(add_test_input_bitcode name input output)
+   add_custom_command(
+     OUTPUT "${output}"
+     COMMAND "$<TARGET_FILE:clang>" -c -emit-llvm -target amdgcn-amd-amdhsa
+-    -mcpu=gfx900
++    -mcpu=gfx900 -nogpulib
+     ${ARGN} "${CMAKE_CURRENT_SOURCE_DIR}/${input}"
+     -o "${output}"
+     VERBATIM
+diff --git a/amd/hipcc/src/hipBin_amd.h b/amd/hipcc/src/hipBin_amd.h
+index 57d0098..f53ee4a 100644
+--- a/amd/hipcc/src/hipBin_amd.h
++++ b/amd/hipcc/src/hipBin_amd.h
+@@ -209,7 +209,7 @@ void HipBinAmd::constructCompilerPath() {
+     } else {
+       compilerPath = getRoccmPath();
+       hipClangPath = compilerPath;
+-      hipClangPath /= "lib/llvm/bin";
++      hipClangPath /= "bin";
+     }
+ 
+     compilerPath = hipClangPath.string();
+diff --git a/clang/lib/Driver/ToolChains/HIPUtility.cpp b/clang/lib/Driver/ToolChains/HIPUtility.cpp
+index 82f5627..38abef9 100644
+--- a/clang/lib/Driver/ToolChains/HIPUtility.cpp
++++ b/clang/lib/Driver/ToolChains/HIPUtility.cpp
+@@ -292,7 +292,11 @@ void HIP::constructHIPFatbinCommand(Compilation &C, const JobAction &JA,
+ 
+   // ToDo: Remove the dummy host binary entry which is required by
+   // clang-offload-bundler.
++#if defined(__x86_64)
+   std::string BundlerTargetArg = "-targets=host-x86_64-unknown-linux";
++#elif defined(__riscv) && __riscv_xlen == 64
++  std::string BundlerTargetArg = "-targets=host-riscv64-unknown-linux";
++#endif
+   // AMDGCN:
+   // For code object version 2 and 3, the offload kind in bundle ID is 'hip'
+   // for backward compatibility. For code object version 4 and greater, the
+diff --git a/clang/tools/clang-linker-wrapper/ClangLinkerWrapper.cpp b/clang/tools/clang-linker-wrapper/ClangLinkerWrapper.cpp
+index 4e9b5b8..4129693 100644
+--- a/clang/tools/clang-linker-wrapper/ClangLinkerWrapper.cpp
++++ b/clang/tools/clang-linker-wrapper/ClangLinkerWrapper.cpp
+@@ -343,8 +343,11 @@ fatbinary(ArrayRef<std::pair<StringRef, StringRef>> InputFiles,
+   if (auto *Arg = Args.getLastArg(OPT_compression_level_eq))
+     CmdArgs.push_back(
+         Args.MakeArgString(Twine("-compression-level=") + Arg->getValue()));
+-
++#if defined(__x86_64)
+   SmallVector<StringRef> Targets = {"-targets=host-x86_64-unknown-linux"};
++#elif defined(__riscv) && __riscv_xlen == 64
++  SmallVector<StringRef> Targets = {"-targets=host-riscv64-unknown-linux"};
++#endif
+   for (const auto &[File, Arch] : InputFiles)
+     Targets.push_back(Saver.save("hipv4-amdgcn-amd-amdhsa--" + Arch));
+   CmdArgs.push_back(Saver.save(llvm::join(Targets, ",")));
+diff --git a/llvm/tools/llvm-split/CMakeLists.txt b/llvm/tools/llvm-split/CMakeLists.txt
+index 0579298..1104e31 100644
+--- a/llvm/tools/llvm-split/CMakeLists.txt
++++ b/llvm/tools/llvm-split/CMakeLists.txt
+@@ -11,6 +11,7 @@ set(LLVM_LINK_COMPONENTS
+   MC
+   Support
+   Target
++  TargetParser
+   )
+ 
+ add_llvm_tool(llvm-split
