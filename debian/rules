@@ -51,6 +51,7 @@ override_dh_auto_configure:
 
 override_dh_auto_build:
 	cmake --build $(BUILD_PATH) -- ${MAKEOPTS}
+	cmake --build $(BUILD_PATH) -- ${MAKEOPTS} ocaml_doc
 
 override_dh_auto_install:
 	DESTDIR=$(DEB_INST_DIR)/ cmake --build $(BUILD_PATH) -- ${MAKEOPTS} install
