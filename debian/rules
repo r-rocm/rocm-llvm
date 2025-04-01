@@ -56,6 +56,15 @@ override_dh_auto_build:
 override_dh_auto_install:
 	DESTDIR=$(DEB_INST_DIR)/ cmake --build $(BUILD_PATH) -- ${MAKEOPTS} install
 
+MaintFunc/InstallMissingLibs:
+	install $(BUILD_PATH)/lib/libMLIRPdllLspServerLib.so.18git \$(DEB_INST_DIR)/$(ROCM_PATH)/lib/libMLIRPdllLspServerLib.so.18git
+	ln -s libMLIRPdllLspServerLib.so.18git $(DEB_INST_DIR)/$(ROCM_PATH)/lib/libMLIRPdllLspServerLib.so
+	install $(BUILD_PATH)/lib/libTableGenLspServerLib.so.18git \$(DEB_INST_DIR)/$(ROCM_PATH)/lib/libTableGenLspServerLib.so.18git
+	ln -s libTableGenLspServerLib.so.18git $(DEB_INST_DIR)/$(ROCM_PATH)/lib/libTableGenLspServerLib.so
+
+override_dh_shlibdeps: MaintFunc/InstallMissingLibs
+	dh_shlibdeps
+
 # Double up the limit of debug information entries:
 # https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=946255
 override_dh_dwz:
