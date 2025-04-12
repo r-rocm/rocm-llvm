@@ -2,6 +2,7 @@
 
 export DH_VERBOSE = 1
 
+# use -pipe to reduce disk IO
 CFLAGS_BUILDING := -pipe -g0 -O2
 export DEB_CFLAGS_MAINT_APPEND = $(CFLAGS_BUILDING)
 export DEB_CXXFLAGS_MAINT_APPEND = $(CFLAGS_BUILDING)
@@ -18,9 +19,9 @@ MAKEOPTS="-j$$(($$(nproc) / 3))"
 TOP_DIR := $(shell pwd)
 SRC_PATH := $(TOP_DIR)
 BUILD_PATH := $(TOP_DIR)/build-rocm
-DEB_INST_DIR := $(TOP_DIR)/debian/$(PKG_NAME)
+DEB_INST_DIR := $(TOP_DIR)/debian/tmp
 
-REVYOS_ROCM_CMAKE_PARAMS := -S $(SRC_PATH) -B $(BUILD_PATH)
+REVYOS_ROCM_CMAKE_PARAMS := -S "llvm/" -B $(BUILD_PATH)
 REVYOS_ROCM_CMAKE_PARAMS += -DCMAKE_INSTALL_PREFIX=$(ROCM_PATH)
 REVYOS_ROCM_CMAKE_PARAMS += -DCMAKE_BUILD_TYPE=Release
 REVYOS_ROCM_CMAKE_PARAMS += -DCMAKE_VERBOSE_MAKEFILE=TRUE
@@ -41,20 +42,27 @@ override_dh_auto_configure:
 		-DLLVM_EXTERNAL_HIPCC_SOURCE_DIR=$(SRC_PATH)/amd/hipcc/ \
 		-DLLVM_EXTERNAL_COMGR_SOURCE_DIR=$(SRC_PATH)/amd/comgr/ \
 		-DLLVM_EXTERNAL_DEVICE_LIBS_SOURCE_DIR=$(SRC_PATH)/amd/device-libs/ \
+		-DROCM_DEVICE_LIBS_BITCODE_INSTALL_LOC_NEW="lib/clang/18/lib/amdgcn" \
+		-DROCM_DEVICE_LIBS_BITCODE_INSTALL_LOC_OLD="amdgcn" \
 		-DHIP_PLATFORM='amd' \
-		-DBUILD_SHARED_LIBS=ON \
-		-S "llvm/" \
-		-B $(BUILD_PATH)
+		-DBUILD_SHARED_LIBS=ON
 # -DROCM_LLVM_BACKWARD_COMPAT_LINK="/opt/rocm-${ROCM_VERSION}/lib/llvm"
 # -DROCM_LLVM_BACKWARD_COMPAT_LINK_TARGET="./lib/llvm"
 
-
 override_dh_auto_build:
-	cmake --build $(BUILD_PATH) -- ${MAKEOPTS}
-	cmake --build $(BUILD_PATH) -- ${MAKEOPTS} ocaml_doc
+	cmake --build $(BUILD_PATH) -- $(MAKEOPTS)
+	cmake --build $(BUILD_PATH) -- $(MAKEOPTS) ocaml_doc
 
 override_dh_auto_install:
-	DESTDIR=$(DEB_INST_DIR)/ cmake --build $(BUILD_PATH) -- ${MAKEOPTS} install
+	DESTDIR=$(DEB_INST_DIR)/ cmake --build $(BUILD_PATH) -- $(MAKEOPTS) install
+
+MaintFunc/RemoveOcaml:
+	rm -rf $(DEB_INST_DIR)/$(ROCM_PATH)/share/doc/LLVM/llvm
+	rm -rf $(DEB_INST_DIR)/$(ROCM_PATH)/usr
+
+override_dh_install: MaintFunc/RemoveOcaml
+	sed -i "s,@ROCM_VERSION@,${ROCM_VERSION},g" debian/*.install
+	dh_install
 
 MaintFunc/InstallMissingLibs:
 	install $(BUILD_PATH)/lib/libMLIRPdllLspServerLib.so.18git \$(DEB_INST_DIR)/$(ROCM_PATH)/lib/libMLIRPdllLspServerLib.so.18git

@@ -1,0 +1,2 @@
+opt/rocm-@ROCM_VERSION@/bin/hip*
+opt/rocm-@ROCM_VERSION@/hip

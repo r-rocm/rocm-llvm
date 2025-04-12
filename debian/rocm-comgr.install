@@ -1,0 +1,3 @@
+opt/rocm-@ROCM_VERSION@/include/amd_comgr
+opt/rocm-@ROCM_VERSION@/lib/cmake/amd_comgr
+opt/rocm-@ROCM_VERSION@/lib/libamd_comgr.so*
