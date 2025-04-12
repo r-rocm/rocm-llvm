@@ -1,0 +1,35 @@
+From: Sakura286 <sakura286@outlook.com>
+Date: Sat, 12 Apr 2025 11:23:48 +0800
+Subject: Fix LTO plugin uses wrong ABI for LTO objects on riscv
+
+---
+ clang/lib/Driver/ToolChains/HIPUtility.cpp              | 3 +++
+ clang/tools/clang-linker-wrapper/ClangLinkerWrapper.cpp | 1 +
+ 2 files changed, 4 insertions(+)
+
+diff --git a/clang/lib/Driver/ToolChains/HIPUtility.cpp b/clang/lib/Driver/ToolChains/HIPUtility.cpp
+index 38abef9..313dc6f 100644
+--- a/clang/lib/Driver/ToolChains/HIPUtility.cpp
++++ b/clang/lib/Driver/ToolChains/HIPUtility.cpp
+@@ -469,6 +469,9 @@ void HIP::constructGenerateObjFileFromHIPFatBinary(
+   Objf << ObjBuffer;
+ 
+   ArgStringList McArgs{"-triple", Args.MakeArgString(HostTriple.normalize()),
++#if defined(__riscv) && __riscv_xlen == 64
++                       "-target-abi=lp64d","-mattr=+d",
++#endif
+                        "-o",      Output.getFilename(),
+                        McinFile,  "--filetype=obj"};
+   const char *Mc = Args.MakeArgString(TC.GetProgramPath("llvm-mc"));
+diff --git a/clang/tools/clang-linker-wrapper/ClangLinkerWrapper.cpp b/clang/tools/clang-linker-wrapper/ClangLinkerWrapper.cpp
+index 4129693..540a552 100644
+--- a/clang/tools/clang-linker-wrapper/ClangLinkerWrapper.cpp
++++ b/clang/tools/clang-linker-wrapper/ClangLinkerWrapper.cpp
+@@ -492,6 +492,7 @@ Expected<StringRef> linkDevice(ArrayRef<StringRef> InputFiles,
+   case Triple::aarch64_be:
+   case Triple::ppc64:
+   case Triple::ppc64le:
++  case Triple::riscv64:
+     return generic::clang(InputFiles, Args);
+   default:
+     return createStringError(inconvertibleErrorCode(),
