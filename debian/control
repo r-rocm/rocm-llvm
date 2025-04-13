@@ -36,4 +36,39 @@ Depends:
  ${shlibs:Depends},
  ${misc:Depends},
  rocm-env,
-Description: rocm-llvm
+ rocm-core,
+Description: AMD Fork of The LLVM Compiler Infrastructure
+ The AMD fork aims to contain all of upstream LLVM, and also includes several
+ AMD-specific additions in the llvm-project/amd directory.
+
+Package: rocm-comgr
+Architecture: any
+Depends:
+ ${shlibs:Depends},
+ ${misc:Depends},
+ rocm-llvm,
+Description: ROCm Code Object Manager (Comgr)
+ The Comgr library provides APIs for compiling and inspecting AMDGPU code
+ objects. The API is documented in the header file. The Comgr API is compatible
+ with C99 and C++.
+
+Package: rocm-devicelibs
+Architecture: any
+Depends:
+ ${shlibs:Depends},
+ ${misc:Depends},
+ rocm-llvm,
+Description: ROCm Device libraries
+ This subdirectory contains the sources and CMake build system for a set of AMD
+ specific device-side language runtime libraries. Specifically:
+
+Package: rocm-hipcc
+Architecture: any
+Depends:
+ ${shlibs:Depends},
+ ${misc:Depends},
+ rocm-llvm,
+Description: ROCm HIP compiler driver (hipcc)
+ hipcc is a compiler driver utility that will call clang or nvcc, depending on
+ target, and pass the appropriate include and library options for the target
+ compiler and HIP infrastructure.
