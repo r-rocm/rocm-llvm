@@ -63,7 +63,6 @@ opt/rocm-@ROCM_VERSION@/lib/libLLVM*
 opt/rocm-@ROCM_VERSION@/lib/libLTO*
 opt/rocm-@ROCM_VERSION@/lib/libMLIR*
 opt/rocm-@ROCM_VERSION@/lib/libmlir*
-opt/rocm-@ROCM_VERSION@/lib/libTableGen*
 opt/rocm-@ROCM_VERSION@/lib/libRemarks*
 
 opt/rocm-@ROCM_VERSION@/share/
