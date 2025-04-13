@@ -58,7 +58,7 @@ override_dh_auto_install:
 
 MaintFunc/RemoveOcaml:
 	rm -rf $(DEB_INST_DIR)/$(ROCM_PATH)/share/doc/LLVM/llvm
-	rm -rf $(DEB_INST_DIR)/$(ROCM_PATH)/usr
+	rm -rf $(DEB_INST_DIR)/usr
 
 override_dh_install: MaintFunc/RemoveOcaml
 	sed -i "s,@ROCM_VERSION@,${ROCM_VERSION},g" debian/*.install
