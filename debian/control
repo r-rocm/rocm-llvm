@@ -36,7 +36,6 @@ Depends:
  ${shlibs:Depends},
  ${misc:Depends},
  rocm-env,
- rocm-core,
 Description: AMD Fork of The LLVM Compiler Infrastructure
  The AMD fork aims to contain all of upstream LLVM, and also includes several
  AMD-specific additions in the llvm-project/amd directory.
@@ -47,6 +46,7 @@ Depends:
  ${shlibs:Depends},
  ${misc:Depends},
  rocm-llvm,
+ rocm-devicelibs,
 Description: ROCm Code Object Manager (Comgr)
  The Comgr library provides APIs for compiling and inspecting AMDGPU code
  objects. The API is documented in the header file. The Comgr API is compatible

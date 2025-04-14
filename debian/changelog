@@ -1,3 +1,9 @@
+rocm-llvm (6.2.4-3) unstable; urgency=medium
+
+  * Control: change dependency.
+
+ --  <chenxuan@iscas.ac.cn>  Mon, 14 Apr 2025 15:58:58 +0800
+
 rocm-llvm (6.2.4-2) unstable; urgency=medium
 
   * Include more packages.
