@@ -60,18 +60,15 @@ MaintFunc/RemoveOcaml:
 	rm -rf $(DEB_INST_DIR)/$(ROCM_PATH)/share/doc/LLVM/llvm
 	rm -rf $(DEB_INST_DIR)/usr
 
-override_dh_install: MaintFunc/RemoveOcaml
-	sed -i "s,@ROCM_VERSION@,${ROCM_VERSION},g" debian/*.install
-	dh_install
-
 MaintFunc/InstallMissingLibs:
 	install $(BUILD_PATH)/lib/libMLIRPdllLspServerLib.so.18git \$(DEB_INST_DIR)/$(ROCM_PATH)/lib/libMLIRPdllLspServerLib.so.18git
 	ln -s libMLIRPdllLspServerLib.so.18git $(DEB_INST_DIR)/$(ROCM_PATH)/lib/libMLIRPdllLspServerLib.so
 	install $(BUILD_PATH)/lib/libTableGenLspServerLib.so.18git \$(DEB_INST_DIR)/$(ROCM_PATH)/lib/libTableGenLspServerLib.so.18git
 	ln -s libTableGenLspServerLib.so.18git $(DEB_INST_DIR)/$(ROCM_PATH)/lib/libTableGenLspServerLib.so
 
-override_dh_shlibdeps: MaintFunc/InstallMissingLibs
-	dh_shlibdeps
+override_dh_install: MaintFunc/RemoveOcaml MaintFunc/InstallMissingLibs
+	sed -i "s,@ROCM_VERSION@,${ROCM_VERSION},g" debian/*.install
+	dh_install
 
 # Double up the limit of debug information entries:
 # https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=946255
