@@ -1,3 +1,9 @@
+rocm-llvm (6.2.4-4) unstable; urgency=medium
+
+  * Rebuild for Trixie base.
+
+ --  <chenxuan@iscas.ac.cn>  Tue, 08 Jul 2025 09:31:48 +0800
+
 rocm-llvm (6.2.4-3) unstable; urgency=medium
 
   * Control: change dependency.
