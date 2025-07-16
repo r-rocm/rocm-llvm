@@ -16,19 +16,19 @@ define <16 x i16> @combine_vpermt2var_16i16_identity(<16 x i16> %x0, <16 x i16> 
 define <16 x i16> @combine_vpermt2var_16i16_identity_mask(<16 x i16> %x0, <16 x i16> %x1, i16 %m) {
 ; X86-LABEL: combine_vpermt2var_16i16_identity_mask:
 ; X86:       # %bb.0:
-; X86-NEXT:    vmovdqa {{.*#+}} ymm1 = [15,14,13,12,11,10,9,8,7,6,5,4,3,2,1,0]
+; X86-NEXT:    vpmovsxbw {{.*#+}} ymm1 = [15,14,13,12,11,10,9,8,7,6,5,4,3,2,1,0]
 ; X86-NEXT:    kmovw {{[0-9]+}}(%esp), %k1
 ; X86-NEXT:    vpermt2w %ymm0, %ymm1, %ymm0 {%k1} {z}
-; X86-NEXT:    vmovdqa {{.*#+}} ymm1 = [15,30,13,28,11,26,9,24,7,22,5,20,3,18,1,16]
+; X86-NEXT:    vpmovsxbw {{.*#+}} ymm1 = [15,30,13,28,11,26,9,24,7,22,5,20,3,18,1,16]
 ; X86-NEXT:    vpermt2w %ymm0, %ymm1, %ymm0 {%k1} {z}
 ; X86-NEXT:    retl
 ;
 ; X64-LABEL: combine_vpermt2var_16i16_identity_mask:
 ; X64:       # %bb.0:
-; X64-NEXT:    vmovdqa {{.*#+}} ymm1 = [15,14,13,12,11,10,9,8,7,6,5,4,3,2,1,0]
+; X64-NEXT:    vpmovsxbw {{.*#+}} ymm1 = [15,14,13,12,11,10,9,8,7,6,5,4,3,2,1,0]
 ; X64-NEXT:    kmovd %edi, %k1
 ; X64-NEXT:    vpermt2w %ymm0, %ymm1, %ymm0 {%k1} {z}
-; X64-NEXT:    vmovdqa {{.*#+}} ymm1 = [15,30,13,28,11,26,9,24,7,22,5,20,3,18,1,16]
+; X64-NEXT:    vpmovsxbw {{.*#+}} ymm1 = [15,30,13,28,11,26,9,24,7,22,5,20,3,18,1,16]
 ; X64-NEXT:    vpermt2w %ymm0, %ymm1, %ymm0 {%k1} {z}
 ; X64-NEXT:    retq
   %res0 = call <16 x i16> @llvm.x86.avx512.maskz.vpermt2var.hi.256(<16 x i16> <i16 15, i16 14, i16 13, i16 12, i16 11, i16 10, i16 9, i16 8, i16 7, i16 6, i16 5, i16 4, i16 3, i16 2, i16 1, i16 0>, <16 x i16> %x0, <16 x i16> %x1, i16 %m)
@@ -39,7 +39,7 @@ define <16 x i16> @combine_vpermt2var_16i16_identity_mask(<16 x i16> %x0, <16 x 
 define <16 x i16> @combine_vpermi2var_16i16_as_permw(<16 x i16> %x0, <16 x i16> %x1) {
 ; CHECK-LABEL: combine_vpermi2var_16i16_as_permw:
 ; CHECK:       # %bb.0:
-; CHECK-NEXT:    vmovdqa {{.*#+}} ymm1 = [15,0,14,1,13,2,12,3,11,4,10,5,9,6,8,7]
+; CHECK-NEXT:    vpmovsxbw {{.*#+}} ymm1 = [15,0,14,1,13,2,12,3,11,4,10,5,9,6,8,7]
 ; CHECK-NEXT:    vpermw %ymm0, %ymm1, %ymm0
 ; CHECK-NEXT:    ret{{[l|q]}}
   %res0 = call <16 x i16> @llvm.x86.avx512.mask.vpermi2var.hi.256(<16 x i16> %x0, <16 x i16> <i16 15, i16 14, i16 13, i16 12, i16 11, i16 10, i16 9, i16 8, i16 7, i16 6, i16 5, i16 4, i16 3, i16 2, i16 1, i16 0>, <16 x i16> %x1, i16 -1)
@@ -50,7 +50,7 @@ define <16 x i16> @combine_vpermi2var_16i16_as_permw(<16 x i16> %x0, <16 x i16> 
 define <16 x i16> @combine_vpermt2var_vpermi2var_16i16_as_vperm2(<16 x i16> %x0, <16 x i16> %x1) {
 ; CHECK-LABEL: combine_vpermt2var_vpermi2var_16i16_as_vperm2:
 ; CHECK:       # %bb.0:
-; CHECK-NEXT:    vmovdqa {{.*#+}} ymm2 = [0,31,2,2,4,29,6,27,8,25,10,23,12,21,14,19]
+; CHECK-NEXT:    vpmovsxbw {{.*#+}} ymm2 = [0,31,2,2,4,29,6,27,8,25,10,23,12,21,14,19]
 ; CHECK-NEXT:    vpermt2w %ymm1, %ymm2, %ymm0
 ; CHECK-NEXT:    ret{{[l|q]}}
   %res0 = call <16 x i16> @llvm.x86.avx512.mask.vpermi2var.hi.256(<16 x i16> %x0, <16 x i16> <i16 0, i16 31, i16 2, i16 29, i16 4, i16 27, i16 6, i16 25, i16 8, i16 23, i16 10, i16 21, i16 12, i16 19, i16 14, i16 17>, <16 x i16> %x1, i16 -1)
@@ -100,7 +100,7 @@ define <16 x i8> @combine_shuffle_vrotli_v4i32(<4 x i32> %a0) {
 }
 declare <4 x i32> @llvm.fshl.v4i32(<4 x i32>, <4 x i32>, <4 x i32>)
 
-define void @PR46178(i16* %0) {
+define void @PR46178(ptr %0) {
 ; X86-LABEL: PR46178:
 ; X86:       # %bb.0:
 ; X86-NEXT:    movl {{[0-9]+}}(%esp), %eax
@@ -130,25 +130,21 @@ define void @PR46178(i16* %0) {
 ; X64-NEXT:    vmovdqu %ymm0, (%rdi)
 ; X64-NEXT:    vzeroupper
 ; X64-NEXT:    retq
-  %2 = load <4 x i64>, <4 x i64>* null, align 8
-  %3 = load <4 x i64>, <4 x i64>* undef, align 8
+  %2 = load <4 x i64>, ptr null, align 8
+  %3 = load <4 x i64>, ptr undef, align 8
   %4 = trunc <4 x i64> %2 to <4 x i16>
   %5 = trunc <4 x i64> %3 to <4 x i16>
   %6 = shl <4 x i16> %4, <i16 8, i16 8, i16 8, i16 8>
   %7 = shl <4 x i16> %5, <i16 8, i16 8, i16 8, i16 8>
   %8 = ashr exact <4 x i16> %6, <i16 8, i16 8, i16 8, i16 8>
   %9 = ashr exact <4 x i16> %7, <i16 8, i16 8, i16 8, i16 8>
-  %10 = bitcast i16* %0 to <4 x i16>*
-  %11 = getelementptr inbounds i16, i16* %0, i64 4
-  %12 = bitcast i16* %11 to <4 x i16>*
-  %13 = getelementptr inbounds i16, i16* %0, i64 8
-  %14 = bitcast i16* %13 to <4 x i16>*
-  %15 = getelementptr inbounds i16, i16* %0, i64 12
-  %16 = bitcast i16* %15 to <4 x i16>*
-  store <4 x i16> %8, <4 x i16>* %10, align 2
-  store <4 x i16> %9, <4 x i16>* %12, align 2
-  store <4 x i16> zeroinitializer, <4 x i16>* %14, align 2
-  store <4 x i16> zeroinitializer, <4 x i16>* %16, align 2
+  %10 = getelementptr inbounds i16, ptr %0, i64 4
+  %11 = getelementptr inbounds i16, ptr %0, i64 8
+  %12 = getelementptr inbounds i16, ptr %0, i64 12
+  store <4 x i16> %8, ptr %0, align 2
+  store <4 x i16> %9, ptr %10, align 2
+  store <4 x i16> zeroinitializer, ptr %11, align 2
+  store <4 x i16> zeroinitializer, ptr %12, align 2
   ret void
 }
 

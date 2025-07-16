@@ -9,14 +9,11 @@ define float @fold_abs_in_branch(float %arg1, float %arg2) {
 ; GFX10-NEXT:    s_mov_b32 s4, exec_lo
 ; GFX10-NEXT:    v_add_f32_e32 v1, v0, v1
 ; GFX10-NEXT:    v_add_f32_e64 v0, |v1|, |v1|
-; GFX10-NEXT:    v_cmp_nlt_f32_e32 vcc_lo, 1.0, v0
-; GFX10-NEXT:    s_cmp_lg_u32 vcc_lo, 0
-; GFX10-NEXT:    s_cmov_b32 exec_lo, vcc_lo
-; GFX10-NEXT:    s_cbranch_scc0 .LBB0_2
+; GFX10-NEXT:    v_cmpx_nlt_f32_e32 1.0, v0
 ; GFX10-NEXT:  ; %bb.1: ; %if
 ; GFX10-NEXT:    v_mul_f32_e64 v0, 0x3e4ccccd, |v1|
+; GFX10-NEXT:  ; %bb.2: ; %exit
 ; GFX10-NEXT:    s_or_b32 exec_lo, exec_lo, s4
-; GFX10-NEXT:  .LBB0_2: ; %exit
 ; GFX10-NEXT:    s_setpc_b64 s[30:31]
 entry:
   %0 = fadd reassoc nnan nsz arcp contract afn float %arg1, %arg2
@@ -43,14 +40,11 @@ define float @fold_abs_in_branch_multiple_users(float %arg1, float %arg2) {
 ; GFX10-NEXT:    s_mov_b32 s4, exec_lo
 ; GFX10-NEXT:    v_add_f32_e32 v0, v0, v1
 ; GFX10-NEXT:    v_add_f32_e64 v1, |v0|, |v0|
-; GFX10-NEXT:    v_cmp_nlt_f32_e32 vcc_lo, 1.0, v1
-; GFX10-NEXT:    s_cmp_lg_u32 vcc_lo, 0
-; GFX10-NEXT:    s_cmov_b32 exec_lo, vcc_lo
-; GFX10-NEXT:    s_cbranch_scc0 .LBB1_2
+; GFX10-NEXT:    v_cmpx_nlt_f32_e32 1.0, v1
 ; GFX10-NEXT:  ; %bb.1: ; %if
 ; GFX10-NEXT:    v_mul_f32_e64 v1, 0x3e4ccccd, |v0|
+; GFX10-NEXT:  ; %bb.2: ; %exit
 ; GFX10-NEXT:    s_or_b32 exec_lo, exec_lo, s4
-; GFX10-NEXT:  .LBB1_2: ; %exit
 ; GFX10-NEXT:    v_add_f32_e64 v0, |v0|, 2.0
 ; GFX10-NEXT:    v_mul_f32_e32 v0, v0, v1
 ; GFX10-NEXT:    s_setpc_b64 s[30:31]
@@ -105,12 +99,6 @@ define float @fold_abs_in_branch_poison(float %arg1, float %arg2) {
 ; GFX10-LABEL: fold_abs_in_branch_poison:
 ; GFX10:       ; %bb.0: ; %entry
 ; GFX10-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
-; GFX10-NEXT:    v_add_f32_e64 v0, |s4|, |s4|
-; GFX10-NEXT:    v_cmp_lt_f32_e32 vcc_lo, 1.0, v0
-; GFX10-NEXT:    s_cbranch_vccnz .LBB3_2
-; GFX10-NEXT:  ; %bb.1: ; %if
-; GFX10-NEXT:    v_mul_f32_e64 v0, 0x3e4ccccd, |s4|
-; GFX10-NEXT:  .LBB3_2: ; %exit
 ; GFX10-NEXT:    s_setpc_b64 s[30:31]
 entry:
   %0 = fadd reassoc nnan nsz arcp contract afn float %arg1, %arg2
@@ -137,14 +125,11 @@ define float @fold_abs_in_branch_fabs(float %arg1, float %arg2) {
 ; GFX10-NEXT:    s_mov_b32 s4, exec_lo
 ; GFX10-NEXT:    v_add_f32_e32 v1, v0, v1
 ; GFX10-NEXT:    v_add_f32_e64 v0, |v1|, |v1|
-; GFX10-NEXT:    v_cmp_nlt_f32_e32 vcc_lo, 1.0, v0
-; GFX10-NEXT:    s_cmp_lg_u32 vcc_lo, 0
-; GFX10-NEXT:    s_cmov_b32 exec_lo, vcc_lo
-; GFX10-NEXT:    s_cbranch_scc0 .LBB4_2
+; GFX10-NEXT:    v_cmpx_nlt_f32_e32 1.0, v0
 ; GFX10-NEXT:  ; %bb.1: ; %if
 ; GFX10-NEXT:    v_mul_f32_e64 v0, 0x3e4ccccd, |v1|
+; GFX10-NEXT:  ; %bb.2: ; %exit
 ; GFX10-NEXT:    s_or_b32 exec_lo, exec_lo, s4
-; GFX10-NEXT:  .LBB4_2: ; %exit
 ; GFX10-NEXT:    s_setpc_b64 s[30:31]
 entry:
   %0 = fadd reassoc nnan nsz arcp contract afn float %arg1, %arg2
@@ -172,10 +157,8 @@ define float @fold_abs_in_branch_phi(float %arg1, float %arg2) {
 ; GFX10-NEXT:    s_mov_b32 s4, exec_lo
 ; GFX10-NEXT:    v_add_f32_e32 v0, v0, v1
 ; GFX10-NEXT:    v_add_f32_e64 v0, |v0|, |v0|
-; GFX10-NEXT:    v_cmp_nlt_f32_e32 vcc_lo, 1.0, v0
-; GFX10-NEXT:    s_cmp_lg_u32 vcc_lo, 0
-; GFX10-NEXT:    s_cmov_b32 exec_lo, vcc_lo
-; GFX10-NEXT:    s_cbranch_scc0 .LBB5_4
+; GFX10-NEXT:    v_cmpx_nlt_f32_e32 1.0, v0
+; GFX10-NEXT:    s_cbranch_execz .LBB5_3
 ; GFX10-NEXT:  ; %bb.1: ; %header.preheader
 ; GFX10-NEXT:    ; implicit-def: $vgpr0
 ; GFX10-NEXT:  .LBB5_2: ; %header
@@ -184,9 +167,8 @@ define float @fold_abs_in_branch_phi(float %arg1, float %arg2) {
 ; GFX10-NEXT:    v_cmp_lt_f32_e32 vcc_lo, -1.0, v0
 ; GFX10-NEXT:    v_and_b32_e32 v0, 0x7fffffff, v0
 ; GFX10-NEXT:    s_cbranch_vccnz .LBB5_2
-; GFX10-NEXT:  ; %bb.3: ; %Flow
+; GFX10-NEXT:  .LBB5_3: ; %Flow1
 ; GFX10-NEXT:    s_or_b32 exec_lo, exec_lo, s4
-; GFX10-NEXT:  .LBB5_4: ; %exit
 ; GFX10-NEXT:    s_setpc_b64 s[30:31]
 entry:
   %0 = fadd reassoc nnan nsz arcp contract afn float %arg1, %arg2
@@ -219,16 +201,13 @@ define float @fold_neg_in_branch(float %arg1, float %arg2) {
 ; GFX10-NEXT:    v_add_f32_e32 v0, v0, v1
 ; GFX10-NEXT:    s_mov_b32 s4, exec_lo
 ; GFX10-NEXT:    v_add_f32_e32 v0, v0, v1
-; GFX10-NEXT:    v_cmp_nlt_f32_e32 vcc_lo, 1.0, v0
 ; GFX10-NEXT:    v_mov_b32_e32 v1, v0
-; GFX10-NEXT:    s_cmp_lg_u32 vcc_lo, 0
-; GFX10-NEXT:    s_cmov_b32 exec_lo, vcc_lo
-; GFX10-NEXT:    s_cbranch_scc0 .LBB6_2
+; GFX10-NEXT:    v_cmpx_nlt_f32_e32 1.0, v0
 ; GFX10-NEXT:  ; %bb.1: ; %if
 ; GFX10-NEXT:    v_rcp_f32_e64 v1, -v0
 ; GFX10-NEXT:    v_mul_f32_e64 v1, |v0|, v1
+; GFX10-NEXT:  ; %bb.2: ; %exit
 ; GFX10-NEXT:    s_or_b32 exec_lo, exec_lo, s4
-; GFX10-NEXT:  .LBB6_2: ; %exit
 ; GFX10-NEXT:    v_mul_f32_e64 v0, -v0, v1
 ; GFX10-NEXT:    s_setpc_b64 s[30:31]
 entry:

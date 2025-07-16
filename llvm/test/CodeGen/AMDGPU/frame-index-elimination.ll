@@ -1,4 +1,3 @@
-; XFAIL: *
 ; RUN: llc -mtriple=amdgcn-amd-amdhsa -mcpu=kaveri -mattr=-promote-alloca -verify-machineinstrs < %s | FileCheck -enable-var-scope -check-prefixes=GCN,CI,MUBUF %s
 ; RUN: llc -mtriple=amdgcn-amd-amdhsa -mcpu=gfx900 -mattr=-promote-alloca -verify-machineinstrs < %s | FileCheck -enable-var-scope -check-prefixes=GCN,GFX9,GFX9-MUBUF,MUBUF %s
 ; RUN: llc -mtriple=amdgcn-amd-amdhsa -mcpu=gfx900 -mattr=-promote-alloca,+enable-flat-scratch -verify-machineinstrs < %s | FileCheck -enable-var-scope -check-prefixes=GCN,GFX9,GFX9-FLATSCR %s
@@ -311,7 +310,7 @@ ret:
 
 ; GFX11-LABEL: tied_operand_test:
 ; GFX11:       ; %bb.0: ; %entry
-; GFX11-DAG:     scratch_load_u16 [[LDRESULT:v[0-9]+]], off, off offset:4
+; GFX11-DAG:     scratch_load_u16 [[LDRESULT:v[0-9]+]], off, off
 ; GFX11-DAG:     v_mov_b32_e32 [[C:v[0-9]+]], 0x7b
 ; GFX11-DAG:     ds_store_b16 v{{[0-9]+}}, [[LDRESULT]]  offset:10
 ; GFX11-DAG:     ds_store_b16 v{{[0-9]+}}, [[C]]  offset:8

@@ -12,6 +12,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "mlir/Target/LLVMIR/Dialect/OpenACC/OpenACCToLLVMIRTranslation.h"
+#include "mlir/Analysis/TopologicalSortUtils.h"
 #include "mlir/Dialect/LLVMIR/LLVMDialect.h"
 #include "mlir/Dialect/OpenACC/OpenACC.h"
 #include "mlir/IR/BuiltinOps.h"
@@ -19,7 +20,6 @@
 #include "mlir/Support/LLVM.h"
 #include "mlir/Target/LLVMIR/Dialect/OpenMPCommon.h"
 #include "mlir/Target/LLVMIR/ModuleTranslation.h"
-#include "mlir/Transforms/RegionUtils.h"
 
 #include "llvm/ADT/TypeSwitch.h"
 #include "llvm/Frontend/OpenMP/OMPConstants.h"
@@ -33,7 +33,7 @@ using OpenACCIRBuilder = llvm::OpenMPIRBuilder;
 // Utility functions
 //===----------------------------------------------------------------------===//
 
-/// Flag values are extracted from openmp/libomptarget/include/omptarget.h and
+/// Flag values are extracted from offload/include/omptarget.h and
 /// mapped to corresponding OpenACC flags.
 static constexpr uint64_t kCreateFlag = 0x000;
 static constexpr uint64_t kDeviceCopyinFlag = 0x001;
@@ -392,7 +392,7 @@ static LogicalResult convertDataOp(acc::DataOp &op,
   llvm::BasicBlock *endDataBlock = llvm::BasicBlock::Create(
       ctx, "acc.end_data", builder.GetInsertBlock()->getParent());
 
-  SetVector<Block *> blocks = getTopologicallySortedBlocks(op.getRegion());
+  SetVector<Block *> blocks = getBlocksSortedByDominance(op.getRegion());
   for (Block *bb : blocks) {
     llvm::BasicBlock *llvmBB = moduleTranslation.lookupBlock(bb);
     if (bb->isEntryBlock()) {

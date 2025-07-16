@@ -111,7 +111,7 @@ public:
     B.setChangeObserver(*this);
   }
 
-  ~ApplyRegBankMapping() {
+  ~ApplyRegBankMapping() override {
     for (MachineInstr *MI : NewInsts)
       applyBank(*MI);
 
@@ -199,7 +199,7 @@ public:
   }
 };
 
-}
+} // anonymous namespace
 
 AMDGPURegisterBankInfo::AMDGPURegisterBankInfo(const GCNSubtarget &ST)
     : Subtarget(ST), TRI(Subtarget.getRegisterInfo()),
@@ -449,7 +449,7 @@ bool AMDGPURegisterBankInfo::isScalarLoadLegal(const MachineInstr &MI) const {
   const unsigned AS = MMO->getAddrSpace();
   const bool IsConst = AS == AMDGPUAS::CONSTANT_ADDRESS ||
                        AS == AMDGPUAS::CONSTANT_ADDRESS_32BIT;
-  const unsigned MemSize = 8 * MMO->getSize();
+  const unsigned MemSize = 8 * MMO->getSize().getValue();
 
   // Require 4-byte alignment.
   return (MMO->getAlign() >= Align(4) ||
@@ -733,7 +733,7 @@ Register AMDGPURegisterBankInfo::buildReadFirstLane(MachineIRBuilder &B,
 
   for (unsigned i = 0; i < NumParts; ++i) {
     Register SrcPart = SrcParts[i];
-    Register DstPart = MRI.createVirtualRegister(&AMDGPU::SReg_32RegClass);
+    Register DstPart = MRI.createVirtualRegister(&AMDGPU::SReg_32_XM0RegClass);
     MRI.setType(DstPart, NumParts == 1 ? Ty : S32);
 
     const TargetRegisterClass *Constrained =
@@ -785,8 +785,8 @@ bool AMDGPURegisterBankInfo::executeInWaterfallLoop(
   const TargetRegisterClass *WaveRC = TRI->getWaveMaskRegClass();
   const unsigned MovExecOpc =
       Subtarget.isWave32() ? AMDGPU::S_MOV_B32 : AMDGPU::S_MOV_B64;
-  // const unsigned MovExecTermOpc =
-  //     Subtarget.isWave32() ? AMDGPU::S_MOV_B32_term : AMDGPU::S_MOV_B64_term;
+  const unsigned MovExecTermOpc =
+      Subtarget.isWave32() ? AMDGPU::S_MOV_B32_term : AMDGPU::S_MOV_B64_term;
 
   const unsigned XorTermOpc = Subtarget.isWave32() ?
     AMDGPU::S_XOR_B32_term : AMDGPU::S_XOR_B64_term;
@@ -949,29 +949,27 @@ bool AMDGPURegisterBankInfo::executeInWaterfallLoop(
 
   B.setInsertPt(*BodyBB, BodyBB->end());
 
-  Register LoopMask = MRI.createVirtualRegister(
-      TRI->getRegClass(AMDGPU::SReg_1_XEXECRegClassID));
   // Update EXEC, switch all done bits to 0 and all todo bits to 1.
-  B.buildInstr(XorTermOpc).addDef(LoopMask).addReg(ExecReg).addReg(NewExec);
+  B.buildInstr(XorTermOpc)
+    .addDef(ExecReg)
+    .addReg(ExecReg)
+    .addReg(NewExec);
 
   // XXX - s_xor_b64 sets scc to 1 if the result is nonzero, so can we use
   // s_cbranch_scc0?
 
   // Loop back to V_READFIRSTLANE_B32 if there are still variants to cover.
-  B.buildInstr(AMDGPU::SI_WATERFALL_LOOP)
-      .addReg(LoopMask)
-      .addReg(NewExec)
-      .addMBB(LoopBB);
+  B.buildInstr(AMDGPU::SI_WATERFALL_LOOP).addMBB(LoopBB);
 
   // Save the EXEC mask before the loop.
   BuildMI(MBB, MBB.end(), DL, TII->get(MovExecOpc), SaveExecReg)
     .addReg(ExecReg);
 
   // Restore the EXEC mask after the loop.
-  // B.setMBB(*RestoreExecBB);
-  // B.buildInstr(MovExecTermOpc)
-  //   .addDef(ExecReg)
-  //   .addReg(SaveExecReg);
+  B.setMBB(*RestoreExecBB);
+  B.buildInstr(MovExecTermOpc)
+    .addDef(ExecReg)
+    .addReg(SaveExecReg);
 
   // Set the insert point after the original instruction, so any new
   // instructions will be in the remainder.
@@ -1072,7 +1070,7 @@ bool AMDGPURegisterBankInfo::applyMappingLoad(
       return false;
 
     MachineMemOperand *MMO = *MI.memoperands_begin();
-    const unsigned MemSize = 8 * MMO->getSize();
+    const unsigned MemSize = 8 * MMO->getSize().getValue();
     // Scalar loads of size 8 or 16 bit with proper alignment may be widened to
     // 32 bit. Check to see if we need to widen the memory access, 8 or 16 bit
     // scalar loads should have a load size of 32 but memory access size of less
@@ -1118,15 +1116,14 @@ bool AMDGPURegisterBankInfo::applyMappingLoad(
             LegalizerHelper::Legalized)
           return false;
         return true;
+      }
+      LLT WiderTy = widen96To128(LoadTy);
+      auto WideLoad = B.buildLoadFromOffset(WiderTy, PtrReg, *MMO, 0);
+      if (WiderTy.isScalar()) {
+        B.buildTrunc(MI.getOperand(0), WideLoad);
       } else {
-        LLT WiderTy = widen96To128(LoadTy);
-        auto WideLoad = B.buildLoadFromOffset(WiderTy, PtrReg, *MMO, 0);
-        if (WiderTy.isScalar())
-          B.buildTrunc(MI.getOperand(0), WideLoad);
-        else {
-          B.buildDeleteTrailingVectorElements(MI.getOperand(0).getReg(),
-                                              WideLoad);
-        }
+        B.buildDeleteTrailingVectorElements(MI.getOperand(0).getReg(),
+                                            WideLoad);
       }
     }
 
@@ -2263,7 +2260,7 @@ void AMDGPURegisterBankInfo::applyMappingImpl(
   case AMDGPU::G_FCMP:
     if (!Subtarget.hasSALUFloatInsts())
       break;
-    LLVM_FALLTHROUGH;
+    [[fallthrough]];
   case AMDGPU::G_ICMP:
   case AMDGPU::G_UADDO:
   case AMDGPU::G_USUBO:
@@ -3043,6 +3040,11 @@ void AMDGPURegisterBankInfo::applyMappingImpl(
   case AMDGPU::G_AMDGPU_BUFFER_LOAD_SSHORT:
   case AMDGPU::G_AMDGPU_BUFFER_LOAD_UBYTE:
   case AMDGPU::G_AMDGPU_BUFFER_LOAD_SBYTE:
+  case AMDGPU::G_AMDGPU_BUFFER_LOAD_TFE:
+  case AMDGPU::G_AMDGPU_BUFFER_LOAD_USHORT_TFE:
+  case AMDGPU::G_AMDGPU_BUFFER_LOAD_SSHORT_TFE:
+  case AMDGPU::G_AMDGPU_BUFFER_LOAD_UBYTE_TFE:
+  case AMDGPU::G_AMDGPU_BUFFER_LOAD_SBYTE_TFE:
   case AMDGPU::G_AMDGPU_BUFFER_LOAD_FORMAT:
   case AMDGPU::G_AMDGPU_BUFFER_LOAD_FORMAT_TFE:
   case AMDGPU::G_AMDGPU_BUFFER_LOAD_FORMAT_D16:
@@ -3076,7 +3078,6 @@ void AMDGPURegisterBankInfo::applyMappingImpl(
     return;
   }
   case AMDGPU::G_AMDGPU_BUFFER_ATOMIC_FADD:
-  case AMDGPU::G_AMDGPU_BUFFER_ATOMIC_FADD_BF16:
   case AMDGPU::G_AMDGPU_BUFFER_ATOMIC_FMIN:
   case AMDGPU::G_AMDGPU_BUFFER_ATOMIC_FMAX: {
     applyDefaultMapping(OpdMapper);
@@ -3137,6 +3138,10 @@ void AMDGPURegisterBankInfo::applyMappingImpl(
     case Intrinsic::amdgcn_interp_inreg_p2:
     case Intrinsic::amdgcn_interp_inreg_p10_f16:
     case Intrinsic::amdgcn_interp_inreg_p2_f16:
+    case Intrinsic::amdgcn_interp_p10_rtz_f16:
+    case Intrinsic::amdgcn_interp_p2_rtz_f16:
+    case Intrinsic::amdgcn_permlane16_swap:
+    case Intrinsic::amdgcn_permlane32_swap:
       applyDefaultMapping(OpdMapper);
       return;
     case Intrinsic::amdgcn_permlane16:
@@ -3169,6 +3174,7 @@ void AMDGPURegisterBankInfo::applyMappingImpl(
   }
   case AMDGPU::G_AMDGPU_INTRIN_IMAGE_LOAD:
   case AMDGPU::G_AMDGPU_INTRIN_IMAGE_LOAD_D16:
+  case AMDGPU::G_AMDGPU_INTRIN_IMAGE_LOAD_NORET:
   case AMDGPU::G_AMDGPU_INTRIN_IMAGE_STORE:
   case AMDGPU::G_AMDGPU_INTRIN_IMAGE_STORE_D16: {
     const AMDGPU::RsrcIntrinsic *RSrcIntrin =
@@ -4053,6 +4059,7 @@ AMDGPURegisterBankInfo::getInstrMapping(const MachineInstr &MI) const {
   case AMDGPU::G_CONSTANT:
   case AMDGPU::G_GLOBAL_VALUE:
   case AMDGPU::G_BLOCK_ADDR:
+  case AMDGPU::G_READSTEADYCOUNTER:
   case AMDGPU::G_READCYCLECOUNTER: {
     unsigned Size = MRI.getType(MI.getOperand(0).getReg()).getSizeInBits();
     OpdsMapping[0] = AMDGPU::getValueMapping(AMDGPU::SGPRRegBankID, Size);
@@ -4322,6 +4329,11 @@ AMDGPURegisterBankInfo::getInstrMapping(const MachineInstr &MI) const {
   case AMDGPU::G_AMDGPU_BUFFER_LOAD_SBYTE:
   case AMDGPU::G_AMDGPU_BUFFER_LOAD_USHORT:
   case AMDGPU::G_AMDGPU_BUFFER_LOAD_SSHORT:
+  case AMDGPU::G_AMDGPU_BUFFER_LOAD_TFE:
+  case AMDGPU::G_AMDGPU_BUFFER_LOAD_UBYTE_TFE:
+  case AMDGPU::G_AMDGPU_BUFFER_LOAD_SBYTE_TFE:
+  case AMDGPU::G_AMDGPU_BUFFER_LOAD_USHORT_TFE:
+  case AMDGPU::G_AMDGPU_BUFFER_LOAD_SSHORT_TFE:
   case AMDGPU::G_AMDGPU_BUFFER_LOAD_FORMAT:
   case AMDGPU::G_AMDGPU_BUFFER_LOAD_FORMAT_TFE:
   case AMDGPU::G_AMDGPU_BUFFER_LOAD_FORMAT_D16:
@@ -4365,7 +4377,6 @@ AMDGPURegisterBankInfo::getInstrMapping(const MachineInstr &MI) const {
   case AMDGPU::G_AMDGPU_BUFFER_ATOMIC_INC:
   case AMDGPU::G_AMDGPU_BUFFER_ATOMIC_DEC:
   case AMDGPU::G_AMDGPU_BUFFER_ATOMIC_FADD:
-  case AMDGPU::G_AMDGPU_BUFFER_ATOMIC_FADD_BF16:
   case AMDGPU::G_AMDGPU_BUFFER_ATOMIC_FMIN:
   case AMDGPU::G_AMDGPU_BUFFER_ATOMIC_FMAX: {
     // vdata_out
@@ -4483,6 +4494,7 @@ AMDGPURegisterBankInfo::getInstrMapping(const MachineInstr &MI) const {
     case Intrinsic::amdgcn_cvt_pk_u8_f32:
     case Intrinsic::amdgcn_alignbyte:
     case Intrinsic::amdgcn_perm:
+    case Intrinsic::amdgcn_prng_b32:
     case Intrinsic::amdgcn_fdot2:
     case Intrinsic::amdgcn_sdot2:
     case Intrinsic::amdgcn_udot2:
@@ -4493,12 +4505,74 @@ AMDGPURegisterBankInfo::getInstrMapping(const MachineInstr &MI) const {
     case Intrinsic::amdgcn_fdot2_bf16_bf16:
     case Intrinsic::amdgcn_fdot2_f16_f16:
     case Intrinsic::amdgcn_fdot2_f32_bf16:
+    case Intrinsic::amdgcn_fdot2c_f32_bf16:
     case Intrinsic::amdgcn_sudot4:
     case Intrinsic::amdgcn_sudot8:
     case Intrinsic::amdgcn_dot4_f32_fp8_bf8:
     case Intrinsic::amdgcn_dot4_f32_bf8_fp8:
     case Intrinsic::amdgcn_dot4_f32_fp8_fp8:
     case Intrinsic::amdgcn_dot4_f32_bf8_bf8:
+    case Intrinsic::amdgcn_cvt_f32_fp8:
+    case Intrinsic::amdgcn_cvt_f32_bf8:
+    case Intrinsic::amdgcn_cvt_pk_f32_fp8:
+    case Intrinsic::amdgcn_cvt_pk_f32_bf8:
+    case Intrinsic::amdgcn_cvt_pk_fp8_f32:
+    case Intrinsic::amdgcn_cvt_pk_bf8_f32:
+    case Intrinsic::amdgcn_cvt_sr_fp8_f32:
+    case Intrinsic::amdgcn_cvt_sr_bf8_f32:
+    case Intrinsic::amdgcn_cvt_sr_bf16_f32:
+    case Intrinsic::amdgcn_cvt_sr_f16_f32:
+    case Intrinsic::amdgcn_cvt_scalef32_pk32_fp6_f16:
+    case Intrinsic::amdgcn_cvt_scalef32_pk32_bf6_f16:
+    case Intrinsic::amdgcn_cvt_scalef32_pk32_fp6_bf16:
+    case Intrinsic::amdgcn_cvt_scalef32_pk32_bf6_bf16:
+    case Intrinsic::amdgcn_cvt_scalef32_f16_fp8:
+    case Intrinsic::amdgcn_cvt_scalef32_f16_bf8:
+    case Intrinsic::amdgcn_cvt_scalef32_f32_fp8:
+    case Intrinsic::amdgcn_cvt_scalef32_f32_bf8:
+    case Intrinsic::amdgcn_cvt_scalef32_pk_fp8_f32:
+    case Intrinsic::amdgcn_cvt_scalef32_pk_bf8_f32:
+    case Intrinsic::amdgcn_cvt_scalef32_pk_f32_fp8:
+    case Intrinsic::amdgcn_cvt_scalef32_pk_f32_bf8:
+    case Intrinsic::amdgcn_cvt_scalef32_pk_fp8_f16:
+    case Intrinsic::amdgcn_cvt_scalef32_pk_fp8_bf16:
+    case Intrinsic::amdgcn_cvt_scalef32_pk_bf8_f16:
+    case Intrinsic::amdgcn_cvt_scalef32_pk_bf8_bf16:
+    case Intrinsic::amdgcn_cvt_scalef32_pk_f32_fp4:
+    case Intrinsic::amdgcn_cvt_scalef32_pk_fp4_f32:
+    case Intrinsic::amdgcn_cvt_scalef32_pk_f16_fp4:
+    case Intrinsic::amdgcn_cvt_scalef32_pk_bf16_fp4:
+    case Intrinsic::amdgcn_cvt_scalef32_pk32_f32_fp6:
+    case Intrinsic::amdgcn_cvt_scalef32_pk32_f32_bf6:
+    case Intrinsic::amdgcn_cvt_scalef32_pk32_f16_bf6:
+    case Intrinsic::amdgcn_cvt_scalef32_pk32_bf16_bf6:
+    case Intrinsic::amdgcn_cvt_scalef32_pk32_f16_fp6:
+    case Intrinsic::amdgcn_cvt_scalef32_pk32_bf16_fp6:
+    case Intrinsic::amdgcn_cvt_scalef32_pk_f16_bf8:
+    case Intrinsic::amdgcn_cvt_scalef32_pk_bf16_bf8:
+    case Intrinsic::amdgcn_cvt_scalef32_pk_f16_fp8:
+    case Intrinsic::amdgcn_cvt_scalef32_pk_bf16_fp8:
+    case Intrinsic::amdgcn_cvt_scalef32_pk_fp4_f16:
+    case Intrinsic::amdgcn_cvt_scalef32_pk_fp4_bf16:
+    case Intrinsic::amdgcn_cvt_scalef32_sr_pk_fp4_f16:
+    case Intrinsic::amdgcn_cvt_scalef32_sr_pk_fp4_bf16:
+    case Intrinsic::amdgcn_cvt_scalef32_sr_pk_fp4_f32:
+    case Intrinsic::amdgcn_cvt_scalef32_sr_pk32_bf6_bf16:
+    case Intrinsic::amdgcn_cvt_scalef32_sr_pk32_bf6_f16:
+    case Intrinsic::amdgcn_cvt_scalef32_sr_pk32_bf6_f32:
+    case Intrinsic::amdgcn_cvt_scalef32_sr_pk32_fp6_bf16:
+    case Intrinsic::amdgcn_cvt_scalef32_sr_pk32_fp6_f16:
+    case Intrinsic::amdgcn_cvt_scalef32_sr_pk32_fp6_f32:
+    case Intrinsic::amdgcn_cvt_scalef32_sr_bf8_bf16:
+    case Intrinsic::amdgcn_cvt_scalef32_sr_bf8_f16:
+    case Intrinsic::amdgcn_cvt_scalef32_sr_bf8_f32:
+    case Intrinsic::amdgcn_cvt_scalef32_sr_fp8_bf16:
+    case Intrinsic::amdgcn_cvt_scalef32_sr_fp8_f16:
+    case Intrinsic::amdgcn_cvt_scalef32_sr_fp8_f32:
+    case Intrinsic::amdgcn_ashr_pk_i8_i32:
+    case Intrinsic::amdgcn_ashr_pk_u8_i32:
+    case Intrinsic::amdgcn_cvt_scalef32_2xpk16_fp6_f32:
+    case Intrinsic::amdgcn_cvt_scalef32_2xpk16_bf6_f32:
     case Intrinsic::amdgcn_wmma_bf16_16x16x16_bf16:
     case Intrinsic::amdgcn_wmma_f16_16x16x16_f16:
     case Intrinsic::amdgcn_wmma_bf16_16x16x16_bf16_tied:
@@ -4706,7 +4780,12 @@ AMDGPURegisterBankInfo::getInstrMapping(const MachineInstr &MI) const {
     case Intrinsic::amdgcn_mfma_f32_32x32x16_bf8_bf8:
     case Intrinsic::amdgcn_mfma_f32_32x32x16_bf8_fp8:
     case Intrinsic::amdgcn_mfma_f32_32x32x16_fp8_bf8:
-    case Intrinsic::amdgcn_mfma_f32_32x32x16_fp8_fp8: {
+    case Intrinsic::amdgcn_mfma_f32_32x32x16_fp8_fp8:
+    case Intrinsic::amdgcn_mfma_f32_16x16x32_f16:
+    case Intrinsic::amdgcn_mfma_f32_32x32x16_f16:
+    case Intrinsic::amdgcn_mfma_i32_16x16x64_i8:
+    case Intrinsic::amdgcn_mfma_i32_32x32x32_i8:
+    case Intrinsic::amdgcn_mfma_f32_16x16x32_bf16: {
       // Default for MAI intrinsics.
       // srcC can also be an immediate which can be folded later.
       // FIXME: Should we eventually add an alternative mapping with AGPR src
@@ -4726,6 +4805,25 @@ AMDGPURegisterBankInfo::getInstrMapping(const MachineInstr &MI) const {
               : getVGPROpMapping(MI.getOperand(4).getReg(), MRI, *TRI);
       break;
     }
+    case Intrinsic::amdgcn_mfma_scale_f32_16x16x128_f8f6f4:
+    case Intrinsic::amdgcn_mfma_scale_f32_32x32x64_f8f6f4: {
+      const SIMachineFunctionInfo *Info = MF.getInfo<SIMachineFunctionInfo>();
+      OpdsMapping[0] =
+          Info->mayNeedAGPRs()
+              ? getAGPROpMapping(MI.getOperand(0).getReg(), MRI, *TRI)
+              : getVGPROpMapping(MI.getOperand(0).getReg(), MRI, *TRI);
+
+      OpdsMapping[2] = getVGPROpMapping(MI.getOperand(2).getReg(), MRI, *TRI);
+      OpdsMapping[3] = getVGPROpMapping(MI.getOperand(3).getReg(), MRI, *TRI);
+      OpdsMapping[4] =
+          Info->mayNeedAGPRs()
+              ? getAGPROpMapping(MI.getOperand(4).getReg(), MRI, *TRI)
+              : getVGPROpMapping(MI.getOperand(4).getReg(), MRI, *TRI);
+
+      OpdsMapping[8] = getVGPROpMapping(MI.getOperand(8).getReg(), MRI, *TRI);
+      OpdsMapping[10] = getVGPROpMapping(MI.getOperand(10).getReg(), MRI, *TRI);
+      break;
+    }
     case Intrinsic::amdgcn_smfmac_f32_16x16x32_f16:
     case Intrinsic::amdgcn_smfmac_f32_32x32x16_f16:
     case Intrinsic::amdgcn_smfmac_f32_16x16x32_bf16:
@@ -4739,7 +4837,21 @@ AMDGPURegisterBankInfo::getInstrMapping(const MachineInstr &MI) const {
     case Intrinsic::amdgcn_smfmac_f32_32x32x32_bf8_bf8:
     case Intrinsic::amdgcn_smfmac_f32_32x32x32_bf8_fp8:
     case Intrinsic::amdgcn_smfmac_f32_32x32x32_fp8_bf8:
-    case Intrinsic::amdgcn_smfmac_f32_32x32x32_fp8_fp8: {
+    case Intrinsic::amdgcn_smfmac_f32_32x32x32_fp8_fp8:
+    case Intrinsic::amdgcn_smfmac_f32_16x16x64_f16:
+    case Intrinsic::amdgcn_smfmac_f32_32x32x32_f16:
+    case Intrinsic::amdgcn_smfmac_f32_16x16x64_bf16:
+    case Intrinsic::amdgcn_smfmac_f32_32x32x32_bf16:
+    case Intrinsic::amdgcn_smfmac_i32_16x16x128_i8:
+    case Intrinsic::amdgcn_smfmac_i32_32x32x64_i8:
+    case Intrinsic::amdgcn_smfmac_f32_16x16x128_bf8_bf8:
+    case Intrinsic::amdgcn_smfmac_f32_16x16x128_bf8_fp8:
+    case Intrinsic::amdgcn_smfmac_f32_16x16x128_fp8_bf8:
+    case Intrinsic::amdgcn_smfmac_f32_16x16x128_fp8_fp8:
+    case Intrinsic::amdgcn_smfmac_f32_32x32x64_bf8_bf8:
+    case Intrinsic::amdgcn_smfmac_f32_32x32x64_bf8_fp8:
+    case Intrinsic::amdgcn_smfmac_f32_32x32x64_fp8_bf8:
+    case Intrinsic::amdgcn_smfmac_f32_32x32x64_fp8_fp8: {
       // vdst, srcA, srcB, srcC, idx
       OpdsMapping[0] = getAGPROpMapping(MI.getOperand(0).getReg(), MRI, *TRI);
       OpdsMapping[2] = getVGPROpMapping(MI.getOperand(2).getReg(), MRI, *TRI);
@@ -4771,12 +4883,21 @@ AMDGPURegisterBankInfo::getInstrMapping(const MachineInstr &MI) const {
     case Intrinsic::amdgcn_interp_inreg_p10:
     case Intrinsic::amdgcn_interp_inreg_p2:
     case Intrinsic::amdgcn_interp_inreg_p10_f16:
-    case Intrinsic::amdgcn_interp_inreg_p2_f16: {
+    case Intrinsic::amdgcn_interp_inreg_p2_f16:
+    case Intrinsic::amdgcn_interp_p10_rtz_f16:
+    case Intrinsic::amdgcn_interp_p2_rtz_f16: {
       unsigned DstSize = MRI.getType(MI.getOperand(0).getReg()).getSizeInBits();
       OpdsMapping[0] = AMDGPU::getValueMapping(AMDGPU::VGPRRegBankID, DstSize);
       OpdsMapping[2] = AMDGPU::getValueMapping(AMDGPU::VGPRRegBankID, 32);
       OpdsMapping[3] = AMDGPU::getValueMapping(AMDGPU::VGPRRegBankID, 32);
       OpdsMapping[4] = AMDGPU::getValueMapping(AMDGPU::VGPRRegBankID, 32);
+      break;
+    }
+    case Intrinsic::amdgcn_permlane16_swap:
+    case Intrinsic::amdgcn_permlane32_swap: {
+      unsigned DstSize = MRI.getType(MI.getOperand(0).getReg()).getSizeInBits();
+      OpdsMapping[0] = OpdsMapping[1] = OpdsMapping[3] = OpdsMapping[4] =
+          AMDGPU::getValueMapping(AMDGPU::VGPRRegBankID, DstSize);
       break;
     }
     case Intrinsic::amdgcn_ballot: {
@@ -4793,6 +4914,14 @@ AMDGPURegisterBankInfo::getInstrMapping(const MachineInstr &MI) const {
       unsigned MaskBank = getRegBankID(MaskReg, MRI, AMDGPU::SGPRRegBankID);
       OpdsMapping[0] = AMDGPU::getValueMapping(AMDGPU::VCCRegBankID, 1);
       OpdsMapping[2] = AMDGPU::getValueMapping(MaskBank, MaskSize);
+      break;
+    }
+    case Intrinsic::amdgcn_bitop3: {
+      unsigned Size = getSizeInBits(MI.getOperand(0).getReg(), MRI, *TRI);
+      OpdsMapping[0] = AMDGPU::getValueMapping(AMDGPU::VGPRRegBankID, Size);
+      OpdsMapping[2] = AMDGPU::getValueMapping(AMDGPU::VGPRRegBankID, Size);
+      OpdsMapping[3] = AMDGPU::getValueMapping(AMDGPU::VGPRRegBankID, Size);
+      OpdsMapping[4] = AMDGPU::getValueMapping(AMDGPU::VGPRRegBankID, Size);
       break;
     }
     case Intrinsic::amdgcn_s_quadmask:
@@ -4824,6 +4953,7 @@ AMDGPURegisterBankInfo::getInstrMapping(const MachineInstr &MI) const {
   }
   case AMDGPU::G_AMDGPU_INTRIN_IMAGE_LOAD:
   case AMDGPU::G_AMDGPU_INTRIN_IMAGE_LOAD_D16:
+  case AMDGPU::G_AMDGPU_INTRIN_IMAGE_LOAD_NORET:
   case AMDGPU::G_AMDGPU_INTRIN_IMAGE_STORE:
   case AMDGPU::G_AMDGPU_INTRIN_IMAGE_STORE_D16: {
     auto IntrID = AMDGPU::getIntrinsicID(MI);
@@ -4882,11 +5012,15 @@ AMDGPURegisterBankInfo::getInstrMapping(const MachineInstr &MI) const {
     case Intrinsic::amdgcn_flat_atomic_fadd_v2bf16:
     case Intrinsic::amdgcn_atomic_cond_sub_u32:
     case Intrinsic::amdgcn_global_atomic_ordered_add_b64:
-    case Intrinsic::amdgcn_global_load_tr:
+    case Intrinsic::amdgcn_global_load_tr_b64:
+    case Intrinsic::amdgcn_global_load_tr_b128:
+    case Intrinsic::amdgcn_ds_read_tr4_b64:
+    case Intrinsic::amdgcn_ds_read_tr6_b96:
+    case Intrinsic::amdgcn_ds_read_tr8_b64:
+    case Intrinsic::amdgcn_ds_read_tr16_b64:
       return getDefaultMappingAllVGPR(MI);
     case Intrinsic::amdgcn_ds_ordered_add:
-    case Intrinsic::amdgcn_ds_ordered_swap:
-    case Intrinsic::amdgcn_ds_fadd_v2bf16: {
+    case Intrinsic::amdgcn_ds_ordered_swap: {
       unsigned DstSize = MRI.getType(MI.getOperand(0).getReg()).getSizeInBits();
       OpdsMapping[0] = AMDGPU::getValueMapping(AMDGPU::VGPRRegBankID, DstSize);
       unsigned M0Bank = getRegBankID(MI.getOperand(2).getReg(), MRI,
@@ -4942,7 +5076,7 @@ AMDGPURegisterBankInfo::getInstrMapping(const MachineInstr &MI) const {
       OpdsMapping[1] = AMDGPU::getValueMapping(Bank, 32);
       break;
     }
-    case Intrinsic::amdgcn_wave_reconverge: {
+    case Intrinsic::amdgcn_end_cf: {
       unsigned Size = getSizeInBits(MI.getOperand(1).getReg(), MRI, *TRI);
       OpdsMapping[1] = AMDGPU::getValueMapping(AMDGPU::SGPRRegBankID, Size);
       break;
@@ -4965,6 +5099,8 @@ AMDGPURegisterBankInfo::getInstrMapping(const MachineInstr &MI) const {
     }
     case Intrinsic::amdgcn_raw_buffer_load:
     case Intrinsic::amdgcn_raw_ptr_buffer_load:
+    case Intrinsic::amdgcn_raw_atomic_buffer_load:
+    case Intrinsic::amdgcn_raw_ptr_atomic_buffer_load:
     case Intrinsic::amdgcn_raw_tbuffer_load:
     case Intrinsic::amdgcn_raw_ptr_tbuffer_load: {
       // FIXME: Should make intrinsic ID the last operand of the instruction,
@@ -5120,6 +5256,8 @@ AMDGPURegisterBankInfo::getInstrMapping(const MachineInstr &MI) const {
       OpdsMapping[2] = getSGPROpMapping(MI.getOperand(2).getReg(), MRI, *TRI);
       break;
     }
+    case Intrinsic::amdgcn_pops_exiting_wave_id:
+      return getDefaultMappingSOP(MI);
     default:
       return getInvalidInstructionMapping();
     }
@@ -5197,11 +5335,11 @@ AMDGPURegisterBankInfo::getInstrMapping(const MachineInstr &MI) const {
   case AMDGPU::G_ATOMICRMW_UMAX:
   case AMDGPU::G_ATOMICRMW_UMIN:
   case AMDGPU::G_ATOMICRMW_FADD:
+  case AMDGPU::G_ATOMICRMW_FMIN:
+  case AMDGPU::G_ATOMICRMW_FMAX:
   case AMDGPU::G_ATOMICRMW_UINC_WRAP:
   case AMDGPU::G_ATOMICRMW_UDEC_WRAP:
-  case AMDGPU::G_AMDGPU_ATOMIC_CMPXCHG:
-  case AMDGPU::G_AMDGPU_ATOMIC_FMIN:
-  case AMDGPU::G_AMDGPU_ATOMIC_FMAX: {
+  case AMDGPU::G_AMDGPU_ATOMIC_CMPXCHG: {
     OpdsMapping[0] = getVGPROpMapping(MI.getOperand(0).getReg(), MRI, *TRI);
     OpdsMapping[1] = getValueMappingForPtr(MRI, MI.getOperand(1).getReg());
     OpdsMapping[2] = getVGPROpMapping(MI.getOperand(2).getReg(), MRI, *TRI);
@@ -5224,8 +5362,7 @@ AMDGPURegisterBankInfo::getInstrMapping(const MachineInstr &MI) const {
     OpdsMapping[0] = AMDGPU::getValueMapping(Bank, 1);
     break;
   }
-  case AMDGPU::G_FPTRUNC_ROUND_UPWARD:
-  case AMDGPU::G_FPTRUNC_ROUND_DOWNWARD:
+  case AMDGPU::G_INTRINSIC_FPTRUNC_ROUND:
     return getDefaultMappingVOP(MI);
   case AMDGPU::G_PREFETCH:
     OpdsMapping[0] = getSGPROpMapping(MI.getOperand(0).getReg(), MRI, *TRI);

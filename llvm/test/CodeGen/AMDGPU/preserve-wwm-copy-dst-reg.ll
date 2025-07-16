@@ -17,9 +17,9 @@ define void @preserve_wwm_copy_dstreg(ptr %parg0, ptr %parg1, ptr %parg2) #0 {
 ; GFX906-NEXT:    s_mov_b64 exec, -1
 ; GFX906-NEXT:    buffer_store_dword v41, off, s[0:3], s33 offset:148 ; 4-byte Folded Spill
 ; GFX906-NEXT:    s_mov_b64 exec, s[18:19]
+; GFX906-NEXT:    v_writelane_b32 v41, s16, 4
 ; GFX906-NEXT:    v_writelane_b32 v41, s34, 2
 ; GFX906-NEXT:    v_writelane_b32 v41, s35, 3
-; GFX906-NEXT:    v_writelane_b32 v41, s16, 4
 ; GFX906-NEXT:    s_addk_i32 s32, 0x2800
 ; GFX906-NEXT:    buffer_store_dword v40, off, s[0:3], s33 ; 4-byte Folded Spill
 ; GFX906-NEXT:    v_writelane_b32 v41, s30, 0
@@ -43,7 +43,7 @@ define void @preserve_wwm_copy_dstreg(ptr %parg0, ptr %parg1, ptr %parg2) #0 {
 ; GFX906-NEXT:    v_writelane_b32 v39, s4, 10
 ; GFX906-NEXT:    v_mov_b32_e32 v32, v31
 ; GFX906-NEXT:    buffer_store_dword v0, off, s[0:3], s33 offset:12 ; 4-byte Folded Spill
-; GFX906-NEXT:    s_waitcnt vmcnt(0)
+; GFX906-NEXT:    s_nop 0
 ; GFX906-NEXT:    buffer_store_dword v1, off, s[0:3], s33 offset:16 ; 4-byte Folded Spill
 ; GFX906-NEXT:    v_writelane_b32 v39, s5, 11
 ; GFX906-NEXT:    s_or_saveexec_b64 s[34:35], -1
@@ -52,7 +52,7 @@ define void @preserve_wwm_copy_dstreg(ptr %parg0, ptr %parg1, ptr %parg2) #0 {
 ; GFX906-NEXT:    ; def v[0:31]
 ; GFX906-NEXT:    ;;#ASMEND
 ; GFX906-NEXT:    buffer_store_dword v0, off, s[0:3], s33 offset:20 ; 4-byte Folded Spill
-; GFX906-NEXT:    s_waitcnt vmcnt(0)
+; GFX906-NEXT:    s_nop 0
 ; GFX906-NEXT:    buffer_store_dword v1, off, s[0:3], s33 offset:24 ; 4-byte Folded Spill
 ; GFX906-NEXT:    buffer_store_dword v2, off, s[0:3], s33 offset:28 ; 4-byte Folded Spill
 ; GFX906-NEXT:    buffer_store_dword v3, off, s[0:3], s33 offset:32 ; 4-byte Folded Spill
@@ -340,9 +340,9 @@ define void @preserve_wwm_copy_dstreg(ptr %parg0, ptr %parg1, ptr %parg2) #0 {
 ; GFX906-NEXT:    buffer_load_dword v33, off, s[0:3], s33 offset:144 ; 4-byte Folded Reload
 ; GFX906-NEXT:    v_readlane_b32 s30, v41, 0
 ; GFX906-NEXT:    v_readlane_b32 s31, v41, 1
+; GFX906-NEXT:    v_readlane_b32 s4, v41, 4
 ; GFX906-NEXT:    v_readlane_b32 s34, v41, 2
 ; GFX906-NEXT:    v_readlane_b32 s35, v41, 3
-; GFX906-NEXT:    v_readlane_b32 s4, v41, 4
 ; GFX906-NEXT:    s_waitcnt vmcnt(0)
 ; GFX906-NEXT:    flat_store_dwordx4 v[0:1], v[30:33] offset:112
 ; GFX906-NEXT:    s_waitcnt vmcnt(0)
@@ -379,12 +379,12 @@ define void @preserve_wwm_copy_dstreg(ptr %parg0, ptr %parg1, ptr %parg2) #0 {
 ; GFX908-NEXT:    s_xor_saveexec_b64 s[18:19], -1
 ; GFX908-NEXT:    buffer_store_dword v39, off, s[0:3], s33 offset:16 ; 4-byte Folded Spill
 ; GFX908-NEXT:    s_mov_b64 exec, s[18:19]
+; GFX908-NEXT:    v_mov_b32_e32 v2, s16
+; GFX908-NEXT:    buffer_store_dword v2, off, s[0:3], s33 offset:164 ; 4-byte Folded Spill
 ; GFX908-NEXT:    v_mov_b32_e32 v2, s34
 ; GFX908-NEXT:    buffer_store_dword v2, off, s[0:3], s33 offset:156 ; 4-byte Folded Spill
 ; GFX908-NEXT:    v_mov_b32_e32 v2, s35
 ; GFX908-NEXT:    buffer_store_dword v2, off, s[0:3], s33 offset:160 ; 4-byte Folded Spill
-; GFX908-NEXT:    v_mov_b32_e32 v2, s16
-; GFX908-NEXT:    buffer_store_dword v2, off, s[0:3], s33 offset:164 ; 4-byte Folded Spill
 ; GFX908-NEXT:    s_addk_i32 s32, 0x2c00
 ; GFX908-NEXT:    buffer_store_dword v40, off, s[0:3], s33 ; 4-byte Folded Spill
 ; GFX908-NEXT:    s_mov_b64 s[16:17], exec
@@ -415,7 +415,7 @@ define void @preserve_wwm_copy_dstreg(ptr %parg0, ptr %parg1, ptr %parg2) #0 {
 ; GFX908-NEXT:    v_writelane_b32 v39, s4, 10
 ; GFX908-NEXT:    v_mov_b32_e32 v32, v31
 ; GFX908-NEXT:    buffer_store_dword v0, off, s[0:3], s33 offset:20 ; 4-byte Folded Spill
-; GFX908-NEXT:    s_waitcnt vmcnt(0)
+; GFX908-NEXT:    s_nop 0
 ; GFX908-NEXT:    buffer_store_dword v1, off, s[0:3], s33 offset:24 ; 4-byte Folded Spill
 ; GFX908-NEXT:    v_writelane_b32 v39, s5, 11
 ; GFX908-NEXT:    s_or_saveexec_b64 s[34:35], -1
@@ -424,7 +424,7 @@ define void @preserve_wwm_copy_dstreg(ptr %parg0, ptr %parg1, ptr %parg2) #0 {
 ; GFX908-NEXT:    ; def v[0:31]
 ; GFX908-NEXT:    ;;#ASMEND
 ; GFX908-NEXT:    buffer_store_dword v0, off, s[0:3], s33 offset:28 ; 4-byte Folded Spill
-; GFX908-NEXT:    s_waitcnt vmcnt(0)
+; GFX908-NEXT:    s_nop 0
 ; GFX908-NEXT:    buffer_store_dword v1, off, s[0:3], s33 offset:32 ; 4-byte Folded Spill
 ; GFX908-NEXT:    buffer_store_dword v2, off, s[0:3], s33 offset:36 ; 4-byte Folded Spill
 ; GFX908-NEXT:    buffer_store_dword v3, off, s[0:3], s33 offset:40 ; 4-byte Folded Spill
@@ -738,15 +738,15 @@ define void @preserve_wwm_copy_dstreg(ptr %parg0, ptr %parg1, ptr %parg2) #0 {
 ; GFX908-NEXT:    s_waitcnt vmcnt(0)
 ; GFX908-NEXT:    s_mov_b64 exec, s[4:5]
 ; GFX908-NEXT:    buffer_load_dword v40, off, s[0:3], s33 ; 4-byte Folded Reload
+; GFX908-NEXT:    buffer_load_dword v0, off, s[0:3], s33 offset:164 ; 4-byte Folded Reload
+; GFX908-NEXT:    s_waitcnt vmcnt(0)
+; GFX908-NEXT:    v_readfirstlane_b32 s4, v0
 ; GFX908-NEXT:    buffer_load_dword v0, off, s[0:3], s33 offset:156 ; 4-byte Folded Reload
 ; GFX908-NEXT:    s_waitcnt vmcnt(0)
 ; GFX908-NEXT:    v_readfirstlane_b32 s34, v0
 ; GFX908-NEXT:    buffer_load_dword v0, off, s[0:3], s33 offset:160 ; 4-byte Folded Reload
 ; GFX908-NEXT:    s_waitcnt vmcnt(0)
 ; GFX908-NEXT:    v_readfirstlane_b32 s35, v0
-; GFX908-NEXT:    buffer_load_dword v0, off, s[0:3], s33 offset:164 ; 4-byte Folded Reload
-; GFX908-NEXT:    s_waitcnt vmcnt(0)
-; GFX908-NEXT:    v_readfirstlane_b32 s4, v0
 ; GFX908-NEXT:    s_xor_saveexec_b64 s[6:7], -1
 ; GFX908-NEXT:    buffer_load_dword v39, off, s[0:3], s33 offset:16 ; 4-byte Folded Reload
 ; GFX908-NEXT:    s_mov_b64 exec, s[6:7]
@@ -811,4 +811,4 @@ declare void @foo()
 attributes #0 = { "amdgpu-num-vgpr"="42" "amdgpu-num-sgpr"="40"}
 
 !llvm.module.flags = !{!0}
-!0 = !{i32 1, !"amdgpu_code_object_version", i32 500}
+!0 = !{i32 1, !"amdhsa_code_object_version", i32 500}

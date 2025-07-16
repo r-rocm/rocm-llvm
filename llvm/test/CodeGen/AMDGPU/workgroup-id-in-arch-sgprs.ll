@@ -5,6 +5,7 @@
 ; RUN: llc -mtriple=amdgcn-amd-amdhsa -mcpu=gfx1200 -global-isel=1 -verify-machineinstrs < %s | FileCheck -check-prefixes=GFX12,GFX12-GISEL %s
 
 define amdgpu_kernel void @workgroup_id_x(ptr addrspace(1) %ptrx) {
+;
 ; GFX9-LABEL: workgroup_id_x:
 ; GFX9:       ; %bb.0:
 ; GFX9-NEXT:    s_load_dwordx2 s[0:1], s[4:5], 0x0

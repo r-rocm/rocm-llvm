@@ -49,8 +49,8 @@ public:
                                   unsigned &NumRegsLeft) const;
 
   void computeInfo(CGFunctionInfo &FI) const override;
-  Address EmitVAArg(CodeGenFunction &CGF, Address VAListAddr,
-                    QualType Ty) const override;
+  RValue EmitVAArg(CodeGenFunction &CGF, Address VAListAddr, QualType Ty,
+                   AggValueSlot Slot) const override;
 };
 
 bool AMDGPUABIInfo::isHomogeneousAggregateBaseType(QualType Ty) const {
@@ -118,13 +118,13 @@ void AMDGPUABIInfo::computeInfo(CGFunctionInfo &FI) const {
   }
 }
 
-Address AMDGPUABIInfo::EmitVAArg(CodeGenFunction &CGF, Address VAListAddr,
-                                 QualType Ty) const {
+RValue AMDGPUABIInfo::EmitVAArg(CodeGenFunction &CGF, Address VAListAddr,
+                                QualType Ty, AggValueSlot Slot) const {
   const bool IsIndirect = false;
   const bool AllowHigherAlign = false;
   return emitVoidPtrVAArg(CGF, VAListAddr, Ty, IsIndirect,
                           getContext().getTypeInfoInChars(Ty),
-                          CharUnits::fromQuantity(4), AllowHigherAlign);
+                          CharUnits::fromQuantity(4), AllowHigherAlign, Slot);
 }
 
 ABIArgInfo AMDGPUABIInfo::classifyReturnType(QualType RetTy) const {
@@ -372,6 +372,29 @@ void AMDGPUTargetCodeGenInfo::setFunctionDeclAttributes(
 
     if (NumVGPR != 0)
       F->addFnAttr("amdgpu-num-vgpr", llvm::utostr(NumVGPR));
+  }
+
+  if (const auto *Attr = FD->getAttr<AMDGPUMaxNumWorkGroupsAttr>()) {
+    uint32_t X = Attr->getMaxNumWorkGroupsX()
+                     ->EvaluateKnownConstInt(M.getContext())
+                     .getExtValue();
+    // Y and Z dimensions default to 1 if not specified
+    uint32_t Y = Attr->getMaxNumWorkGroupsY()
+                     ? Attr->getMaxNumWorkGroupsY()
+                           ->EvaluateKnownConstInt(M.getContext())
+                           .getExtValue()
+                     : 1;
+    uint32_t Z = Attr->getMaxNumWorkGroupsZ()
+                     ? Attr->getMaxNumWorkGroupsZ()
+                           ->EvaluateKnownConstInt(M.getContext())
+                           .getExtValue()
+                     : 1;
+
+    llvm::SmallString<32> AttrVal;
+    llvm::raw_svector_ostream OS(AttrVal);
+    OS << X << ',' << Y << ',' << Z;
+
+    F->addFnAttr("amdgpu-max-num-workgroups", AttrVal.str());
   }
 }
 

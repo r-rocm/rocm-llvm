@@ -45,7 +45,7 @@ static std::string normalizeForBundler(const llvm::Triple &T,
   return HasTargetID ? (T.getArchName() + "-" + T.getVendorName() + "-" +
                         T.getOSName() + "-" + T.getEnvironmentName())
                            .str()
-                     : T.normalize();
+                     : T.normalize(llvm::Triple::CanonicalForm::FOUR_IDENT);
 }
 
 // Collect undefined __hip_fatbin* and __hip_gpubin_handle* symbols from all
@@ -63,9 +63,9 @@ public:
     populateSymbols();
     processStaticLibraries();
     if (Verbose) {
-      for (auto Name : FatBinSymbols)
+      for (const auto &Name : FatBinSymbols)
         llvm::errs() << "Found undefined HIP fatbin symbol: " << Name << "\n";
-      for (auto Name : GPUBinHandleSymbols)
+      for (const auto &Name : GPUBinHandleSymbols)
         llvm::errs() << "Found undefined HIP gpubin handle symbol: " << Name
                      << "\n";
     }
@@ -171,9 +171,9 @@ private:
         std::string ID = IA->getId().str();
         if (!ID.empty()) {
           ID = llvm::utohexstr(llvm::MD5Hash(ID), /*LowerCase=*/true);
-          FatBinSymbols.insert(Twine(FatBinPrefix + "_" + ID).str());
+          FatBinSymbols.insert((FatBinPrefix + Twine('_') + ID).str());
           GPUBinHandleSymbols.insert(
-              Twine(GPUBinHandlePrefix + "_" + ID).str());
+              (GPUBinHandlePrefix + Twine('_') + ID).str());
           continue;
         }
         if (IA->getInputArg().getNumValues() == 0)
@@ -292,7 +292,7 @@ void HIP::constructHIPFatbinCommand(Compilation &C, const JobAction &JA,
 
   // ToDo: Remove the dummy host binary entry which is required by
   // clang-offload-bundler.
-  std::string BundlerTargetArg = "-targets=host-x86_64-unknown-linux";
+  std::string BundlerTargetArg = "-targets=host-x86_64-unknown-linux-gnu";
   // AMDGCN:
   // For code object version 2 and 3, the offload kind in bundle ID is 'hip'
   // for backward compatibility. For code object version 4 and greater, the
@@ -304,10 +304,14 @@ void HIP::constructHIPFatbinCommand(Compilation &C, const JobAction &JA,
   for (const auto &II : Inputs) {
     const auto *A = II.getAction();
     auto ArchStr = llvm::StringRef(A->getOffloadingArch());
-    BundlerTargetArg +=
-        "," + OffloadKind + "-" + normalizeForBundler(TT, !ArchStr.empty());
+    BundlerTargetArg += ',' + OffloadKind + '-';
+    if (ArchStr == "amdgcnspirv")
+      BundlerTargetArg +=
+          normalizeForBundler(llvm::Triple("spirv64-amd-amdhsa"), true);
+    else
+      BundlerTargetArg += normalizeForBundler(TT, !ArchStr.empty());
     if (!ArchStr.empty())
-      BundlerTargetArg += "-" + ArchStr.str();
+      BundlerTargetArg += '-' + ArchStr.str();
   }
   BundlerArgs.push_back(Args.MakeArgString(BundlerTargetArg));
 

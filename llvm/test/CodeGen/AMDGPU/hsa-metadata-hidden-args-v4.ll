@@ -218,7 +218,7 @@ entry:
 ; CHECK-NEXT:         .value_kind:     hidden_default_queue
 ; CHECK-NEXT:       - .offset:         64
 ; CHECK-NEXT:         .size:           8
-; CHECK-NEXT:         .value_kind:     hidden_none
+; CHECK-NEXT:         .value_kind:     hidden_completion_action
 ; CHECK:          .name:           test48
 ; CHECK:          .symbol:         test48.kd
 define amdgpu_kernel void @test48(
@@ -266,7 +266,7 @@ entry:
 ; CHECK-NEXT:         .value_kind:     hidden_default_queue
 ; CHECK-NEXT:       - .offset:         64
 ; CHECK-NEXT:         .size:           8
-; CHECK-NEXT:         .value_kind:     hidden_none
+; CHECK-NEXT:         .value_kind:     hidden_completion_action
 ; CHECK-NEXT:       - .offset:         72
 ; CHECK-NEXT:         .size:           8
 ; CHECK-NEXT:         .value_kind:     hidden_multigrid_sync_arg
@@ -298,4 +298,4 @@ attributes #4 = { optnone noinline "amdgpu-implicitarg-num-bytes"="48" }
 attributes #5 = { optnone noinline "amdgpu-implicitarg-num-bytes"="56" }
 
 !llvm.module.flags = !{!0}
-!0 = !{i32 1, !"amdgpu_code_object_version", i32 400}
+!0 = !{i32 1, !"amdhsa_code_object_version", i32 400}

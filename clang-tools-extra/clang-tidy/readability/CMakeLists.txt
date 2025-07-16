@@ -17,15 +17,18 @@ add_clang_library(clangTidyReadabilityModule
   DeleteNullPointerCheck.cpp
   DuplicateIncludeCheck.cpp
   ElseAfterReturnCheck.cpp
+  EnumInitialValueCheck.cpp
   FunctionCognitiveComplexityCheck.cpp
   FunctionSizeCheck.cpp
   IdentifierLengthCheck.cpp
   IdentifierNamingCheck.cpp
   ImplicitBoolConversionCheck.cpp
+  RedundantInlineSpecifierCheck.cpp
   InconsistentDeclarationParameterNameCheck.cpp
   IsolateDeclarationCheck.cpp
   MagicNumbersCheck.cpp
   MakeMemberFunctionConstCheck.cpp
+  MathMissingParenthesesCheck.cpp
   MisleadingIndentationCheck.cpp
   MisplacedArrayIndexCheck.cpp
   NamedParameterCheck.cpp
@@ -35,6 +38,7 @@ add_clang_library(clangTidyReadabilityModule
   QualifiedAutoCheck.cpp
   ReadabilityTidyModule.cpp
   RedundantAccessSpecifiersCheck.cpp
+  RedundantCastingCheck.cpp
   RedundantControlFlowCheck.cpp
   RedundantDeclarationCheck.cpp
   RedundantFunctionPtrDereferenceCheck.cpp
@@ -53,6 +57,7 @@ add_clang_library(clangTidyReadabilityModule
   UniqueptrDeleteReleaseCheck.cpp
   UppercaseLiteralSuffixCheck.cpp
   UseAnyOfAllOfCheck.cpp
+  UseStdMinMaxCheck.cpp
 
   LINK_LIBS
   clangTidy

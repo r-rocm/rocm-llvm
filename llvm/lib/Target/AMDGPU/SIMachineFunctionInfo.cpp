@@ -26,7 +26,7 @@
 #include <optional>
 #include <vector>
 
-#define MAX_LANES 64
+enum { MAX_LANES = 64 };
 
 using namespace llvm;
 
@@ -46,6 +46,8 @@ SIMachineFunctionInfo::SIMachineFunctionInfo(const Function &F,
   const GCNSubtarget &ST = *static_cast<const GCNSubtarget *>(STI);
   FlatWorkGroupSizes = ST.getFlatWorkGroupSizes(F);
   WavesPerEU = ST.getWavesPerEU(F);
+  MaxNumWorkGroups = ST.getMaxNumWorkGroups(F);
+  assert(MaxNumWorkGroups.size() == 3);
 
   Occupancy = ST.computeOccupancy(F, getLDSSize());
   CallingConv::ID CC = F.getCallingConv();
@@ -81,7 +83,6 @@ SIMachineFunctionInfo::SIMachineFunctionInfo(const Function &F,
     if (CC != CallingConv::AMDGPU_Gfx)
       ArgInfo = AMDGPUArgumentUsageInfo::FixedABIFunctionInfo;
 
-    // TODO: Pick a high register, and shift down, similar to a kernel.
     FrameOffsetReg = AMDGPU::SGPR33;
     StackPtrOffsetReg = AMDGPU::SGPR32;
 
@@ -108,7 +109,8 @@ SIMachineFunctionInfo::SIMachineFunctionInfo(const Function &F,
   }
 
   if (!AMDGPU::isGraphics(CC) ||
-      (CC == CallingConv::AMDGPU_CS && ST.hasArchitectedSGPRs())) {
+      ((CC == CallingConv::AMDGPU_CS || CC == CallingConv::AMDGPU_Gfx) &&
+       ST.hasArchitectedSGPRs())) {
     if (IsKernel || !F.hasFnAttribute("amdgpu-no-workgroup-id-x"))
       WorkGroupIDX = true;
 
@@ -230,6 +232,12 @@ Register SIMachineFunctionInfo::addFlatScratchInit(const SIRegisterInfo &TRI) {
   return ArgInfo.FlatScratchInit.getRegister();
 }
 
+Register SIMachineFunctionInfo::addPrivateSegmentSize(const SIRegisterInfo &TRI) {
+  ArgInfo.PrivateSegmentSize = ArgDescriptor::createRegister(getNextUserSGPR());
+  NumUserSGPRs += 1;
+  return ArgInfo.PrivateSegmentSize.getRegister();
+}
+
 Register SIMachineFunctionInfo::addImplicitBufferPtr(const SIRegisterInfo &TRI) {
   ArgInfo.ImplicitBufferPtr = ArgDescriptor::createRegister(TRI.getMatchingSuperReg(
     getNextUserSGPR(), AMDGPU::sub0, &AMDGPU::SReg_64RegClass));
@@ -280,8 +288,10 @@ void SIMachineFunctionInfo::allocateWWMSpill(MachineFunction &MF, Register VGPR,
   // amdgpu_cs_chain_preserve calling convention and this is a scratch register.
   // We never need to allocate a spill for these because we don't even need to
   // restore the inactive lanes for them (they're scratchier than the usual
-  // scratch registers).
-  if (isChainFunction() && SIRegisterInfo::isChainScratchRegister(VGPR))
+  // scratch registers). We only need to do this if we have calls to
+  // llvm.amdgcn.cs.chain.
+  if (isChainFunction() && (SIRegisterInfo::isChainScratchRegister(VGPR) ||
+                            !MF.getFrameInfo().hasTailCall()))
     return;
 
   WWMSpills.insert(std::make_pair(
@@ -351,6 +361,8 @@ void SIMachineFunctionInfo::shiftWwmVGPRsToLowestRange(
       MBB.removeLiveIn(Reg);
       MBB.sortUniqueLiveIns();
     }
+
+    Reg = NewReg;
   }
 }
 
@@ -365,8 +377,7 @@ bool SIMachineFunctionInfo::allocateVirtualVGPRForSGPRSpills(
     LaneVGPR = SpillVGPRs.back();
   }
 
-  SGPRSpillsToVirtualVGPRLanes[FI].push_back(
-      SIRegisterInfo::SpilledReg(LaneVGPR, LaneIndex));
+  SGPRSpillsToVirtualVGPRLanes[FI].emplace_back(LaneVGPR, LaneIndex);
   return true;
 }
 
@@ -402,8 +413,7 @@ bool SIMachineFunctionInfo::allocatePhysicalVGPRForSGPRSpills(
     LaneVGPR = SpillPhysVGPRs.back();
   }
 
-  SGPRSpillsToPhysicalVGPRLanes[FI].push_back(
-      SIRegisterInfo::SpilledReg(LaneVGPR, LaneIndex));
+  SGPRSpillsToPhysicalVGPRLanes[FI].emplace_back(LaneVGPR, LaneIndex);
   return true;
 }
 
@@ -570,14 +580,10 @@ int SIMachineFunctionInfo::getScavengeFI(MachineFrameInfo &MFI,
                                          const SIRegisterInfo &TRI) {
   if (ScavengeFI)
     return *ScavengeFI;
-  if (isBottomOfStack()) {
-    ScavengeFI = MFI.CreateFixedObject(
-        TRI.getSpillSize(AMDGPU::SGPR_32RegClass), 0, false);
-  } else {
-    ScavengeFI = MFI.CreateStackObject(
-        TRI.getSpillSize(AMDGPU::SGPR_32RegClass),
-        TRI.getSpillAlign(AMDGPU::SGPR_32RegClass), false);
-  }
+
+  ScavengeFI =
+      MFI.CreateStackObject(TRI.getSpillSize(AMDGPU::SGPR_32RegClass),
+                            TRI.getSpillAlign(AMDGPU::SGPR_32RegClass), false);
   return *ScavengeFI;
 }
 
@@ -768,35 +774,7 @@ bool SIMachineFunctionInfo::initializeBaseYamlFields(
 }
 
 bool SIMachineFunctionInfo::mayUseAGPRs(const Function &F) const {
-  for (const BasicBlock &BB : F) {
-    for (const Instruction &I : BB) {
-      const auto *CB = dyn_cast<CallBase>(&I);
-      if (!CB)
-        continue;
-
-      if (CB->isInlineAsm()) {
-        const InlineAsm *IA = dyn_cast<InlineAsm>(CB->getCalledOperand());
-        for (const auto &CI : IA->ParseConstraints()) {
-          for (StringRef Code : CI.Codes) {
-            Code.consume_front("{");
-            if (Code.starts_with("a"))
-              return true;
-          }
-        }
-        continue;
-      }
-
-      const Function *Callee =
-          dyn_cast<Function>(CB->getCalledOperand()->stripPointerCasts());
-      if (!Callee)
-        return true;
-
-      if (Callee->getIntrinsicID() == Intrinsic::not_intrinsic)
-        return true;
-    }
-  }
-
-  return false;
+  return !F.hasFnAttribute("amdgpu-no-agpr");
 }
 
 bool SIMachineFunctionInfo::usesAGPRs(const MachineFunction &MF) const {
@@ -822,7 +800,8 @@ bool SIMachineFunctionInfo::usesAGPRs(const MachineFunction &MF) const {
     if (RC && SIRegisterInfo::isAGPRClass(RC)) {
       UsesAGPRs = true;
       return true;
-    } else if (!RC && !MRI.use_empty(Reg) && MRI.getType(Reg).isValid()) {
+    }
+    if (!RC && !MRI.use_empty(Reg) && MRI.getType(Reg).isValid()) {
       // Defer caching UsesAGPRs, function might not yet been regbank selected.
       return true;
     }

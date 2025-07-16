@@ -8,11 +8,11 @@ Building the Code Object Manager
 --------------------------------
 
 Comgr depends on [LLVM](https://github.com/ROCm/llvm-project) and
-[AMDDeviceLibs](https://github.com/ROCm/llvm-project/tree/amd-stg-open/amd/device-libs).
+[AMDDeviceLibs](https://github.com/ROCm/llvm-project/tree/amd-staging/amd/device-libs).
 One way to make these visible to the Comgr build process is by setting the
 `CMAKE_PREFIX_PATH` to include either the build directory or install prefix of
 each of these components, separated by a semicolon. Both should be built using
-either sources with the same ROCm release tag, or from the `amd-stg-open`
+either sources with the same ROCm release tag, or from the `amd-staging`
 branch. LLVM should be built with at least
 `LLVM_ENABLE_PROJECTS='llvm;clang;lld'` and
 `LLVM_TARGETS_TO_BUILD='AMDGPU;X86'`.
@@ -20,8 +20,8 @@ branch. LLVM should be built with at least
 An example `bash` session to build Comgr on Linux using GNUMakefiles is:
 
     $ LLVM_PROJECT=~/llvm-project
-    $ DEVICE_LIBS=~/device-libs
-    $ COMGR=~/support/lib/comgr
+    $ DEVICE_LIBS=~/llvm-project/amd/device-libs
+    $ COMGR=~/llvm-project/amd/comgr
     $ mkdir -p "$LLVM_PROJECT/build"
     $ cd "$LLVM_PROJECT/build"
     $ cmake \
@@ -49,8 +49,8 @@ An example `bash` session to build Comgr on Linux using GNUMakefiles is:
 The equivalent on Windows in `cmd.exe` using Visual Studio project files is:
 
     > set LLVM_PROJECT="%HOMEPATH%\llvm-project"
-    > set DEVICE_LIBS="%HOMEPATH%\device-libs"
-    > set COMGR="%HOMEPATH%\support\lib\comgr"
+    > set DEVICE_LIBS="%HOMEPATH%\llvm-project\amd\device-libs"
+    > set COMGR="%HOMEPATH%\llvm-project\amd\comgr"
     > mkdir "%LLVM_PROJECT%\build"
     > cd "%LLVM_PROJECT%\build"
     > cmake ^
@@ -79,6 +79,10 @@ may be enabled during development via `-DADDRESS_SANITIZER=On` during the Comgr
 
 Comgr can be built as a static library by passing
 `-DCOMGR_BUILD_SHARED_LIBS=OFF` during the Comgr `cmake` step.
+
+Comgr SPIRV-related APIs can be disabled by passing
+`-DCOMGR_DISABLE_SPIRV=1` during the Comgr `cmake` step. This removes any
+dependency on LLVM SPIRV libraries or the llvm-spirv tool.
 
 Depending on the Code Object Manager
 ------------------------------------
@@ -120,6 +124,26 @@ These include:
   LLVM installation, which is currently used for HIP compilation to locate
   certain runtime headers. If this is not set, it has a default value of
   "${ROCM_PATH}/llvm".
+
+Comgr utilizes a cache to preserve the results of compilations between executions.
+The cache's status (enabled/disabled), storage location for its results,
+and eviction policy can be manipulated through specific environment variables.
+If an issue arises during cache initialization, the execution will proceed with
+the cache turned off.
+
+By default, the cache is turned off, set the environment variable
+`AMD_COMGR_CACHE=1` to enable it. This may change in a future release.
+
+* `AMD_COMGR_CACHE`: When unset or set to 0, the cache is turned off.
+* `AMD_COMGR_CACHE_DIR`: When set to "", the cache is turned off. If assigned a
+  value, that value is used as the path for cache storage. By default, it is
+  directed to "$XDG_CACHE_HOME/comgr_cache" (which defaults to
+  "$USER/.cache/comgr_cache" on Linux, and "%LOCALAPPDATA%\cache\comgr_cache"
+  on Microsoft Windows).
+* `AMD_COMGR_CACHE_POLICY`: If assigned a value, the string is interpreted and
+  applied to the cache pruning policy. The cache is pruned only upon program
+  termination. The string format aligns with [Clang's ThinLTO cache pruning policy](https://clang.llvm.org/docs/ThinLTO.html#cache-pruning).
+  The default policy is set as: "prune_interval=1h:prune_expiration=0h:cache_size=75%:cache_size_bytes=30g:cache_size_files=0".
 
 Comgr also supports some environment variables to aid in debugging. These
 include:
@@ -189,9 +213,6 @@ configuration files for
 [clang-format](https://clang.llvm.org/docs/ClangFormat.html) and
 [clang-tidy](https://clang.llvm.org/extra/clang-tidy/), which should be used to
 ensure patches conform.
-
-One notable exception is the `test/` subdirectory which prefers `camelBack` for
-identifiers rather than `CamelCase`.
 
 A script at `utils/tidy-and-format.sh` can be run to help automate the task of
 ensuring all sources conform to the coding standards. To support the use of

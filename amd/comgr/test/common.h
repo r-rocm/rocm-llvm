@@ -81,7 +81,7 @@ int setBuf(const char *infile, char **buf) {
   if (fseek(fp, 0, SEEK_SET) != 0)
     fail("fseek");
 
-  *buf = (char *) malloc(size + 1);
+  *buf = (char *)malloc(size + 1);
   if (!*buf)
     fail("malloc");
   if (fread(*buf, size, 1, fp) != 1)
@@ -92,8 +92,9 @@ int setBuf(const char *infile, char **buf) {
   return size;
 }
 
-void checkError(amd_comgr_status_t status, const char *str) {
-  if (status != AMD_COMGR_STATUS_SUCCESS) {
+void checkStatus(amd_comgr_status_t status, amd_comgr_status_t expected,
+                 const char *str) {
+  if (status != expected) {
     const char *statusStr;
     printf("FAILED: %s\n", str);
     status = amd_comgr_status_string(status, &statusStr);
@@ -101,6 +102,10 @@ void checkError(amd_comgr_status_t status, const char *str) {
       printf(" REASON: %s\n", statusStr);
     exit(1);
   }
+}
+
+void checkError(amd_comgr_status_t status, const char *str) {
+  checkStatus(status, AMD_COMGR_STATUS_SUCCESS, str);
 }
 
 void dumpData(amd_comgr_data_t Data, const char *OutFile) {
@@ -126,11 +131,14 @@ void dumpData(amd_comgr_data_t Data, const char *OutFile) {
   if (ret != size)
     fail("fwrite");
 
+  free(bytes);
   fclose(fp);
 }
 
 amd_comgr_status_t printSymbol(amd_comgr_symbol_t symbol, void *userData) {
   amd_comgr_status_t status;
+  if (userData == NULL)
+    return AMD_COMGR_STATUS_ERROR;
 
   size_t nlen;
   status = amd_comgr_symbol_get_info(symbol, AMD_COMGR_SYMBOL_INFO_NAME_LENGTH,

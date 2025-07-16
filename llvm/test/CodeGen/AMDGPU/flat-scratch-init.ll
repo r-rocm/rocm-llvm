@@ -12,7 +12,7 @@ define amdgpu_kernel void @stack_object_addrspacecast_in_kernel_no_calls() {
 ; FLAT_SCR_OPT-NEXT:    s_setreg_b32 hwreg(HW_REG_FLAT_SCR_LO), s0
 ; FLAT_SCR_OPT-NEXT:    s_setreg_b32 hwreg(HW_REG_FLAT_SCR_HI), s1
 ; FLAT_SCR_OPT-NEXT:    s_mov_b64 s[0:1], src_private_base
-; FLAT_SCR_OPT-NEXT:    v_mov_b32_e32 v0, 4
+; FLAT_SCR_OPT-NEXT:    v_mov_b32_e32 v0, 0
 ; FLAT_SCR_OPT-NEXT:    v_mov_b32_e32 v1, s1
 ; FLAT_SCR_OPT-NEXT:    v_mov_b32_e32 v2, 0
 ; FLAT_SCR_OPT-NEXT:    flat_store_dword v[0:1], v2
@@ -22,7 +22,7 @@ define amdgpu_kernel void @stack_object_addrspacecast_in_kernel_no_calls() {
 ; FLAT_SCR_ARCH-LABEL: stack_object_addrspacecast_in_kernel_no_calls:
 ; FLAT_SCR_ARCH:       ; %bb.0:
 ; FLAT_SCR_ARCH-NEXT:    s_mov_b64 s[0:1], src_private_base
-; FLAT_SCR_ARCH-NEXT:    v_mov_b32_e32 v0, 4
+; FLAT_SCR_ARCH-NEXT:    v_mov_b32_e32 v0, 0
 ; FLAT_SCR_ARCH-NEXT:    v_mov_b32_e32 v1, s1
 ; FLAT_SCR_ARCH-NEXT:    v_mov_b32_e32 v2, 0
 ; FLAT_SCR_ARCH-NEXT:    flat_store_dword v[0:1], v2
@@ -43,7 +43,7 @@ define amdgpu_kernel void @stack_object_in_kernel_no_calls() {
 ; FLAT_SCR_OPT-NEXT:    s_setreg_b32 hwreg(HW_REG_FLAT_SCR_HI), s1
 ; FLAT_SCR_OPT-NEXT:    v_mov_b32_e32 v0, 0
 ; FLAT_SCR_OPT-NEXT:    s_mov_b32 s0, 0
-; FLAT_SCR_OPT-NEXT:    scratch_store_dword off, v0, s0 offset:4
+; FLAT_SCR_OPT-NEXT:    scratch_store_dword off, v0, s0
 ; FLAT_SCR_OPT-NEXT:    s_waitcnt_vscnt null, 0x0
 ; FLAT_SCR_OPT-NEXT:    s_endpgm
 ;
@@ -51,7 +51,7 @@ define amdgpu_kernel void @stack_object_in_kernel_no_calls() {
 ; FLAT_SCR_ARCH:       ; %bb.0:
 ; FLAT_SCR_ARCH-NEXT:    v_mov_b32_e32 v0, 0
 ; FLAT_SCR_ARCH-NEXT:    s_mov_b32 s0, 0
-; FLAT_SCR_ARCH-NEXT:    scratch_store_dword off, v0, s0 offset:4
+; FLAT_SCR_ARCH-NEXT:    scratch_store_dword off, v0, s0
 ; FLAT_SCR_ARCH-NEXT:    s_waitcnt_vscnt null, 0x0
 ; FLAT_SCR_ARCH-NEXT:    s_endpgm
   %alloca = alloca i32, addrspace(5)
@@ -278,4 +278,4 @@ define amdgpu_kernel void @kernel_no_calls_no_stack() {
 attributes #0 = { nounwind }
 
 !llvm.module.flags = !{!0}
-!0 = !{i32 1, !"amdgpu_code_object_version", i32 500}
+!0 = !{i32 1, !"amdhsa_code_object_version", i32 500}

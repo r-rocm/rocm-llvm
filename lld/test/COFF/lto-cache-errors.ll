@@ -1,4 +1,4 @@
-; REQUIRES: x86, disable_temporarily
+; REQUIRES: x86, non-root-user, disable_temporarily
 ;; Not supported on windows since we use permissions to deny the creation
 ; UNSUPPORTED: system-windows
 

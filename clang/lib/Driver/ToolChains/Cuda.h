@@ -33,7 +33,8 @@ private:
   llvm::StringMap<std::string> LibDeviceMap;
   // CUDA architectures for which we have raised an error in
   // CheckCudaVersionSupportsArch.
-  mutable std::bitset<(int)CudaArch::LAST> ArchsWithBadVersion;
+  mutable std::bitset<(int)OffloadArch::LAST> ArchsWithBadVersion;
+
 public:
   CudaInstallationDetector(const Driver &D, const llvm::Triple &HostTriple,
                            const llvm::opt::ArgList &Args);
@@ -43,7 +44,8 @@ public:
   ///
   /// If either Version or Arch is unknown, does not emit an error.  Emits at
   /// most one error per Arch.
-  void CheckCudaVersionSupportsArch(CudaArch Arch) const;
+  void CheckCudaVersionSupportsArch(OffloadArch Arch) const;
+
   /// Check whether we detected a valid Cuda install.
   bool isValid() const { return IsValid; }
   /// Print information about the detected CUDA installation.
@@ -155,6 +157,12 @@ public:
   // NVPTX supports only DWARF2.
   unsigned GetDefaultDwarfVersion() const override { return 2; }
   unsigned getMaxDwarfVersion() const override { return 2; }
+
+  /// Uses nvptx-arch tool to get arch of the system GPU. Will return error
+  /// if unable to find one.
+  virtual Expected<SmallVector<std::string>>
+  getSystemGPUArchs(const llvm::opt::ArgList &Args) const override;
+
   CudaInstallationDetector CudaInstallation;
 protected:
   Tool *buildAssembler() const override; // ptxas.
@@ -202,10 +210,8 @@ public:
   computeMSVCVersion(const Driver *D,
                      const llvm::opt::ArgList &Args) const override;
 
-  Expected<SmallVector<std::string>>
-  getSystemGPUArchs(const llvm::opt::ArgList &Args) const override;
-
   const ToolChain &HostTC;
+
 protected:
   Tool *buildAssembler() const override; // ptxas
   Tool *buildLinker() const override;    // fatbinary (ok, not really a linker)

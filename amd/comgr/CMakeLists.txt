@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.13.4)
 
+include(CheckIncludeFileCXX)
+
 file(READ "VERSION.txt" comgr_ver_file)
 
 string(REGEX MATCH "#COMGR_VERSION_MAJOR\n([0-9]*)" _ ${comgr_ver_file})
@@ -69,15 +71,20 @@ option(COMGR_BUILD_SHARED_LIBS "Build the shared library"
        ${build_shared_libs_default})
 
 set(SOURCES
+  src/comgr-cache.cpp
+  src/comgr-cache-command.cpp
+  src/comgr-cache-bundler-command.cpp
   src/comgr-compiler.cpp
   src/comgr.cpp
   src/comgr-device-libs.cpp
+  src/comgr-diagnostic-handler.cpp
   src/comgr-disassembly.cpp
   src/comgr-elfdump.cpp
   src/comgr-env.cpp
   src/comgr-metadata.cpp
   src/comgr-objdump.cpp
   src/comgr-signal.cpp
+  src/comgr-spirv-command.cpp
   src/comgr-symbol.cpp
   src/comgr-symbolizer.cpp
   src/time-stat/time-stat.cpp)
@@ -166,11 +173,31 @@ set(AMD_COMGR_PRIVATE_COMPILE_DEFINITIONS ${LLVM_DEFINITIONS})
 set(AMD_COMGR_PUBLIC_LINKER_OPTIONS)
 set(AMD_COMGR_PRIVATE_LINKER_OPTIONS)
 
-list(APPEND AMD_COMGR_PRIVATE_COMPILE_OPTIONS "-DAMD_COMGR_GIT_COMMIT=${AMD_COMGR_GIT_COMMIT}")
-list(APPEND AMD_COMGR_PRIVATE_COMPILE_OPTIONS "-DAMD_COMGR_GIT_BRANCH=${AMD_COMGR_GIT_BRANCH}")
+list(APPEND AMD_COMGR_PRIVATE_COMPILE_DEFINITIONS "AMD_COMGR_GIT_COMMIT=${AMD_COMGR_GIT_COMMIT}")
+list(APPEND AMD_COMGR_PRIVATE_COMPILE_DEFINITIONS "AMD_COMGR_GIT_BRANCH=${AMD_COMGR_GIT_BRANCH}")
 message("----COMGR_GIT_COMMIT: ${AMD_COMGR_GIT_COMMIT}")
 message("----COMGR_GIT_BRANCH: ${AMD_COMGR_GIT_BRANCH}")
 message("")
+
+option(COMGR_DISABLE_SPIRV "To disable SPIRV in Comgr" OFF)
+
+if (NOT COMGR_DISABLE_SPIRV)
+  # TODO: Explore switching this to CHECK_INCLUDE_FILE_CXX() macro
+  if (NOT EXISTS "${LLVM_INCLUDE_DIRS}/LLVMSPIRVLib/LLVMSPIRVLib.h")
+    message("-- LLVMSPIRVLib/LLVMSPIRVLib.h not found")
+    set(COMGR_DISABLE_SPIRV ON)
+  else()
+    message("-- LLVMSPIRVLib/LLVMSPIRVLib.h found")
+  endif()
+endif()
+
+if(${COMGR_DISABLE_SPIRV})
+    list(APPEND AMD_COMGR_PRIVATE_COMPILE_DEFINITIONS "COMGR_DISABLE_SPIRV")
+  message("-- Comgr SPIRV Disabled")
+else()
+  message("-- Comgr SPIRV Enabled")
+endif()
+
 
 if (UNIX)
   list(APPEND AMD_COMGR_PRIVATE_COMPILE_OPTIONS
@@ -214,6 +241,12 @@ include(bc2h)
 include(opencl_pch)
 include(DeviceLibs)
 
+# Add major version to the name on windows, including Win64
+if (WIN32)
+  set_target_properties(amd_comgr PROPERTIES
+    OUTPUT_NAME "amd_comgr_${amd_comgr_VERSION_MAJOR}")
+endif()
+
 set_target_properties(amd_comgr PROPERTIES
   CXX_STANDARD 17
   CXX_STANDARD_REQUIRED Yes
@@ -230,6 +263,7 @@ if (NOT COMGR_BUILD_SHARED_LIBS)
   set_target_properties(amd_comgr PROPERTIES POSITION_INDEPENDENT_CODE ON)
 endif()
 
+# Overwrite the name on 32-bit Linux and Windows
 if (CMAKE_SIZEOF_VOID_P EQUAL 4)
   set_target_properties(amd_comgr PROPERTIES OUTPUT_NAME "amd_comgr32")
 endif()
@@ -362,6 +396,10 @@ install(FILES
 
 if(TARGET clangFrontendTool)
   set(CLANG_LIBS
+    clangBasic
+    clangDriver
+    clangSerialization
+    clangFrontend
     clangFrontendTool)
 else()
   set(CLANG_LIBS
@@ -372,13 +410,38 @@ set(LLD_LIBS
   lldELF
   lldCommon)
 
+if (${COMGR_DISABLE_SPIRV})
+  set(SPIRV_DYNAMIC_LIB "")
+  set(SPIRV_STATIC_LIB "")
+else()
+  set(SPIRV_DYNAMIC_LIB "LLVMSPIRVAMDLib")
+  set(SPIRV_STATIC_LIB "SPIRVAMDLib")
+endif()
+
 if (LLVM_LINK_LLVM_DYLIB)
-  set(LLVM_LIBS LLVM)
+  set(LLVM_LIBS LLVM ${SPIRV_DYNAMIC_LIB})
 else()
   llvm_map_components_to_libnames(LLVM_LIBS
     ${LLVM_TARGETS_TO_BUILD}
+    BinaryFormat
+    BitReader
+    BitWriter
+    CodeGen
+    Core
     DebugInfoDWARF
-    Symbolize)
+    Demangle
+    IRReader
+    Linker
+    MC
+    MCDisassembler
+    MCParser
+    Object
+    Option
+    Support
+    Symbolize
+    TargetParser
+    ${SPIRV_STATIC_LIB}
+    )
 endif()
 
 target_link_options(amd_comgr
@@ -398,11 +461,18 @@ if (NOT UNIX)
     PRIVATE version)
 endif()
 
+find_package(Threads)
+target_link_libraries(amd_comgr PRIVATE ${CMAKE_THREAD_LIBS_INIT})
+
+find_library(LIBRT rt)
+if(LIBRT)
+  target_link_libraries(amd_comgr PRIVATE ${LIBRT})
+endif()
+
+
 if (NOT WIN32)
   target_link_libraries(amd_comgr
     PRIVATE
-      pthread
-      rt
       c
       ${CMAKE_DL_LIBS})
 endif()
@@ -414,6 +484,7 @@ if(BUILD_TESTING)
     set_property(GLOBAL APPEND PROPERTY LLVM_ADDITIONAL_TEST_TARGETS check-comgr)
   endif()
   add_subdirectory(test)
+  add_subdirectory(test-lit)
 endif()
 
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
@@ -464,13 +535,14 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
   else()
     set(CPACK_DEBIAN_AMD-COMGR_PACKAGE_NAME comgr-static-dev)
   endif()
-  set(CPACK_DEBIAN_PACKAGE_HOMEPAGE "https://github.com/RadeonOpenCompute/ROCm-CompilerSupport")
+  set(CPACK_DEBIAN_PACKAGE_HOMEPAGE "https://github.com/ROCm/llvm-project/tree/amd-staging/amd/comgr")
+  set(DEBIAN_DEPENDENCIES "libzstd1, zlib1g, libc6, libstdc++6, libgcc-s1 | libgcc1")
   if (LLVM_LINK_LLVM_DYLIB)
-    set(CPACK_DEBIAN_PACKAGE_DEPENDS "libtinfo-dev, rocm-core, rocm-llvm-core")
-    set(CPACK_DEBIAN_ASAN_PACKAGE_DEPENDS "libtinfo-dev, rocm-core-asan, rocm-llvm-core")
+    set(CPACK_DEBIAN_PACKAGE_DEPENDS "libtinfo-dev, rocm-core, rocm-llvm-core, ${DEBIAN_DEPENDENCIES}")
+    set(CPACK_DEBIAN_ASAN_PACKAGE_DEPENDS "libtinfo-dev, rocm-core-asan, rocm-llvm-core, ${DEBIAN_DEPENDENCIES}")
   else()
-    set(CPACK_DEBIAN_PACKAGE_DEPENDS "libtinfo-dev, rocm-core")
-    set(CPACK_DEBIAN_ASAN_PACKAGE_DEPENDS "libtinfo-dev, rocm-core-asan")
+    set(CPACK_DEBIAN_PACKAGE_DEPENDS "libtinfo-dev, rocm-core, ${DEBIAN_DEPENDENCIES}")
+    set(CPACK_DEBIAN_ASAN_PACKAGE_DEPENDS "libtinfo-dev, rocm-core-asan, ${DEBIAN_DEPENDENCIES}")
   endif()
   if (DEFINED ENV{CPACK_DEBIAN_PACKAGE_RELEASE})
     set(CPACK_DEBIAN_PACKAGE_RELEASE $ENV{CPACK_DEBIAN_PACKAGE_RELEASE})
@@ -485,12 +557,26 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
   else()
     set(CPACK_RPM_AMD-COMGR_PACKAGE_NAME comgr-static-devel)
   endif()
-  if (LLVM_LINK_LLVM_DYLIB)
-    set(CPACK_RPM_PACKAGE_REQUIRES "ncurses, rocm-core, rocm-llvm-core")
-    set(CPACK_RPM_ASAN_PACKAGE_REQUIRES "ncurses, rocm-core-asan, rocm-llvm-core")
+
+  execute_process(COMMAND rpm --eval %{?dist}
+                 RESULT_VARIABLE PROC_RESULT
+                 OUTPUT_VARIABLE EVAL_RESULT
+                 OUTPUT_STRIP_TRAILING_WHITESPACE)
+
+  if(PROC_RESULT EQUAL "0" AND "${EVAL_RESULT}" STREQUAL ".el7")
+    # In Centos using parentheses is causing cpack errors.
+    # Set the dependencies specifically for centos
+    set(RPM_DEPENDENCIES "zlib, glibc, libstdc++, libgcc")
   else()
-    set(CPACK_RPM_PACKAGE_REQUIRES "ncurses, rocm-core")
-    set(CPACK_RPM_ASAN_PACKAGE_REQUIRES "ncurses, rocm-core-asan")
+    set(RPM_DEPENDENCIES "(zlib or libz1), (libzstd or libzstd1), glibc, (libstdc++ or libstdc++6), (libgcc or libgcc_s1)")
+  endif()
+
+  if (LLVM_LINK_LLVM_DYLIB)
+    set(CPACK_RPM_PACKAGE_REQUIRES "rocm-core, rocm-llvm-core, ${RPM_DEPENDENCIES}")
+    set(CPACK_RPM_ASAN_PACKAGE_REQUIRES "rocm-core-asan, rocm-llvm-core, ${RPM_DEPENDENCIES}")
+  else()
+    set(CPACK_RPM_PACKAGE_REQUIRES "rocm-core, ${RPM_DEPENDENCIES}")
+    set(CPACK_RPM_ASAN_PACKAGE_REQUIRES "rocm-core-asan, ${RPM_DEPENDENCIES}")
   endif()
   if(DEFINED ENV{CPACK_RPM_PACKAGE_RELEASE})
     set(CPACK_RPM_PACKAGE_RELEASE $ENV{CPACK_RPM_PACKAGE_RELEASE})

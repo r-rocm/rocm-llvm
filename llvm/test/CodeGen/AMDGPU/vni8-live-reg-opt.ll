@@ -55,14 +55,20 @@ define amdgpu_kernel void @v3i8_liveout(ptr addrspace(1) %src1, ptr addrspace(1)
 ; DEFAULT-NEXT:    [[IDX:%.*]] = call i32 @llvm.amdgcn.workitem.id.x()
 ; DEFAULT-NEXT:    [[GEP1:%.*]] = getelementptr <3 x i8>, ptr addrspace(1) [[SRC1]], i32 [[IDX]]
 ; DEFAULT-NEXT:    [[VEC1:%.*]] = load <3 x i8>, ptr addrspace(1) [[GEP1]], align 4
+; DEFAULT-NEXT:    [[TMP0:%.*]] = shufflevector <3 x i8> [[VEC1]], <3 x i8> poison, <4 x i32> <i32 0, i32 1, i32 2, i32 3>
+; DEFAULT-NEXT:    [[VEC1_BC:%.*]] = bitcast <4 x i8> [[TMP0]] to i32
 ; DEFAULT-NEXT:    [[GEP2:%.*]] = getelementptr <3 x i8>, ptr addrspace(1) [[SRC2]], i32 [[IDX]]
 ; DEFAULT-NEXT:    [[VEC2:%.*]] = load <3 x i8>, ptr addrspace(1) [[GEP2]], align 4
+; DEFAULT-NEXT:    [[TMP1:%.*]] = shufflevector <3 x i8> [[VEC2]], <3 x i8> poison, <4 x i32> <i32 0, i32 1, i32 2, i32 3>
+; DEFAULT-NEXT:    [[VEC2_BC:%.*]] = bitcast <4 x i8> [[TMP1]] to i32
 ; DEFAULT-NEXT:    [[CMP:%.*]] = icmp ult i32 [[IDX]], 15
 ; DEFAULT-NEXT:    br i1 [[CMP]], label [[BB_1:%.*]], label [[BB_2:%.*]]
 ; DEFAULT:       bb.1:
 ; DEFAULT-NEXT:    br label [[BB_2]]
 ; DEFAULT:       bb.2:
-; DEFAULT-NEXT:    [[PHI5:%.*]] = phi <3 x i8> [ [[VEC1]], [[ENTRY:%.*]] ], [ [[VEC2]], [[BB_1]] ]
+; DEFAULT-NEXT:    [[PHI5_TC:%.*]] = phi i32 [ [[VEC1_BC]], [[ENTRY:%.*]] ], [ [[VEC2_BC]], [[BB_1]] ]
+; DEFAULT-NEXT:    [[TMP2:%.*]] = trunc i32 [[PHI5_TC]] to i24
+; DEFAULT-NEXT:    [[PHI5:%.*]] = bitcast i24 [[TMP2]] to <3 x i8>
 ; DEFAULT-NEXT:    store <3 x i8> [[PHI5]], ptr addrspace(1) [[DST]], align 4
 ; DEFAULT-NEXT:    ret void
 ;
@@ -130,14 +136,17 @@ define amdgpu_kernel void @v4i8_liveout(ptr addrspace(1) %src1, ptr addrspace(1)
 ; DEFAULT-NEXT:    [[IDX:%.*]] = call i32 @llvm.amdgcn.workitem.id.x()
 ; DEFAULT-NEXT:    [[GEP1:%.*]] = getelementptr <4 x i8>, ptr addrspace(1) [[SRC1]], i32 [[IDX]]
 ; DEFAULT-NEXT:    [[VEC1:%.*]] = load <4 x i8>, ptr addrspace(1) [[GEP1]], align 4
+; DEFAULT-NEXT:    [[VEC1_BC:%.*]] = bitcast <4 x i8> [[VEC1]] to i32
 ; DEFAULT-NEXT:    [[GEP2:%.*]] = getelementptr <4 x i8>, ptr addrspace(1) [[SRC2]], i32 [[IDX]]
 ; DEFAULT-NEXT:    [[VEC2:%.*]] = load <4 x i8>, ptr addrspace(1) [[GEP2]], align 4
+; DEFAULT-NEXT:    [[VEC2_BC:%.*]] = bitcast <4 x i8> [[VEC2]] to i32
 ; DEFAULT-NEXT:    [[CMP:%.*]] = icmp ult i32 [[IDX]], 15
 ; DEFAULT-NEXT:    br i1 [[CMP]], label [[BB_1:%.*]], label [[BB_2:%.*]]
 ; DEFAULT:       bb.1:
 ; DEFAULT-NEXT:    br label [[BB_2]]
 ; DEFAULT:       bb.2:
-; DEFAULT-NEXT:    [[PHI5:%.*]] = phi <4 x i8> [ [[VEC1]], [[ENTRY:%.*]] ], [ [[VEC2]], [[BB_1]] ]
+; DEFAULT-NEXT:    [[PHI5_TC:%.*]] = phi i32 [ [[VEC1_BC]], [[ENTRY:%.*]] ], [ [[VEC2_BC]], [[BB_1]] ]
+; DEFAULT-NEXT:    [[PHI5:%.*]] = bitcast i32 [[PHI5_TC]] to <4 x i8>
 ; DEFAULT-NEXT:    store <4 x i8> [[PHI5]], ptr addrspace(1) [[DST]], align 4
 ; DEFAULT-NEXT:    ret void
 ;
@@ -211,14 +220,20 @@ define amdgpu_kernel void @v5i8_liveout(ptr addrspace(1) %src1, ptr addrspace(1)
 ; DEFAULT-NEXT:    [[IDX:%.*]] = call i32 @llvm.amdgcn.workitem.id.x()
 ; DEFAULT-NEXT:    [[GEP1:%.*]] = getelementptr <5 x i8>, ptr addrspace(1) [[SRC1]], i32 [[IDX]]
 ; DEFAULT-NEXT:    [[VEC1:%.*]] = load <5 x i8>, ptr addrspace(1) [[GEP1]], align 8
+; DEFAULT-NEXT:    [[TMP0:%.*]] = shufflevector <5 x i8> [[VEC1]], <5 x i8> poison, <8 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 5, i32 5>
+; DEFAULT-NEXT:    [[VEC1_BC:%.*]] = bitcast <8 x i8> [[TMP0]] to <2 x i32>
 ; DEFAULT-NEXT:    [[GEP2:%.*]] = getelementptr <5 x i8>, ptr addrspace(1) [[SRC2]], i32 [[IDX]]
 ; DEFAULT-NEXT:    [[VEC2:%.*]] = load <5 x i8>, ptr addrspace(1) [[GEP2]], align 8
+; DEFAULT-NEXT:    [[TMP1:%.*]] = shufflevector <5 x i8> [[VEC2]], <5 x i8> poison, <8 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 5, i32 5>
+; DEFAULT-NEXT:    [[VEC2_BC:%.*]] = bitcast <8 x i8> [[TMP1]] to <2 x i32>
 ; DEFAULT-NEXT:    [[CMP:%.*]] = icmp ult i32 [[IDX]], 15
 ; DEFAULT-NEXT:    br i1 [[CMP]], label [[BB_1:%.*]], label [[BB_2:%.*]]
 ; DEFAULT:       bb.1:
 ; DEFAULT-NEXT:    br label [[BB_2]]
 ; DEFAULT:       bb.2:
-; DEFAULT-NEXT:    [[PHI5:%.*]] = phi <5 x i8> [ [[VEC1]], [[ENTRY:%.*]] ], [ [[VEC2]], [[BB_1]] ]
+; DEFAULT-NEXT:    [[PHI5_TC:%.*]] = phi <2 x i32> [ [[VEC1_BC]], [[ENTRY:%.*]] ], [ [[VEC2_BC]], [[BB_1]] ]
+; DEFAULT-NEXT:    [[TMP2:%.*]] = bitcast <2 x i32> [[PHI5_TC]] to <8 x i8>
+; DEFAULT-NEXT:    [[PHI5:%.*]] = shufflevector <8 x i8> [[TMP2]], <8 x i8> poison, <5 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4>
 ; DEFAULT-NEXT:    store <5 x i8> [[PHI5]], ptr addrspace(1) [[DST]], align 4
 ; DEFAULT-NEXT:    ret void
 ;
@@ -286,14 +301,17 @@ define amdgpu_kernel void @v8i8_liveout(ptr addrspace(1) %src1, ptr addrspace(1)
 ; DEFAULT-NEXT:    [[IDX:%.*]] = call i32 @llvm.amdgcn.workitem.id.x()
 ; DEFAULT-NEXT:    [[GEP1:%.*]] = getelementptr <8 x i8>, ptr addrspace(1) [[SRC1]], i32 [[IDX]]
 ; DEFAULT-NEXT:    [[VEC1:%.*]] = load <8 x i8>, ptr addrspace(1) [[GEP1]], align 8
+; DEFAULT-NEXT:    [[VEC1_BC:%.*]] = bitcast <8 x i8> [[VEC1]] to <2 x i32>
 ; DEFAULT-NEXT:    [[GEP2:%.*]] = getelementptr <8 x i8>, ptr addrspace(1) [[SRC2]], i32 [[IDX]]
 ; DEFAULT-NEXT:    [[VEC2:%.*]] = load <8 x i8>, ptr addrspace(1) [[GEP2]], align 8
+; DEFAULT-NEXT:    [[VEC2_BC:%.*]] = bitcast <8 x i8> [[VEC2]] to <2 x i32>
 ; DEFAULT-NEXT:    [[CMP:%.*]] = icmp ult i32 [[IDX]], 15
 ; DEFAULT-NEXT:    br i1 [[CMP]], label [[BB_1:%.*]], label [[BB_2:%.*]]
 ; DEFAULT:       bb.1:
 ; DEFAULT-NEXT:    br label [[BB_2]]
 ; DEFAULT:       bb.2:
-; DEFAULT-NEXT:    [[PHI5:%.*]] = phi <8 x i8> [ [[VEC1]], [[ENTRY:%.*]] ], [ [[VEC2]], [[BB_1]] ]
+; DEFAULT-NEXT:    [[PHI5_TC:%.*]] = phi <2 x i32> [ [[VEC1_BC]], [[ENTRY:%.*]] ], [ [[VEC2_BC]], [[BB_1]] ]
+; DEFAULT-NEXT:    [[PHI5:%.*]] = bitcast <2 x i32> [[PHI5_TC]] to <8 x i8>
 ; DEFAULT-NEXT:    store <8 x i8> [[PHI5]], ptr addrspace(1) [[DST]], align 4
 ; DEFAULT-NEXT:    ret void
 ;
@@ -371,8 +389,10 @@ define amdgpu_kernel void @repeat_successor(i32 %in, ptr addrspace(1) %src1, ptr
 ; DEFAULT-NEXT:    [[IDX:%.*]] = call i32 @llvm.amdgcn.workitem.id.x()
 ; DEFAULT-NEXT:    [[GEP1:%.*]] = getelementptr <4 x i8>, ptr addrspace(1) [[SRC1]], i32 [[IDX]]
 ; DEFAULT-NEXT:    [[VEC1:%.*]] = load <4 x i8>, ptr addrspace(1) [[GEP1]], align 4
+; DEFAULT-NEXT:    [[VEC1_BC:%.*]] = bitcast <4 x i8> [[VEC1]] to i32
 ; DEFAULT-NEXT:    [[GEP2:%.*]] = getelementptr <4 x i8>, ptr addrspace(1) [[SRC2]], i32 [[IDX]]
 ; DEFAULT-NEXT:    [[VEC2:%.*]] = load <4 x i8>, ptr addrspace(1) [[GEP2]], align 4
+; DEFAULT-NEXT:    [[VEC2_BC:%.*]] = bitcast <4 x i8> [[VEC2]] to i32
 ; DEFAULT-NEXT:    switch i32 [[IN]], label [[RETURN:%.*]] [
 ; DEFAULT-NEXT:      i32 1, label [[RETURN_SINK_SPLIT:%.*]]
 ; DEFAULT-NEXT:      i32 2, label [[RETURN_SINK_SPLIT]]
@@ -381,7 +401,8 @@ define amdgpu_kernel void @repeat_successor(i32 %in, ptr addrspace(1) %src1, ptr
 ; DEFAULT:       sw.bb5:
 ; DEFAULT-NEXT:    br label [[RETURN_SINK_SPLIT]]
 ; DEFAULT:       return.sink.split:
-; DEFAULT-NEXT:    [[PHI5:%.*]] = phi <4 x i8> [ [[VEC2]], [[SW_BB5]] ], [ [[VEC1]], [[ENTRY:%.*]] ], [ [[VEC1]], [[ENTRY]] ]
+; DEFAULT-NEXT:    [[PHI5_TC:%.*]] = phi i32 [ [[VEC2_BC]], [[SW_BB5]] ], [ [[VEC1_BC]], [[ENTRY:%.*]] ], [ [[VEC1_BC]], [[ENTRY]] ]
+; DEFAULT-NEXT:    [[PHI5:%.*]] = bitcast i32 [[PHI5_TC]] to <4 x i8>
 ; DEFAULT-NEXT:    store <4 x i8> [[PHI5]], ptr addrspace(1) [[DST]], align 4
 ; DEFAULT-NEXT:    ret void
 ; DEFAULT:       return:
@@ -470,19 +491,23 @@ define amdgpu_kernel void @v8i8_phi_chain(ptr addrspace(1) %src1, ptr addrspace(
 ; DEFAULT-NEXT:    [[IDX:%.*]] = call i32 @llvm.amdgcn.workitem.id.x()
 ; DEFAULT-NEXT:    [[GEP1:%.*]] = getelementptr <8 x i8>, ptr addrspace(1) [[SRC1]], i32 [[IDX]]
 ; DEFAULT-NEXT:    [[VEC1:%.*]] = load <8 x i8>, ptr addrspace(1) [[GEP1]], align 8
+; DEFAULT-NEXT:    [[VEC1_BC:%.*]] = bitcast <8 x i8> [[VEC1]] to <2 x i32>
 ; DEFAULT-NEXT:    [[GEP2:%.*]] = getelementptr <8 x i8>, ptr addrspace(1) [[SRC2]], i32 [[IDX]]
 ; DEFAULT-NEXT:    [[VEC2:%.*]] = load <8 x i8>, ptr addrspace(1) [[GEP2]], align 8
+; DEFAULT-NEXT:    [[VEC2_BC:%.*]] = bitcast <8 x i8> [[VEC2]] to <2 x i32>
 ; DEFAULT-NEXT:    [[CMP:%.*]] = icmp ult i32 [[IDX]], 15
 ; DEFAULT-NEXT:    br i1 [[CMP]], label [[BB_1:%.*]], label [[BB_2:%.*]]
 ; DEFAULT:       bb.1:
 ; DEFAULT-NEXT:    [[CMP2:%.*]] = icmp ult i32 [[IDX]], 7
 ; DEFAULT-NEXT:    br i1 [[CMP2]], label [[BB_2]], label [[BB_3:%.*]]
 ; DEFAULT:       bb.2:
-; DEFAULT-NEXT:    [[PHI5:%.*]] = phi <8 x i8> [ [[VEC1]], [[ENTRY:%.*]] ], [ [[VEC2]], [[BB_1]] ]
+; DEFAULT-NEXT:    [[PHI5_TC:%.*]] = phi <2 x i32> [ [[VEC1_BC]], [[ENTRY:%.*]] ], [ [[VEC2_BC]], [[BB_1]] ]
+; DEFAULT-NEXT:    [[PHI5:%.*]] = bitcast <2 x i32> [[PHI5_TC]] to <8 x i8>
 ; DEFAULT-NEXT:    store <8 x i8> [[PHI5]], ptr addrspace(1) [[DST0]], align 4
 ; DEFAULT-NEXT:    br label [[BB_3]]
 ; DEFAULT:       bb.3:
-; DEFAULT-NEXT:    [[PHI7:%.*]] = phi <8 x i8> [ [[VEC2]], [[BB_1]] ], [ [[PHI5]], [[BB_2]] ]
+; DEFAULT-NEXT:    [[PHI7_TC:%.*]] = phi <2 x i32> [ [[VEC2_BC]], [[BB_1]] ], [ [[PHI5_TC]], [[BB_2]] ]
+; DEFAULT-NEXT:    [[PHI7:%.*]] = bitcast <2 x i32> [[PHI7_TC]] to <8 x i8>
 ; DEFAULT-NEXT:    store <8 x i8> [[PHI7]], ptr addrspace(1) [[DST1]], align 4
 ; DEFAULT-NEXT:    ret void
 ;
@@ -566,18 +591,22 @@ define amdgpu_kernel void @v8i8_multi_block(ptr addrspace(1) %src1, ptr addrspac
 ; DEFAULT-NEXT:    [[IDX:%.*]] = call i32 @llvm.amdgcn.workitem.id.x()
 ; DEFAULT-NEXT:    [[GEP1:%.*]] = getelementptr <8 x i8>, ptr addrspace(1) [[SRC1]], i32 [[IDX]]
 ; DEFAULT-NEXT:    [[VEC1:%.*]] = load <8 x i8>, ptr addrspace(1) [[GEP1]], align 8
+; DEFAULT-NEXT:    [[VEC1_BC:%.*]] = bitcast <8 x i8> [[VEC1]] to <2 x i32>
 ; DEFAULT-NEXT:    [[GEP2:%.*]] = getelementptr <8 x i8>, ptr addrspace(1) [[SRC2]], i32 [[IDX]]
 ; DEFAULT-NEXT:    [[VEC2:%.*]] = load <8 x i8>, ptr addrspace(1) [[GEP2]], align 8
+; DEFAULT-NEXT:    [[VEC2_BC:%.*]] = bitcast <8 x i8> [[VEC2]] to <2 x i32>
 ; DEFAULT-NEXT:    [[CMP:%.*]] = icmp ult i32 [[IDX]], 15
 ; DEFAULT-NEXT:    br i1 [[CMP]], label [[BB_1:%.*]], label [[BB_3:%.*]]
 ; DEFAULT:       bb.1:
 ; DEFAULT-NEXT:    [[CMP2:%.*]] = icmp ult i32 [[IDX]], 7
 ; DEFAULT-NEXT:    br i1 [[CMP2]], label [[BB_2:%.*]], label [[BB_3]]
 ; DEFAULT:       bb.2:
-; DEFAULT-NEXT:    store <8 x i8> [[VEC1]], ptr addrspace(1) [[DST0]], align 4
+; DEFAULT-NEXT:    [[VEC1_BC_BC:%.*]] = bitcast <2 x i32> [[VEC1_BC]] to <8 x i8>
+; DEFAULT-NEXT:    store <8 x i8> [[VEC1_BC_BC]], ptr addrspace(1) [[DST0]], align 4
 ; DEFAULT-NEXT:    br label [[BB_3]]
 ; DEFAULT:       bb.3:
-; DEFAULT-NEXT:    [[PHI5:%.*]] = phi <8 x i8> [ [[VEC1]], [[ENTRY:%.*]] ], [ [[VEC2]], [[BB_1]] ], [ [[VEC2]], [[BB_2]] ]
+; DEFAULT-NEXT:    [[PHI5_TC:%.*]] = phi <2 x i32> [ [[VEC1_BC]], [[ENTRY:%.*]] ], [ [[VEC2_BC]], [[BB_1]] ], [ [[VEC2_BC]], [[BB_2]] ]
+; DEFAULT-NEXT:    [[PHI5:%.*]] = bitcast <2 x i32> [[PHI5_TC]] to <8 x i8>
 ; DEFAULT-NEXT:    store <8 x i8> [[PHI5]], ptr addrspace(1) [[DST1]], align 4
 ; DEFAULT-NEXT:    ret void
 ;
@@ -656,15 +685,20 @@ define amdgpu_kernel void @v32i8_loop_carried(ptr addrspace(1) %src1, ptr addrsp
 ; DEFAULT-NEXT:    [[IDX:%.*]] = call i32 @llvm.amdgcn.workitem.id.x()
 ; DEFAULT-NEXT:    [[GEP1:%.*]] = getelementptr <32 x i8>, ptr addrspace(1) [[SRC1]], i32 [[IDX]]
 ; DEFAULT-NEXT:    [[VEC1:%.*]] = load <4 x i8>, ptr addrspace(1) [[GEP1]], align 4
+; DEFAULT-NEXT:    [[VEC1_BC:%.*]] = bitcast <4 x i8> [[VEC1]] to i32
 ; DEFAULT-NEXT:    br label [[BB_1:%.*]]
 ; DEFAULT:       bb.1:
-; DEFAULT-NEXT:    [[TEMP:%.*]] = phi <4 x i8> [ [[VEC1]], [[ENTRY:%.*]] ], [ [[VEC2:%.*]], [[BB_1]] ]
-; DEFAULT-NEXT:    [[VEC2]] = shufflevector <4 x i8> [[VEC1]], <4 x i8> [[TEMP]], <4 x i32> <i32 0, i32 2, i32 4, i32 6>
+; DEFAULT-NEXT:    [[TEMP_TC:%.*]] = phi i32 [ [[VEC1_BC]], [[ENTRY:%.*]] ], [ [[VEC2_BC:%.*]], [[BB_1]] ]
+; DEFAULT-NEXT:    [[TEMP_TC_BC:%.*]] = bitcast i32 [[TEMP_TC]] to <4 x i8>
+; DEFAULT-NEXT:    [[VEC1_BC_BC:%.*]] = bitcast i32 [[VEC1_BC]] to <4 x i8>
+; DEFAULT-NEXT:    [[VEC3:%.*]] = shufflevector <4 x i8> [[VEC1_BC_BC]], <4 x i8> [[TEMP_TC_BC]], <4 x i32> <i32 0, i32 2, i32 4, i32 6>
+; DEFAULT-NEXT:    [[VEC2_BC]] = bitcast <4 x i8> [[VEC3]] to i32
 ; DEFAULT-NEXT:    [[CMP:%.*]] = icmp ult i32 [[IDX]], 15
 ; DEFAULT-NEXT:    br i1 [[CMP]], label [[BB_1]], label [[BB_2:%.*]]
 ; DEFAULT:       0:
 ; DEFAULT-NEXT:    br label [[BB_2]]
 ; DEFAULT:       bb.2:
+; DEFAULT-NEXT:    [[VEC2:%.*]] = bitcast i32 [[VEC2_BC]] to <4 x i8>
 ; DEFAULT-NEXT:    store <4 x i8> [[VEC2]], ptr addrspace(1) [[DST]], align 4
 ; DEFAULT-NEXT:    ret void
 ;
@@ -806,13 +840,17 @@ define amdgpu_kernel void @reuseOp() {
 ; DEFAULT-SAME: ) #[[ATTR0]] {
 ; DEFAULT-NEXT:  entry:
 ; DEFAULT-NEXT:    [[VEC1:%.*]] = insertelement <16 x i8> zeroinitializer, i8 0, i64 0
+; DEFAULT-NEXT:    [[VEC1_BC:%.*]] = bitcast <16 x i8> [[VEC1]] to <4 x i32>
 ; DEFAULT-NEXT:    br label [[BB_1:%.*]]
 ; DEFAULT:       bb.1:
+; DEFAULT-NEXT:    [[VEC1_BC_BC:%.*]] = bitcast <4 x i32> [[VEC1_BC]] to <16 x i8>
 ; DEFAULT-NEXT:    [[SEL0:%.*]] = select i1 false, <16 x i8> zeroinitializer, <16 x i8> zeroinitializer
-; DEFAULT-NEXT:    [[SEL1:%.*]] = select i1 false, <16 x i8> [[VEC1]], <16 x i8> [[SEL0]]
+; DEFAULT-NEXT:    [[SEL0_BC:%.*]] = bitcast <16 x i8> [[SEL0]] to <4 x i32>
+; DEFAULT-NEXT:    [[SEL1:%.*]] = select i1 false, <16 x i8> [[VEC1_BC_BC]], <16 x i8> [[SEL0]]
 ; DEFAULT-NEXT:    br label [[BB_2:%.*]]
 ; DEFAULT:       bb.2:
-; DEFAULT-NEXT:    [[VAL:%.*]] = extractelement <16 x i8> [[SEL0]], i64 0
+; DEFAULT-NEXT:    [[SEL0_BC_BC:%.*]] = bitcast <4 x i32> [[SEL0_BC]] to <16 x i8>
+; DEFAULT-NEXT:    [[VAL:%.*]] = extractelement <16 x i8> [[SEL0_BC_BC]], i64 0
 ; DEFAULT-NEXT:    ret void
 ;
 entry:
@@ -828,6 +866,270 @@ bb.2:
   %val = extractelement <16 x i8> %sel0, i64 0
   ret void
 }
+
+define amdgpu_kernel void @deletedPHI(i32 %in0, i1 %cmp, <10 x i8> %invec0) {
+; GFX906-LABEL: define amdgpu_kernel void @deletedPHI(
+; GFX906-SAME: i32 [[IN0:%.*]], i1 [[CMP:%.*]], <10 x i8> [[INVEC0:%.*]]) #[[ATTR0]] {
+; GFX906-NEXT:  entry:
+; GFX906-NEXT:    br label [[BB_1:%.*]]
+; GFX906:       bb.1:
+; GFX906-NEXT:    [[PHI0:%.*]] = phi i32 [ 0, [[ENTRY:%.*]] ], [ 1, [[BB_11:%.*]] ]
+; GFX906-NEXT:    [[PHI1:%.*]] = phi <10 x i8> [ <i8 1, i8 1, i8 1, i8 1, i8 1, i8 1, i8 1, i8 1, i8 1, i8 1>, [[ENTRY]] ], [ [[VEC1:%.*]], [[BB_11]] ]
+; GFX906-NEXT:    br i1 [[CMP]], label [[BB_3:%.*]], label [[BB_2:%.*]]
+; GFX906:       bb.2:
+; GFX906-NEXT:    br label [[BB_3]]
+; GFX906:       bb.3:
+; GFX906-NEXT:    [[PHI2:%.*]] = phi <10 x i8> [ zeroinitializer, [[BB_2]] ], [ [[PHI1]], [[BB_1]] ]
+; GFX906-NEXT:    br i1 [[CMP]], label [[BB_5:%.*]], label [[BB_4:%.*]]
+; GFX906:       bb.4:
+; GFX906-NEXT:    [[VEC0:%.*]] = insertelement <10 x i8> [[PHI2]], i8 0, i64 0
+; GFX906-NEXT:    br label [[BB_5]]
+; GFX906:       bb.5:
+; GFX906-NEXT:    [[PHI3:%.*]] = phi <10 x i8> [ [[VEC0]], [[BB_4]] ], [ [[PHI2]], [[BB_3]] ]
+; GFX906-NEXT:    br i1 [[CMP]], label [[BB_7:%.*]], label [[BB_6:%.*]]
+; GFX906:       bb.6:
+; GFX906-NEXT:    br label [[BB_7]]
+; GFX906:       bb.7:
+; GFX906-NEXT:    [[PHI4:%.*]] = phi <10 x i8> [ [[INVEC0]], [[BB_6]] ], [ [[PHI3]], [[BB_5]] ]
+; GFX906-NEXT:    br i1 [[CMP]], label [[BB_9:%.*]], label [[BB_8:%.*]]
+; GFX906:       bb.8:
+; GFX906-NEXT:    br label [[BB_9]]
+; GFX906:       bb.9:
+; GFX906-NEXT:    [[PHI5:%.*]] = phi <10 x i8> [ [[INVEC0]], [[BB_8]] ], [ [[PHI4]], [[BB_7]] ]
+; GFX906-NEXT:    br i1 [[CMP]], label [[BB_11]], label [[BB_10:%.*]]
+; GFX906:       bb.10:
+; GFX906-NEXT:    br label [[BB_11]]
+; GFX906:       bb.11:
+; GFX906-NEXT:    [[PHI6:%.*]] = phi <10 x i8> [ zeroinitializer, [[BB_10]] ], [ [[PHI5]], [[BB_9]] ]
+; GFX906-NEXT:    [[VEC1]] = shufflevector <10 x i8> [[PHI6]], <10 x i8> zeroinitializer, <10 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 15, i32 16, i32 17, i32 18, i32 19>
+; GFX906-NEXT:    br label [[BB_1]]
+;
+; FEATURE-LABEL: define amdgpu_kernel void @deletedPHI(
+; FEATURE-SAME: i32 [[IN0:%.*]], i1 [[CMP:%.*]], <10 x i8> [[INVEC0:%.*]]) #[[ATTR0]] {
+; FEATURE-NEXT:  entry:
+; FEATURE-NEXT:    br label [[BB_1:%.*]]
+; FEATURE:       bb.1:
+; FEATURE-NEXT:    [[PHI0:%.*]] = phi i32 [ 0, [[ENTRY:%.*]] ], [ 1, [[BB_11:%.*]] ]
+; FEATURE-NEXT:    [[PHI1:%.*]] = phi <10 x i8> [ <i8 1, i8 1, i8 1, i8 1, i8 1, i8 1, i8 1, i8 1, i8 1, i8 1>, [[ENTRY]] ], [ [[VEC1:%.*]], [[BB_11]] ]
+; FEATURE-NEXT:    br i1 [[CMP]], label [[BB_3:%.*]], label [[BB_2:%.*]]
+; FEATURE:       bb.2:
+; FEATURE-NEXT:    br label [[BB_3]]
+; FEATURE:       bb.3:
+; FEATURE-NEXT:    [[PHI2:%.*]] = phi <10 x i8> [ zeroinitializer, [[BB_2]] ], [ [[PHI1]], [[BB_1]] ]
+; FEATURE-NEXT:    br i1 [[CMP]], label [[BB_5:%.*]], label [[BB_4:%.*]]
+; FEATURE:       bb.4:
+; FEATURE-NEXT:    [[VEC0:%.*]] = insertelement <10 x i8> [[PHI2]], i8 0, i64 0
+; FEATURE-NEXT:    br label [[BB_5]]
+; FEATURE:       bb.5:
+; FEATURE-NEXT:    [[PHI3:%.*]] = phi <10 x i8> [ [[VEC0]], [[BB_4]] ], [ [[PHI2]], [[BB_3]] ]
+; FEATURE-NEXT:    br i1 [[CMP]], label [[BB_7:%.*]], label [[BB_6:%.*]]
+; FEATURE:       bb.6:
+; FEATURE-NEXT:    br label [[BB_7]]
+; FEATURE:       bb.7:
+; FEATURE-NEXT:    [[PHI4:%.*]] = phi <10 x i8> [ [[INVEC0]], [[BB_6]] ], [ [[PHI3]], [[BB_5]] ]
+; FEATURE-NEXT:    br i1 [[CMP]], label [[BB_9:%.*]], label [[BB_8:%.*]]
+; FEATURE:       bb.8:
+; FEATURE-NEXT:    br label [[BB_9]]
+; FEATURE:       bb.9:
+; FEATURE-NEXT:    [[PHI5:%.*]] = phi <10 x i8> [ [[INVEC0]], [[BB_8]] ], [ [[PHI4]], [[BB_7]] ]
+; FEATURE-NEXT:    br i1 [[CMP]], label [[BB_11]], label [[BB_10:%.*]]
+; FEATURE:       bb.10:
+; FEATURE-NEXT:    br label [[BB_11]]
+; FEATURE:       bb.11:
+; FEATURE-NEXT:    [[PHI6:%.*]] = phi <10 x i8> [ zeroinitializer, [[BB_10]] ], [ [[PHI5]], [[BB_9]] ]
+; FEATURE-NEXT:    [[VEC1]] = shufflevector <10 x i8> [[PHI6]], <10 x i8> zeroinitializer, <10 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 15, i32 16, i32 17, i32 18, i32 19>
+; FEATURE-NEXT:    br label [[BB_1]]
+;
+; DEFAULT-LABEL: define amdgpu_kernel void @deletedPHI(
+; DEFAULT-SAME: i32 [[IN0:%.*]], i1 [[CMP:%.*]], <10 x i8> [[INVEC0:%.*]]) #[[ATTR0]] {
+; DEFAULT-NEXT:  entry:
+; DEFAULT-NEXT:    br label [[BB_1:%.*]]
+; DEFAULT:       bb.1:
+; DEFAULT-NEXT:    [[PHI0:%.*]] = phi i32 [ 0, [[ENTRY:%.*]] ], [ 1, [[BB_11:%.*]] ]
+; DEFAULT-NEXT:    [[PHI1:%.*]] = phi <10 x i8> [ <i8 1, i8 1, i8 1, i8 1, i8 1, i8 1, i8 1, i8 1, i8 1, i8 1>, [[ENTRY]] ], [ [[VEC1:%.*]], [[BB_11]] ]
+; DEFAULT-NEXT:    br i1 [[CMP]], label [[BB_3:%.*]], label [[BB_2:%.*]]
+; DEFAULT:       bb.2:
+; DEFAULT-NEXT:    br label [[BB_3]]
+; DEFAULT:       bb.3:
+; DEFAULT-NEXT:    [[PHI2:%.*]] = phi <10 x i8> [ zeroinitializer, [[BB_2]] ], [ [[PHI1]], [[BB_1]] ]
+; DEFAULT-NEXT:    br i1 [[CMP]], label [[BB_5:%.*]], label [[BB_4:%.*]]
+; DEFAULT:       bb.4:
+; DEFAULT-NEXT:    [[VEC0:%.*]] = insertelement <10 x i8> [[PHI2]], i8 0, i64 0
+; DEFAULT-NEXT:    br label [[BB_5]]
+; DEFAULT:       bb.5:
+; DEFAULT-NEXT:    [[PHI3:%.*]] = phi <10 x i8> [ [[VEC0]], [[BB_4]] ], [ [[PHI2]], [[BB_3]] ]
+; DEFAULT-NEXT:    br i1 [[CMP]], label [[BB_7:%.*]], label [[BB_6:%.*]]
+; DEFAULT:       bb.6:
+; DEFAULT-NEXT:    br label [[BB_7]]
+; DEFAULT:       bb.7:
+; DEFAULT-NEXT:    [[PHI4:%.*]] = phi <10 x i8> [ [[INVEC0]], [[BB_6]] ], [ [[PHI3]], [[BB_5]] ]
+; DEFAULT-NEXT:    br i1 [[CMP]], label [[BB_9:%.*]], label [[BB_8:%.*]]
+; DEFAULT:       bb.8:
+; DEFAULT-NEXT:    br label [[BB_9]]
+; DEFAULT:       bb.9:
+; DEFAULT-NEXT:    [[PHI5:%.*]] = phi <10 x i8> [ [[INVEC0]], [[BB_8]] ], [ [[PHI4]], [[BB_7]] ]
+; DEFAULT-NEXT:    br i1 [[CMP]], label [[BB_11]], label [[BB_10:%.*]]
+; DEFAULT:       bb.10:
+; DEFAULT-NEXT:    br label [[BB_11]]
+; DEFAULT:       bb.11:
+; DEFAULT-NEXT:    [[PHI6:%.*]] = phi <10 x i8> [ zeroinitializer, [[BB_10]] ], [ [[PHI5]], [[BB_9]] ]
+; DEFAULT-NEXT:    [[VEC1]] = shufflevector <10 x i8> [[PHI6]], <10 x i8> zeroinitializer, <10 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 15, i32 16, i32 17, i32 18, i32 19>
+; DEFAULT-NEXT:    br label [[BB_1]]
+;
+entry:
+  br label %bb.1
+
+bb.1:
+  %phi0 = phi i32 [ 0, %entry ], [ 1, %bb.11 ]
+  %phi1 = phi <10 x i8> [ <i8 1, i8 1, i8 1, i8 1, i8 1, i8 1, i8 1, i8 1, i8 1, i8 1>, %entry ], [ %vec1, %bb.11 ]
+  br i1 %cmp, label %bb.3, label %bb.2
+
+bb.2:
+  br label %bb.3
+
+bb.3:
+  %phi2 = phi <10 x i8> [ zeroinitializer, %bb.2 ], [ %phi1, %bb.1 ]
+  br i1 %cmp, label %bb.5, label %bb.4
+
+bb.4:
+  %vec0 = insertelement <10 x i8> %phi2, i8 0, i64 0
+  br label %bb.5
+
+bb.5:                               ; preds = %bb.4, %bb.3
+  %phi3 = phi <10 x i8> [ %vec0, %bb.4 ], [ %phi2, %bb.3 ]
+  br i1 %cmp, label %bb.7, label %bb.6
+
+bb.6:
+  br label %bb.7
+
+bb.7:                               ; preds = %bb.6, %bb.5
+  %phi4 = phi <10 x i8> [ %invec0, %bb.6 ], [ %phi3, %bb.5 ]
+  br i1 %cmp, label %bb.9, label %bb.8
+
+bb.8:
+  br label %bb.9
+
+bb.9:
+  %phi5 = phi <10 x i8> [ %invec0, %bb.8 ], [ %phi4, %bb.7 ]
+  br i1 %cmp, label %bb.11, label %bb.10
+
+bb.10:
+  br label %bb.11
+
+bb.11:
+  %phi6 = phi <10 x i8> [ zeroinitializer, %bb.10 ], [ %phi5, %bb.9 ]
+  %vec1 = shufflevector <10 x i8> %phi6, <10 x i8> zeroinitializer, <10 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 15, i32 16, i32 17, i32 18, i32 19>
+  br label %bb.1
+}
+
+define amdgpu_kernel void @multiple_unwind(i1 %cmp, <10 x i8> %invec) {
+; GFX906-LABEL: define amdgpu_kernel void @multiple_unwind(
+; GFX906-SAME: i1 [[CMP:%.*]], <10 x i8> [[INVEC:%.*]]) #[[ATTR0]] {
+; GFX906-NEXT:  entry:
+; GFX906-NEXT:    br label [[BB_1:%.*]]
+; GFX906:       bb.1:
+; GFX906-NEXT:    [[PHI0:%.*]] = phi <10 x i8> [ <i8 1, i8 1, i8 1, i8 1, i8 1, i8 1, i8 1, i8 1, i8 1, i8 1>, [[ENTRY:%.*]] ], [ [[PHI3:%.*]], [[BB_8:%.*]] ]
+; GFX906-NEXT:    br i1 [[CMP]], label [[BB_3:%.*]], label [[BB_2:%.*]]
+; GFX906:       bb.2:
+; GFX906-NEXT:    br label [[BB_3]]
+; GFX906:       bb.3:
+; GFX906-NEXT:    [[PHI1:%.*]] = phi <10 x i8> [ zeroinitializer, [[BB_2]] ], [ [[PHI0]], [[BB_1]] ]
+; GFX906-NEXT:    br i1 [[CMP]], label [[BB_5:%.*]], label [[BB_4:%.*]]
+; GFX906:       bb.4:
+; GFX906-NEXT:    br label [[BB_5]]
+; GFX906:       bb.5:
+; GFX906-NEXT:    [[PHI2:%.*]] = phi <10 x i8> [ [[PHI0]], [[BB_4]] ], [ [[PHI1]], [[BB_3]] ]
+; GFX906-NEXT:    br i1 [[CMP]], label [[BB_7:%.*]], label [[BB_6:%.*]]
+; GFX906:       bb.6:
+; GFX906-NEXT:    br label [[BB_7]]
+; GFX906:       bb.7:
+; GFX906-NEXT:    [[PHI3]] = phi <10 x i8> [ [[INVEC]], [[BB_6]] ], [ [[PHI2]], [[BB_5]] ]
+; GFX906-NEXT:    br label [[BB_8]]
+; GFX906:       bb.8:
+; GFX906-NEXT:    br label [[BB_1]]
+;
+; FEATURE-LABEL: define amdgpu_kernel void @multiple_unwind(
+; FEATURE-SAME: i1 [[CMP:%.*]], <10 x i8> [[INVEC:%.*]]) #[[ATTR0]] {
+; FEATURE-NEXT:  entry:
+; FEATURE-NEXT:    br label [[BB_1:%.*]]
+; FEATURE:       bb.1:
+; FEATURE-NEXT:    [[PHI0:%.*]] = phi <10 x i8> [ <i8 1, i8 1, i8 1, i8 1, i8 1, i8 1, i8 1, i8 1, i8 1, i8 1>, [[ENTRY:%.*]] ], [ [[PHI3:%.*]], [[BB_8:%.*]] ]
+; FEATURE-NEXT:    br i1 [[CMP]], label [[BB_3:%.*]], label [[BB_2:%.*]]
+; FEATURE:       bb.2:
+; FEATURE-NEXT:    br label [[BB_3]]
+; FEATURE:       bb.3:
+; FEATURE-NEXT:    [[PHI1:%.*]] = phi <10 x i8> [ zeroinitializer, [[BB_2]] ], [ [[PHI0]], [[BB_1]] ]
+; FEATURE-NEXT:    br i1 [[CMP]], label [[BB_5:%.*]], label [[BB_4:%.*]]
+; FEATURE:       bb.4:
+; FEATURE-NEXT:    br label [[BB_5]]
+; FEATURE:       bb.5:
+; FEATURE-NEXT:    [[PHI2:%.*]] = phi <10 x i8> [ [[PHI0]], [[BB_4]] ], [ [[PHI1]], [[BB_3]] ]
+; FEATURE-NEXT:    br i1 [[CMP]], label [[BB_7:%.*]], label [[BB_6:%.*]]
+; FEATURE:       bb.6:
+; FEATURE-NEXT:    br label [[BB_7]]
+; FEATURE:       bb.7:
+; FEATURE-NEXT:    [[PHI3]] = phi <10 x i8> [ [[INVEC]], [[BB_6]] ], [ [[PHI2]], [[BB_5]] ]
+; FEATURE-NEXT:    br label [[BB_8]]
+; FEATURE:       bb.8:
+; FEATURE-NEXT:    br label [[BB_1]]
+;
+; DEFAULT-LABEL: define amdgpu_kernel void @multiple_unwind(
+; DEFAULT-SAME: i1 [[CMP:%.*]], <10 x i8> [[INVEC:%.*]]) #[[ATTR0]] {
+; DEFAULT-NEXT:  entry:
+; DEFAULT-NEXT:    br label [[BB_1:%.*]]
+; DEFAULT:       bb.1:
+; DEFAULT-NEXT:    [[PHI0:%.*]] = phi <10 x i8> [ <i8 1, i8 1, i8 1, i8 1, i8 1, i8 1, i8 1, i8 1, i8 1, i8 1>, [[ENTRY:%.*]] ], [ [[PHI3:%.*]], [[BB_8:%.*]] ]
+; DEFAULT-NEXT:    br i1 [[CMP]], label [[BB_3:%.*]], label [[BB_2:%.*]]
+; DEFAULT:       bb.2:
+; DEFAULT-NEXT:    br label [[BB_3]]
+; DEFAULT:       bb.3:
+; DEFAULT-NEXT:    [[PHI1:%.*]] = phi <10 x i8> [ zeroinitializer, [[BB_2]] ], [ [[PHI0]], [[BB_1]] ]
+; DEFAULT-NEXT:    br i1 [[CMP]], label [[BB_5:%.*]], label [[BB_4:%.*]]
+; DEFAULT:       bb.4:
+; DEFAULT-NEXT:    br label [[BB_5]]
+; DEFAULT:       bb.5:
+; DEFAULT-NEXT:    [[PHI2:%.*]] = phi <10 x i8> [ [[PHI0]], [[BB_4]] ], [ [[PHI1]], [[BB_3]] ]
+; DEFAULT-NEXT:    br i1 [[CMP]], label [[BB_7:%.*]], label [[BB_6:%.*]]
+; DEFAULT:       bb.6:
+; DEFAULT-NEXT:    br label [[BB_7]]
+; DEFAULT:       bb.7:
+; DEFAULT-NEXT:    [[PHI3]] = phi <10 x i8> [ [[INVEC]], [[BB_6]] ], [ [[PHI2]], [[BB_5]] ]
+; DEFAULT-NEXT:    br label [[BB_8]]
+; DEFAULT:       bb.8:
+; DEFAULT-NEXT:    br label [[BB_1]]
+;
+entry:
+  br label %bb.1
+
+bb.1:
+  %phi0 = phi <10 x i8> [ <i8 1, i8 1, i8 1, i8 1, i8 1, i8 1, i8 1, i8 1, i8 1, i8 1>, %entry ], [ %phi3, %bb.8 ]
+  br i1 %cmp, label %bb.3, label %bb.2
+
+bb.2:
+  br label %bb.3
+
+bb.3:
+  %phi1 = phi <10 x i8> [ zeroinitializer, %bb.2 ], [ %phi0, %bb.1 ]
+  br i1 %cmp, label %bb.5, label %bb.4
+
+bb.4:
+  br label %bb.5
+
+bb.5:
+  %phi2 = phi <10 x i8> [ %phi0, %bb.4 ], [ %phi1, %bb.3 ]
+  br i1 %cmp, label %bb.7, label %bb.6
+
+bb.6:                              ; preds = %bb.5
+  br label %bb.7
+
+bb.7:
+  %phi3 = phi <10 x i8> [ %invec, %bb.6 ], [ %phi2, %bb.5 ]
+  br label %bb.8
+
+bb.8:
+  br label %bb.1
+}
+
 
 
 declare i32 @llvm.amdgcn.workitem.id.x()

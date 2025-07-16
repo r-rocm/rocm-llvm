@@ -75,31 +75,27 @@ OffloadTargetInfo::OffloadTargetInfo(const StringRef Target,
                                      const OffloadBundlerConfig &BC)
     : BundlerConfig(BC) {
 
-  // TODO: Add error checking from ClangOffloadBundler.cpp
-  auto TargetFeatures = Target.split(':');
-  auto TripleOrGPU = TargetFeatures.first.rsplit('-');
+  // <kind>-<triple>[-<target id>[:target features]]
+  // <triple> := <arch>-<vendor>-<os>-<env>
+  SmallVector<StringRef, 6> Components;
+  Target.split(Components, '-', /*MaxSplit=*/5);
+  assert((Components.size() == 5 || Components.size() == 6) &&
+         "malformed target string");
 
-  if (clang::StringToCudaArch(TripleOrGPU.second) != clang::CudaArch::UNKNOWN) {
-    auto KindTriple = TripleOrGPU.first.split('-');
-    this->OffloadKind = KindTriple.first;
-
-    // Enforce optional env field to standardize bundles
-    llvm::Triple t = llvm::Triple(KindTriple.second);
-    this->Triple = llvm::Triple(t.getArchName(), t.getVendorName(),
-                                t.getOSName(), t.getEnvironmentName());
-
-    this->TargetID = Target.substr(Target.find(TripleOrGPU.second));
-  } else {
-    auto KindTriple = TargetFeatures.first.split('-');
-    this->OffloadKind = KindTriple.first;
-
-    // Enforce optional env field to standardize bundles
-    llvm::Triple t = llvm::Triple(KindTriple.second);
-    this->Triple = llvm::Triple(t.getArchName(), t.getVendorName(),
-                                t.getOSName(), t.getEnvironmentName());
-
+  StringRef TargetIdWithFeature =
+      Components.size() == 6 ? Components.back() : "";
+  StringRef TargetId = TargetIdWithFeature.split(':').first;
+  if (!TargetId.empty() &&
+      clang::StringToOffloadArch(TargetId) != clang::OffloadArch::UNKNOWN)
+    this->TargetID = TargetIdWithFeature;
+  else
     this->TargetID = "";
-  }
+
+  this->OffloadKind = Components.front();
+  ArrayRef<StringRef> TripleSlice{&Components[1], /*length=*/4};
+  llvm::Triple T = llvm::Triple(llvm::join(TripleSlice, "-"));
+  this->Triple = llvm::Triple(T.getArchName(), T.getVendorName(), T.getOSName(),
+                              T.getEnvironmentName());
 }
 
 bool OffloadTargetInfo::hasHostKind() const {
@@ -139,7 +135,18 @@ bool OffloadTargetInfo::operator==(const OffloadTargetInfo &Target) const {
 }
 
 std::string OffloadTargetInfo::str() const {
-  return Twine(OffloadKind + "-" + Triple.str() + "-" + TargetID).str();
+  std::string NormalizedTriple;
+  // Unfortunately we need some special sauce for AMDGPU because all the runtime
+  // assumes the triple to be "amdgcn-amd-amdhsa-" (empty environment) instead
+  // of "amdgcn-amd-amdhsa-unknown". It's gonna be very tricky to patch
+  // different layers of runtime.
+  if (Triple.isAMDGPU()) {
+    NormalizedTriple = Triple.normalize(Triple::CanonicalForm::THREE_IDENT);
+    NormalizedTriple.push_back('-');
+  } else {
+    NormalizedTriple = Triple.normalize(Triple::CanonicalForm::FOUR_IDENT);
+  }
+  return Twine(OffloadKind + "-" + NormalizedTriple + "-" + TargetID).str();
 }
 
 static StringRef getDeviceFileExtension(StringRef Device,
@@ -593,7 +600,8 @@ public:
     // Copy fat object contents to the output when extracting host bundle.
     std::string ModifiedContent;
     if (Content.size() == 1u && Content.front() == 0) {
-      auto HostBundleOrErr = getHostBundle();
+      auto HostBundleOrErr = getHostBundle(
+          StringRef(Input.getBufferStart(), Input.getBufferSize()));
       if (!HostBundleOrErr)
         return HostBundleOrErr.takeError();
 
@@ -703,7 +711,7 @@ private:
     return Error::success();
   }
 
-  Expected<std::string> getHostBundle() {
+  Expected<std::string> getHostBundle(StringRef Input) {
     TempFileHandlerRAII TempFiles;
 
     auto ModifiedObjPathOrErr = TempFiles.Create(std::nullopt);
@@ -718,7 +726,24 @@ private:
     ObjcopyArgs.push_back("--regex");
     ObjcopyArgs.push_back("--remove-section=__CLANG_OFFLOAD_BUNDLE__.*");
     ObjcopyArgs.push_back("--");
-    ObjcopyArgs.push_back(BundlerConfig.InputFileNames.front());
+
+    StringRef ObjcopyInputFileName;
+    // When unbundling an archive, the content of each object file in the
+    // archive is passed to this function by parameter Input, which is different
+    // from the content of the original input archive file, therefore it needs
+    // to be saved to a temporary file before passed to llvm-objcopy. Otherwise,
+    // Input is the same as the content of the original input file, therefore
+    // temporary file is not needed.
+    if (StringRef(BundlerConfig.FilesType).starts_with("a")) {
+      auto InputFileOrErr =
+          TempFiles.Create(ArrayRef<char>(Input.data(), Input.size()));
+      if (!InputFileOrErr)
+        return InputFileOrErr.takeError();
+      ObjcopyInputFileName = *InputFileOrErr;
+    } else
+      ObjcopyInputFileName = BundlerConfig.InputFileNames.front();
+
+    ObjcopyArgs.push_back(ObjcopyInputFileName);
     ObjcopyArgs.push_back(ModifiedObjPath);
 
     if (Error Err = executeObjcopy(BundlerConfig.ObjcopyPath, ObjcopyArgs))
@@ -1405,6 +1430,9 @@ Error OffloadBundler::UnbundleFiles() {
   StringMap<StringRef> Worklist;
   auto Output = BundlerConfig.OutputFileNames.begin();
   for (auto &Triple : BundlerConfig.TargetNames) {
+    if (!checkOffloadBundleID(Triple))
+      return createStringError(errc::invalid_argument,
+                               "invalid bundle id from bundle config");
     Worklist[Triple] = *Output;
     ++Output;
   }
@@ -1424,6 +1452,9 @@ Error OffloadBundler::UnbundleFiles() {
 
     StringRef CurTriple = **CurTripleOrErr;
     assert(!CurTriple.empty());
+    if (!checkOffloadBundleID(CurTriple))
+      return createStringError(errc::invalid_argument,
+                               "invalid bundle id read from the bundle");
 
     auto Output = Worklist.begin();
     for (auto E = Worklist.end(); Output != E; Output++) {
@@ -1482,6 +1513,8 @@ Error OffloadBundler::UnbundleFiles() {
         return createFileError(E.second, EC);
 
       // If this entry has a host kind, copy the input file to the output file.
+      // We don't need to check E.getKey() here through checkOffloadBundleID
+      // because the entire WorkList has been checked above.
       auto OffloadInfo = OffloadTargetInfo(E.getKey(), BundlerConfig);
       if (OffloadInfo.hasHostKind())
         OutputFile.write(Input.getBufferStart(), Input.getBufferSize());
@@ -1711,11 +1744,13 @@ Error OffloadBundler::UnbundleArchive() {
     // archive.
     while (!CodeObject.empty()) {
       SmallVector<StringRef> CompatibleTargets;
+      if (!checkOffloadBundleID(CodeObject)) {
+        return createStringError(errc::invalid_argument,
+                                 "Invalid bundle id read from code object");
+      }
       auto CodeObjectInfo = OffloadTargetInfo(CodeObject, BundlerConfig);
-      if (CodeObjectInfo.hasHostKind()) {
-        // Do nothing, we don't extract host code yet.
-      } else if (getCompatibleOffloadTargets(CodeObjectInfo, CompatibleTargets,
-                                             BundlerConfig)) {
+      if (getCompatibleOffloadTargets(CodeObjectInfo, CompatibleTargets,
+                                      BundlerConfig)) {
         std::string BundleData;
         raw_string_ostream DataStream(BundleData);
         if (Error Err = FileHandler->ReadBundle(DataStream, CodeObjectBuffer))
@@ -1801,4 +1836,12 @@ Error OffloadBundler::UnbundleArchive() {
   }
 
   return Error::success();
+}
+
+bool clang::checkOffloadBundleID(const llvm::StringRef Str) {
+  // <kind>-<triple>[-<target id>[:target features]]
+  // <triple> := <arch>-<vendor>-<os>-<env>
+  SmallVector<StringRef, 6> Components;
+  Str.split(Components, '-', /*MaxSplit=*/5);
+  return Components.size() == 5 || Components.size() == 6;
 }

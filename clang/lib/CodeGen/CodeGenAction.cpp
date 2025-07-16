@@ -25,8 +25,11 @@
 #include "clang/CodeGen/ModuleBuilder.h"
 #include "clang/Driver/DriverDiagnostic.h"
 #include "clang/Frontend/CompilerInstance.h"
+#include "clang/Frontend/FrontendActions.h"
 #include "clang/Frontend/FrontendDiagnostic.h"
+#include "clang/Frontend/MultiplexConsumer.h"
 #include "clang/Lex/Preprocessor.h"
+#include "clang/Serialization/ASTWriter.h"
 #include "llvm/ADT/Hashing.h"
 #include "llvm/Bitcode/BitcodeReader.h"
 #include "llvm/CodeGen/MachineOptimizationRemarkEmitter.h"
@@ -224,15 +227,10 @@ void BackendConsumer::HandleInterestingDecl(DeclGroupRef D) {
     HandleTopLevelDecl(D);
 }
 
-// Links each entry in LinkModules into our module.  Returns true on error.
-bool BackendConsumer::LinkInModules(llvm::Module *M, bool ShouldLinkFiles) {
+// Links each entry in LinkModules into our module. Returns true on error.
+bool BackendConsumer::LinkInModules(llvm::Module *M) {
   for (auto &LM : LinkModules) {
     assert(LM.Module && "LinkModule does not actually have a module");
-
-    // If ShouldLinkFiles is not set, skip files added via the
-    // -mlink-bitcode-files, only linking -mlink-builtin-bitcode
-    if (!LM.Internalize && !ShouldLinkFiles)
-      continue;
 
     if (LM.PropagateAttrs)
       for (Function &F : *LM.Module) {
@@ -257,6 +255,9 @@ bool BackendConsumer::LinkInModules(llvm::Module *M, bool ShouldLinkFiles) {
           });
     } else
       Err = Linker::linkModules(*M, std::move(LM.Module), LM.LinkFlags);
+
+    if (Err)
+      return true;
   }
 
   LinkModules.clear();
@@ -293,6 +294,9 @@ void BackendConsumer::HandleTranslationUnit(ASTContext &C) {
     Ctx.getDiagnosticHandler();
   Ctx.setDiagnosticHandler(std::make_unique<ClangDiagnosticHandler>(
       CodeGenOpts, this));
+
+  Ctx.setDefaultTargetCPU(TargetOpts.CPU);
+  Ctx.setDefaultTargetFeatures(llvm::join(TargetOpts.Features, ","));
 
   Expected<std::unique_ptr<llvm::ToolOutputFile>> OptRecordFileOrErr =
     setupLLVMOptimizationRemarks(
@@ -373,7 +377,7 @@ void BackendConsumer::CompleteTentativeDefinition(VarDecl *D) {
   Gen->CompleteTentativeDefinition(D);
 }
 
-void BackendConsumer::CompleteExternalDeclaration(VarDecl *D) {
+void BackendConsumer::CompleteExternalDeclaration(DeclaratorDecl *D) {
   Gen->CompleteExternalDeclaration(D);
 }
 
@@ -966,6 +970,12 @@ CodeGenerator *CodeGenAction::getCodeGenerator() const {
   return BEConsumer->getCodeGenerator();
 }
 
+bool CodeGenAction::BeginSourceFileAction(CompilerInstance &CI) {
+  if (CI.getFrontendOpts().GenReducedBMI)
+    CI.getLangOpts().setCompilingModule(LangOptions::CMK_ModuleInterface);
+  return true;
+}
+
 static std::unique_ptr<raw_pwrite_stream>
 GetOutputStream(CompilerInstance &CI, StringRef InFile, BackendAction Action) {
   switch (Action) {
@@ -1010,7 +1020,7 @@ CodeGenAction::CreateASTConsumer(CompilerInstance &CI, StringRef InFile) {
         return nullptr;
       }
 
-      if (StringRef(F.Filename).endswith(".a")) {
+      if (StringRef(F.Filename).ends_with(".a")) {
         // Handle Archive file
         Error Err = Error::success();
         llvm::object::Archive Archive(BCBuf.get()->getMemBufferRef(), Err);
@@ -1092,6 +1102,16 @@ CodeGenAction::CreateASTConsumer(CompilerInstance &CI, StringRef InFile) {
         std::make_unique<MacroPPCallbacks>(BEConsumer->getCodeGenerator(),
                                             CI.getPreprocessor());
     CI.getPreprocessor().addPPCallbacks(std::move(Callbacks));
+  }
+
+  if (CI.getFrontendOpts().GenReducedBMI &&
+      !CI.getFrontendOpts().ModuleOutputPath.empty()) {
+    std::vector<std::unique_ptr<ASTConsumer>> Consumers(2);
+    Consumers[0] = std::make_unique<ReducedBMIGenerator>(
+        CI.getPreprocessor(), CI.getModuleCache(),
+        CI.getFrontendOpts().ModuleOutputPath);
+    Consumers[1] = std::move(Result);
+    return std::make_unique<MultiplexConsumer>(std::move(Consumers));
   }
 
   return std::move(Result);
@@ -1254,6 +1274,9 @@ void CodeGenAction::ExecuteAction() {
   Ctx.setDiscardValueNames(false);
   Ctx.setDiagnosticHandler(
       std::make_unique<ClangDiagnosticHandler>(CodeGenOpts, &Result));
+
+  Ctx.setDefaultTargetCPU(TargetOpts.CPU);
+  Ctx.setDefaultTargetFeatures(llvm::join(TargetOpts.Features, ","));
 
   Expected<std::unique_ptr<llvm::ToolOutputFile>> OptRecordFileOrErr =
       setupLLVMOptimizationRemarks(

@@ -3,7 +3,7 @@
 ; RUN: llc < %s -mtriple=x86_64-pc-linux -mattr=+avx2 | FileCheck %s --check-prefixes=AVX,AVX1OR2,AVX2OR512,AVX2
 ; RUN: llc < %s -mtriple=x86_64-pc-linux -mattr=+avx512f -mattr=+avx512bw | FileCheck %s --check-prefixes=AVX,AVX2OR512,AVX512
 
-define <4 x double> @load_factorf64_4(<16 x double>* %ptr) nounwind {
+define <4 x double> @load_factorf64_4(ptr %ptr) nounwind {
 ; AVX1-LABEL: load_factorf64_4:
 ; AVX1:       # %bb.0:
 ; AVX1-NEXT:    vmovupd (%rdi), %ymm0
@@ -37,7 +37,7 @@ define <4 x double> @load_factorf64_4(<16 x double>* %ptr) nounwind {
 ; AVX2OR512-NEXT:    vunpckhpd {{.*#+}} ymm0 = ymm0[1],ymm1[1],ymm0[3],ymm1[3]
 ; AVX2OR512-NEXT:    vaddpd %ymm0, %ymm2, %ymm0
 ; AVX2OR512-NEXT:    retq
-  %wide.vec = load <16 x double>, <16 x double>* %ptr, align 16
+  %wide.vec = load <16 x double>, ptr %ptr, align 16
   %strided.v0 = shufflevector <16 x double> %wide.vec, <16 x double> undef, <4 x i32> <i32 0, i32 4, i32 8, i32 12>
   %strided.v1 = shufflevector <16 x double> %wide.vec, <16 x double> undef, <4 x i32> <i32 1, i32 5, i32 9, i32 13>
   %strided.v2 = shufflevector <16 x double> %wide.vec, <16 x double> undef, <4 x i32> <i32 2, i32 6, i32 10, i32 14>
@@ -48,7 +48,7 @@ define <4 x double> @load_factorf64_4(<16 x double>* %ptr) nounwind {
   ret <4 x double> %add3
 }
 
-define <4 x double> @load_factorf64_2(<16 x double>* %ptr) nounwind {
+define <4 x double> @load_factorf64_2(ptr %ptr) nounwind {
 ; AVX1-LABEL: load_factorf64_2:
 ; AVX1:       # %bb.0:
 ; AVX1-NEXT:    vmovupd (%rdi), %ymm0
@@ -78,14 +78,14 @@ define <4 x double> @load_factorf64_2(<16 x double>* %ptr) nounwind {
 ; AVX2OR512-NEXT:    vunpckhpd {{.*#+}} ymm0 = ymm0[1],ymm1[1],ymm0[3],ymm1[3]
 ; AVX2OR512-NEXT:    vmulpd %ymm0, %ymm4, %ymm0
 ; AVX2OR512-NEXT:    retq
-  %wide.vec = load <16 x double>, <16 x double>* %ptr, align 16
+  %wide.vec = load <16 x double>, ptr %ptr, align 16
   %strided.v0 = shufflevector <16 x double> %wide.vec, <16 x double> undef, <4 x i32> <i32 0, i32 4, i32 8, i32 12>
   %strided.v3 = shufflevector <16 x double> %wide.vec, <16 x double> undef, <4 x i32> <i32 3, i32 7, i32 11, i32 15>
   %mul = fmul <4 x double> %strided.v0, %strided.v3
   ret <4 x double> %mul
 }
 
-define <4 x double> @load_factorf64_1(<16 x double>* %ptr) nounwind {
+define <4 x double> @load_factorf64_1(ptr %ptr) nounwind {
 ; AVX1-LABEL: load_factorf64_1:
 ; AVX1:       # %bb.0:
 ; AVX1-NEXT:    vmovups (%rdi), %ymm0
@@ -105,14 +105,14 @@ define <4 x double> @load_factorf64_1(<16 x double>* %ptr) nounwind {
 ; AVX2OR512-NEXT:    vunpcklpd {{.*#+}} ymm0 = ymm0[0],ymm1[0],ymm0[2],ymm1[2]
 ; AVX2OR512-NEXT:    vmulpd %ymm0, %ymm0, %ymm0
 ; AVX2OR512-NEXT:    retq
-  %wide.vec = load <16 x double>, <16 x double>* %ptr, align 16
+  %wide.vec = load <16 x double>, ptr %ptr, align 16
   %strided.v0 = shufflevector <16 x double> %wide.vec, <16 x double> undef, <4 x i32> <i32 0, i32 4, i32 8, i32 12>
   %strided.v3 = shufflevector <16 x double> %wide.vec, <16 x double> undef, <4 x i32> <i32 0, i32 4, i32 8, i32 12>
   %mul = fmul <4 x double> %strided.v0, %strided.v3
   ret <4 x double> %mul
 }
 
-define <4 x i64> @load_factori64_4(<16 x i64>* %ptr) nounwind {
+define <4 x i64> @load_factori64_4(ptr %ptr) nounwind {
 ; AVX1-LABEL: load_factori64_4:
 ; AVX1:       # %bb.0:
 ; AVX1-NEXT:    vmovups (%rdi), %ymm0
@@ -158,7 +158,7 @@ define <4 x i64> @load_factori64_4(<16 x i64>* %ptr) nounwind {
 ; AVX2OR512-NEXT:    vpaddq %ymm0, %ymm3, %ymm0
 ; AVX2OR512-NEXT:    vpaddq %ymm0, %ymm2, %ymm0
 ; AVX2OR512-NEXT:    retq
-  %wide.vec = load <16 x i64>, <16 x i64>* %ptr, align 16
+  %wide.vec = load <16 x i64>, ptr %ptr, align 16
   %strided.v0 = shufflevector <16 x i64> %wide.vec, <16 x i64> undef, <4 x i32> <i32 0, i32 4, i32 8, i32 12>
   %strided.v1 = shufflevector <16 x i64> %wide.vec, <16 x i64> undef, <4 x i32> <i32 1, i32 5, i32 9, i32 13>
   %strided.v2 = shufflevector <16 x i64> %wide.vec, <16 x i64> undef, <4 x i32> <i32 2, i32 6, i32 10, i32 14>
@@ -169,7 +169,7 @@ define <4 x i64> @load_factori64_4(<16 x i64>* %ptr) nounwind {
   ret <4 x i64> %add3
 }
 
-define void @store_factorf64_4(<16 x double>* %ptr, <4 x double> %v0, <4 x double> %v1, <4 x double> %v2, <4 x double> %v3) nounwind {
+define void @store_factorf64_4(ptr %ptr, <4 x double> %v0, <4 x double> %v1, <4 x double> %v2, <4 x double> %v3) nounwind {
 ; AVX1OR2-LABEL: store_factorf64_4:
 ; AVX1OR2:       # %bb.0:
 ; AVX1OR2-NEXT:    vinsertf128 $1, %xmm2, %ymm0, %ymm4
@@ -206,11 +206,11 @@ define void @store_factorf64_4(<16 x double>* %ptr, <4 x double> %v0, <4 x doubl
   %s0 = shufflevector <4 x double> %v0, <4 x double> %v1, <8 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7>
   %s1 = shufflevector <4 x double> %v2, <4 x double> %v3, <8 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7>
   %interleaved.vec = shufflevector <8 x double> %s0, <8 x double> %s1, <16 x i32> <i32 0, i32 4, i32 8, i32 12, i32 1, i32 5, i32 9, i32 13, i32 2, i32 6, i32 10, i32 14, i32 3, i32 7, i32 11, i32 15>
-  store <16 x double> %interleaved.vec, <16 x double>* %ptr, align 16
+  store <16 x double> %interleaved.vec, ptr %ptr, align 16
   ret void
 }
 
-define void @store_factori64_4(<16 x i64>* %ptr, <4 x i64> %v0, <4 x i64> %v1, <4 x i64> %v2, <4 x i64> %v3) nounwind {
+define void @store_factori64_4(ptr %ptr, <4 x i64> %v0, <4 x i64> %v1, <4 x i64> %v2, <4 x i64> %v3) nounwind {
 ; AVX1OR2-LABEL: store_factori64_4:
 ; AVX1OR2:       # %bb.0:
 ; AVX1OR2-NEXT:    vinsertf128 $1, %xmm2, %ymm0, %ymm4
@@ -247,12 +247,12 @@ define void @store_factori64_4(<16 x i64>* %ptr, <4 x i64> %v0, <4 x i64> %v1, <
   %s0 = shufflevector <4 x i64> %v0, <4 x i64> %v1, <8 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7>
   %s1 = shufflevector <4 x i64> %v2, <4 x i64> %v3, <8 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7>
   %interleaved.vec = shufflevector <8 x i64> %s0, <8 x i64> %s1, <16 x i32> <i32 0, i32 4, i32 8, i32 12, i32 1, i32 5, i32 9, i32 13, i32 2, i32 6, i32 10, i32 14, i32 3, i32 7, i32 11, i32 15>
-  store <16 x i64> %interleaved.vec, <16 x i64>* %ptr, align 16
+  store <16 x i64> %interleaved.vec, ptr %ptr, align 16
   ret void
 }
 
 
-define void @interleaved_store_vf32_i8_stride4(<32 x i8> %x1, <32 x i8> %x2, <32 x i8> %x3, <32 x i8> %x4, <128 x i8>* %p) nounwind {
+define void @interleaved_store_vf32_i8_stride4(<32 x i8> %x1, <32 x i8> %x2, <32 x i8> %x3, <32 x i8> %x4, ptr %p) nounwind {
 ; AVX1-LABEL: interleaved_store_vf32_i8_stride4:
 ; AVX1:       # %bb.0:
 ; AVX1-NEXT:    vpunpcklbw {{.*#+}} xmm4 = xmm0[0],xmm1[0],xmm0[1],xmm1[1],xmm0[2],xmm1[2],xmm0[3],xmm1[3],xmm0[4],xmm1[4],xmm0[5],xmm1[5],xmm0[6],xmm1[6],xmm0[7],xmm1[7]
@@ -330,11 +330,11 @@ define void @interleaved_store_vf32_i8_stride4(<32 x i8> %x1, <32 x i8> %x2, <32
   %v1 = shufflevector <32 x i8> %x1, <32 x i8> %x2, <64 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7, i32 8, i32 9, i32 10, i32 11, i32 12, i32 13, i32 14, i32 15, i32 16, i32 17, i32 18, i32 19, i32 20, i32 21, i32 22, i32 23, i32 24, i32 25, i32 26, i32 27, i32 28, i32 29, i32 30, i32 31, i32 32, i32 33, i32 34, i32 35, i32 36, i32 37, i32 38, i32 39, i32 40, i32 41, i32 42, i32 43, i32 44, i32 45, i32 46, i32 47, i32 48, i32 49, i32 50, i32 51, i32 52, i32 53, i32 54, i32 55, i32 56, i32 57, i32 58, i32 59, i32 60, i32 61, i32 62, i32 63>
   %v2 = shufflevector <32 x i8> %x3, <32 x i8> %x4, <64 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7, i32 8, i32 9, i32 10, i32 11, i32 12, i32 13, i32 14, i32 15, i32 16, i32 17, i32 18, i32 19, i32 20, i32 21, i32 22, i32 23, i32 24, i32 25, i32 26, i32 27, i32 28, i32 29, i32 30, i32 31, i32 32, i32 33, i32 34, i32 35, i32 36, i32 37, i32 38, i32 39, i32 40, i32 41, i32 42, i32 43, i32 44, i32 45, i32 46, i32 47, i32 48, i32 49, i32 50, i32 51, i32 52, i32 53, i32 54, i32 55, i32 56, i32 57, i32 58, i32 59, i32 60, i32 61, i32 62, i32 63>
   %interleaved.vec = shufflevector <64 x i8> %v1, <64 x i8> %v2, <128 x i32> <i32 0, i32 32, i32 64, i32 96, i32 1, i32 33, i32 65, i32 97, i32 2, i32 34, i32 66, i32 98, i32 3, i32 35, i32 67, i32 99, i32 4, i32 36, i32 68, i32 100, i32 5, i32 37, i32 69, i32 101, i32 6, i32 38, i32 70, i32 102, i32 7, i32 39, i32 71, i32 103, i32 8, i32 40, i32 72, i32 104, i32 9, i32 41, i32 73, i32 105, i32 10, i32 42, i32 74, i32 106, i32 11, i32 43, i32 75, i32 107, i32 12, i32 44, i32 76, i32 108, i32 13, i32 45, i32 77, i32 109, i32 14, i32 46, i32 78, i32 110, i32 15, i32 47, i32 79, i32 111, i32 16, i32 48, i32 80, i32 112, i32 17, i32 49, i32 81, i32 113, i32 18, i32 50, i32 82, i32 114, i32 19, i32 51, i32 83, i32 115, i32 20, i32 52, i32 84, i32 116, i32 21, i32 53, i32 85, i32 117, i32 22, i32 54, i32 86, i32 118, i32 23, i32 55, i32 87, i32 119, i32 24, i32 56, i32 88, i32 120, i32 25, i32 57, i32 89, i32 121, i32 26, i32 58, i32 90, i32 122, i32 27, i32 59, i32 91, i32 123, i32 28, i32 60, i32 92, i32 124, i32 29, i32 61, i32 93, i32 125, i32 30, i32 62, i32 94, i32 126, i32 31, i32 63, i32 95, i32 127>
-  store <128 x i8> %interleaved.vec, <128 x i8>* %p
+  store <128 x i8> %interleaved.vec, ptr %p
 ret void
 }
 
-define void @interleaved_store_vf16_i8_stride4(<16 x i8> %x1, <16 x i8> %x2, <16 x i8> %x3, <16 x i8> %x4, <64 x i8>* %p) nounwind {
+define void @interleaved_store_vf16_i8_stride4(<16 x i8> %x1, <16 x i8> %x2, <16 x i8> %x3, <16 x i8> %x4, ptr %p) nounwind {
 ; AVX1OR2-LABEL: interleaved_store_vf16_i8_stride4:
 ; AVX1OR2:       # %bb.0:
 ; AVX1OR2-NEXT:    vpunpcklbw {{.*#+}} xmm4 = xmm0[0],xmm1[0],xmm0[1],xmm1[1],xmm0[2],xmm1[2],xmm0[3],xmm1[3],xmm0[4],xmm1[4],xmm0[5],xmm1[5],xmm0[6],xmm1[6],xmm0[7],xmm1[7]
@@ -370,16 +370,16 @@ define void @interleaved_store_vf16_i8_stride4(<16 x i8> %x1, <16 x i8> %x2, <16
 %v1 = shufflevector <16 x i8> %x1, <16 x i8> %x2, <32 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7, i32 8, i32 9, i32 10, i32 11, i32 12, i32 13, i32 14, i32 15, i32 16, i32 17, i32 18, i32 19, i32 20, i32 21, i32 22, i32 23, i32 24, i32 25, i32 26, i32 27, i32 28, i32 29, i32 30, i32 31>
 %v2 = shufflevector <16 x i8> %x3, <16 x i8> %x4, <32 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7, i32 8, i32 9, i32 10, i32 11, i32 12, i32 13, i32 14, i32 15, i32 16, i32 17, i32 18, i32 19, i32 20, i32 21, i32 22, i32 23, i32 24, i32 25, i32 26, i32 27, i32 28, i32 29, i32 30, i32 31>
 %interleaved.vec = shufflevector <32 x i8> %v1, <32 x i8> %v2, <64 x i32> <i32 0,i32 16,i32 32,i32 48,i32 1,i32 17,i32 33,i32 49,i32 2,i32 18,i32 34,i32 50,i32 3,i32 19,i32 35,i32 51,i32 4,i32 20,i32 36,i32 52,i32 5,i32 21,i32 37,i32 53,i32 6,i32 22,i32 38,i32 54,i32 7,i32 23,i32 39,i32 55,i32 8,i32 24,i32 40,i32 56,i32 9,i32 25,i32 41,i32 57,i32 10,i32 26,i32 42,i32 58,i32 11,i32 27,i32 43,i32 59,i32 12,i32 28,i32 44,i32 60,i32 13,i32 29,i32 45,i32 61,i32 14,i32 30,i32 46,i32 62,i32 15,i32 31,i32 47,i32 63>
-store <64 x i8> %interleaved.vec, <64 x i8>* %p
+store <64 x i8> %interleaved.vec, ptr %p
 ret void
 }
 
-define <8 x i8> @interleaved_load_vf8_i8_stride4(<32 x i8>* %ptr) nounwind {
+define <8 x i8> @interleaved_load_vf8_i8_stride4(ptr %ptr) nounwind {
 ; AVX1OR2-LABEL: interleaved_load_vf8_i8_stride4:
 ; AVX1OR2:       # %bb.0:
 ; AVX1OR2-NEXT:    vmovdqa (%rdi), %xmm0
 ; AVX1OR2-NEXT:    vmovdqa 16(%rdi), %xmm1
-; AVX1OR2-NEXT:    vmovdqa {{.*#+}} xmm2 = <1,u,5,u,9,u,13,u,13,u,5,u,12,u,13,u>
+; AVX1OR2-NEXT:    vpmovsxbw {{.*#+}} xmm2 = [1,5,9,13,13,5,12,13]
 ; AVX1OR2-NEXT:    vpshufb %xmm2, %xmm1, %xmm3
 ; AVX1OR2-NEXT:    vpshufb %xmm2, %xmm0, %xmm2
 ; AVX1OR2-NEXT:    vpunpcklqdq {{.*#+}} xmm2 = xmm2[0],xmm3[0]
@@ -388,7 +388,7 @@ define <8 x i8> @interleaved_load_vf8_i8_stride4(<32 x i8>* %ptr) nounwind {
 ; AVX1OR2-NEXT:    vpblendw {{.*#+}} xmm3 = xmm0[0],xmm3[1],xmm0[2],xmm3[3],xmm0[4],xmm3[5],xmm0[6],xmm3[7]
 ; AVX1OR2-NEXT:    vpackusdw %xmm4, %xmm3, %xmm3
 ; AVX1OR2-NEXT:    vpaddb %xmm2, %xmm3, %xmm2
-; AVX1OR2-NEXT:    vmovdqa {{.*#+}} xmm3 = <3,u,7,u,11,u,15,u,7,u,15,u,6,u,7,u>
+; AVX1OR2-NEXT:    vpmovsxbw {{.*#+}} xmm3 = [3,7,11,15,7,15,6,7]
 ; AVX1OR2-NEXT:    vpshufb %xmm3, %xmm1, %xmm4
 ; AVX1OR2-NEXT:    vpshufb %xmm3, %xmm0, %xmm3
 ; AVX1OR2-NEXT:    vpunpcklqdq {{.*#+}} xmm3 = xmm3[0],xmm4[0]
@@ -404,7 +404,7 @@ define <8 x i8> @interleaved_load_vf8_i8_stride4(<32 x i8>* %ptr) nounwind {
 ; AVX512:       # %bb.0:
 ; AVX512-NEXT:    vmovdqu (%rdi), %ymm0
 ; AVX512-NEXT:    vmovdqa 16(%rdi), %xmm1
-; AVX512-NEXT:    vmovdqa {{.*#+}} xmm2 = <3,u,7,u,11,u,15,u,7,u,15,u,6,u,7,u>
+; AVX512-NEXT:    vpmovsxbw {{.*#+}} xmm2 = [3,7,11,15,7,15,6,7]
 ; AVX512-NEXT:    vpshufb %xmm2, %xmm1, %xmm3
 ; AVX512-NEXT:    vpshufb %xmm2, %xmm0, %xmm2
 ; AVX512-NEXT:    vpunpcklqdq {{.*#+}} xmm2 = xmm2[0],xmm3[0]
@@ -421,7 +421,7 @@ define <8 x i8> @interleaved_load_vf8_i8_stride4(<32 x i8>* %ptr) nounwind {
 ; AVX512-NEXT:    vpshufb {{.*#+}} xmm0 = xmm0[0,2,4,6,8,10,12,14,u,u,u,u,u,u,u,u]
 ; AVX512-NEXT:    vzeroupper
 ; AVX512-NEXT:    retq
-  %wide.vec = load <32 x i8>, <32 x i8>* %ptr, align 16
+  %wide.vec = load <32 x i8>, ptr %ptr, align 16
   %v1 = shufflevector <32 x i8> %wide.vec, <32 x i8> undef, <8 x i32> <i32 0, i32 4, i32 8, i32 12, i32 16, i32 20, i32 24, i32 28>
   %v2 = shufflevector <32 x i8> %wide.vec, <32 x i8> undef, <8 x i32> <i32 1, i32 5, i32 9, i32 13, i32 17, i32 21, i32 25, i32 29>
   %v3 = shufflevector <32 x i8> %wide.vec, <32 x i8> undef, <8 x i32> <i32 2, i32 6, i32 10, i32 14, i32 18, i32 22, i32 26, i32 30>
@@ -433,7 +433,7 @@ define <8 x i8> @interleaved_load_vf8_i8_stride4(<32 x i8>* %ptr) nounwind {
   ret <8 x i8> %add3
 }
 
-define <16 x i1> @interleaved_load_vf16_i8_stride4(<64 x i8>* %ptr) nounwind {
+define <16 x i1> @interleaved_load_vf16_i8_stride4(ptr %ptr) nounwind {
 ; AVX1-LABEL: interleaved_load_vf16_i8_stride4:
 ; AVX1:       # %bb.0:
 ; AVX1-NEXT:    vbroadcastss {{.*#+}} xmm2 = [0,4,8,12,0,4,8,12,0,4,8,12,0,4,8,12]
@@ -444,7 +444,7 @@ define <16 x i1> @interleaved_load_vf16_i8_stride4(<64 x i8>* %ptr) nounwind {
 ; AVX1-NEXT:    vpshufb %xmm2, %xmm4, %xmm5
 ; AVX1-NEXT:    vpshufb %xmm2, %xmm3, %xmm2
 ; AVX1-NEXT:    vpunpckldq {{.*#+}} xmm2 = xmm2[0],xmm5[0],xmm2[1],xmm5[1]
-; AVX1-NEXT:    vbroadcastss {{.*#+}} xmm5 = [0,4,8,12,0,4,8,12,0,4,8,12,0,4,8,12]
+; AVX1-NEXT:    vmovd {{.*#+}} xmm5 = [0,4,8,12,0,0,0,0,0,0,0,0,0,0,0,0]
 ; AVX1-NEXT:    vpshufb %xmm5, %xmm1, %xmm6
 ; AVX1-NEXT:    vpshufb %xmm5, %xmm0, %xmm5
 ; AVX1-NEXT:    vpunpckldq {{.*#+}} xmm5 = xmm5[0],xmm6[0],xmm5[1],xmm6[1]
@@ -453,7 +453,7 @@ define <16 x i1> @interleaved_load_vf16_i8_stride4(<64 x i8>* %ptr) nounwind {
 ; AVX1-NEXT:    vpshufb %xmm5, %xmm4, %xmm6
 ; AVX1-NEXT:    vpshufb %xmm5, %xmm3, %xmm5
 ; AVX1-NEXT:    vpunpckldq {{.*#+}} xmm5 = xmm5[0],xmm6[0],xmm5[1],xmm6[1]
-; AVX1-NEXT:    vbroadcastss {{.*#+}} xmm6 = [1,5,9,13,1,5,9,13,1,5,9,13,1,5,9,13]
+; AVX1-NEXT:    vmovd {{.*#+}} xmm6 = [1,5,9,13,0,0,0,0,0,0,0,0,0,0,0,0]
 ; AVX1-NEXT:    vpshufb %xmm6, %xmm1, %xmm7
 ; AVX1-NEXT:    vpshufb %xmm6, %xmm0, %xmm6
 ; AVX1-NEXT:    vpunpckldq {{.*#+}} xmm6 = xmm6[0],xmm7[0],xmm6[1],xmm7[1]
@@ -463,7 +463,7 @@ define <16 x i1> @interleaved_load_vf16_i8_stride4(<64 x i8>* %ptr) nounwind {
 ; AVX1-NEXT:    vpshufb %xmm5, %xmm4, %xmm6
 ; AVX1-NEXT:    vpshufb %xmm5, %xmm3, %xmm5
 ; AVX1-NEXT:    vpunpckldq {{.*#+}} xmm5 = xmm5[0],xmm6[0],xmm5[1],xmm6[1]
-; AVX1-NEXT:    vbroadcastss {{.*#+}} xmm6 = [2,6,10,14,2,6,10,14,2,6,10,14,2,6,10,14]
+; AVX1-NEXT:    vmovd {{.*#+}} xmm6 = [2,6,10,14,0,0,0,0,0,0,0,0,0,0,0,0]
 ; AVX1-NEXT:    vpshufb %xmm6, %xmm1, %xmm7
 ; AVX1-NEXT:    vpshufb %xmm6, %xmm0, %xmm6
 ; AVX1-NEXT:    vpunpckldq {{.*#+}} xmm6 = xmm6[0],xmm7[0],xmm6[1],xmm7[1]
@@ -472,7 +472,7 @@ define <16 x i1> @interleaved_load_vf16_i8_stride4(<64 x i8>* %ptr) nounwind {
 ; AVX1-NEXT:    vpshufb %xmm6, %xmm4, %xmm4
 ; AVX1-NEXT:    vpshufb %xmm6, %xmm3, %xmm3
 ; AVX1-NEXT:    vpunpckldq {{.*#+}} xmm3 = xmm3[0],xmm4[0],xmm3[1],xmm4[1]
-; AVX1-NEXT:    vbroadcastss {{.*#+}} xmm4 = [3,7,11,15,3,7,11,15,3,7,11,15,3,7,11,15]
+; AVX1-NEXT:    vmovd {{.*#+}} xmm4 = [3,7,11,15,0,0,0,0,0,0,0,0,0,0,0,0]
 ; AVX1-NEXT:    vpshufb %xmm4, %xmm1, %xmm1
 ; AVX1-NEXT:    vpshufb %xmm4, %xmm0, %xmm0
 ; AVX1-NEXT:    vpunpckldq {{.*#+}} xmm0 = xmm0[0],xmm1[0],xmm0[1],xmm1[1]
@@ -492,7 +492,7 @@ define <16 x i1> @interleaved_load_vf16_i8_stride4(<64 x i8>* %ptr) nounwind {
 ; AVX2-NEXT:    vpshufb %xmm4, %xmm3, %xmm5
 ; AVX2-NEXT:    vpshufb %xmm4, %xmm2, %xmm4
 ; AVX2-NEXT:    vpunpckldq {{.*#+}} xmm4 = xmm4[0],xmm5[0],xmm4[1],xmm5[1]
-; AVX2-NEXT:    vpbroadcastd {{.*#+}} xmm5 = [0,4,8,12,0,4,8,12,0,4,8,12,0,4,8,12]
+; AVX2-NEXT:    vmovd {{.*#+}} xmm5 = [0,4,8,12,0,0,0,0,0,0,0,0,0,0,0,0]
 ; AVX2-NEXT:    vpshufb %xmm5, %xmm1, %xmm6
 ; AVX2-NEXT:    vpshufb %xmm5, %xmm0, %xmm5
 ; AVX2-NEXT:    vpunpckldq {{.*#+}} xmm5 = xmm5[0],xmm6[0],xmm5[1],xmm6[1]
@@ -501,7 +501,7 @@ define <16 x i1> @interleaved_load_vf16_i8_stride4(<64 x i8>* %ptr) nounwind {
 ; AVX2-NEXT:    vpshufb %xmm5, %xmm3, %xmm6
 ; AVX2-NEXT:    vpshufb %xmm5, %xmm2, %xmm5
 ; AVX2-NEXT:    vpunpckldq {{.*#+}} xmm5 = xmm5[0],xmm6[0],xmm5[1],xmm6[1]
-; AVX2-NEXT:    vpbroadcastd {{.*#+}} xmm6 = [1,5,9,13,1,5,9,13,1,5,9,13,1,5,9,13]
+; AVX2-NEXT:    vmovd {{.*#+}} xmm6 = [1,5,9,13,0,0,0,0,0,0,0,0,0,0,0,0]
 ; AVX2-NEXT:    vpshufb %xmm6, %xmm1, %xmm7
 ; AVX2-NEXT:    vpshufb %xmm6, %xmm0, %xmm6
 ; AVX2-NEXT:    vpunpckldq {{.*#+}} xmm6 = xmm6[0],xmm7[0],xmm6[1],xmm7[1]
@@ -511,7 +511,7 @@ define <16 x i1> @interleaved_load_vf16_i8_stride4(<64 x i8>* %ptr) nounwind {
 ; AVX2-NEXT:    vpshufb %xmm5, %xmm3, %xmm6
 ; AVX2-NEXT:    vpshufb %xmm5, %xmm2, %xmm5
 ; AVX2-NEXT:    vpunpckldq {{.*#+}} xmm5 = xmm5[0],xmm6[0],xmm5[1],xmm6[1]
-; AVX2-NEXT:    vpbroadcastd {{.*#+}} xmm6 = [2,6,10,14,2,6,10,14,2,6,10,14,2,6,10,14]
+; AVX2-NEXT:    vmovd {{.*#+}} xmm6 = [2,6,10,14,0,0,0,0,0,0,0,0,0,0,0,0]
 ; AVX2-NEXT:    vpshufb %xmm6, %xmm1, %xmm7
 ; AVX2-NEXT:    vpshufb %xmm6, %xmm0, %xmm6
 ; AVX2-NEXT:    vpunpckldq {{.*#+}} xmm6 = xmm6[0],xmm7[0],xmm6[1],xmm7[1]
@@ -520,7 +520,7 @@ define <16 x i1> @interleaved_load_vf16_i8_stride4(<64 x i8>* %ptr) nounwind {
 ; AVX2-NEXT:    vpshufb %xmm6, %xmm3, %xmm3
 ; AVX2-NEXT:    vpshufb %xmm6, %xmm2, %xmm2
 ; AVX2-NEXT:    vpunpckldq {{.*#+}} xmm2 = xmm2[0],xmm3[0],xmm2[1],xmm3[1]
-; AVX2-NEXT:    vpbroadcastd {{.*#+}} xmm3 = [3,7,11,15,3,7,11,15,3,7,11,15,3,7,11,15]
+; AVX2-NEXT:    vmovd {{.*#+}} xmm3 = [3,7,11,15,0,0,0,0,0,0,0,0,0,0,0,0]
 ; AVX2-NEXT:    vpshufb %xmm3, %xmm1, %xmm1
 ; AVX2-NEXT:    vpshufb %xmm3, %xmm0, %xmm0
 ; AVX2-NEXT:    vpunpckldq {{.*#+}} xmm0 = xmm0[0],xmm1[0],xmm0[1],xmm1[1]
@@ -547,7 +547,7 @@ define <16 x i1> @interleaved_load_vf16_i8_stride4(<64 x i8>* %ptr) nounwind {
 ; AVX512-NEXT:    # kill: def $xmm0 killed $xmm0 killed $zmm0
 ; AVX512-NEXT:    vzeroupper
 ; AVX512-NEXT:    retq
-  %wide.vec = load <64 x i8>, <64 x i8>* %ptr
+  %wide.vec = load <64 x i8>, ptr %ptr
   %v1 = shufflevector <64 x i8> %wide.vec, <64 x i8> undef, <16 x i32> <i32 0, i32 4, i32 8, i32 12, i32 16, i32 20, i32 24, i32 28, i32 32, i32 36, i32 40, i32 44, i32 48, i32 52, i32 56, i32 60>
   %v2 = shufflevector <64 x i8> %wide.vec, <64 x i8> undef, <16 x i32> <i32 1, i32 5, i32 9, i32 13, i32 17, i32 21, i32 25, i32 29, i32 33, i32 37, i32 41, i32 45, i32 49, i32 53, i32 57, i32 61>
   %v3 = shufflevector <64 x i8> %wide.vec, <64 x i8> undef, <16 x i32> <i32 2, i32 6, i32 10, i32 14, i32 18, i32 22, i32 26, i32 30, i32 34, i32 38, i32 42, i32 46, i32 50, i32 54, i32 58, i32 62>
@@ -560,7 +560,7 @@ define <16 x i1> @interleaved_load_vf16_i8_stride4(<64 x i8>* %ptr) nounwind {
   ret <16 x i1> %res
 }
 
-define <32 x i1> @interleaved_load_vf32_i8_stride4(<128 x i8>* %ptr) nounwind {
+define <32 x i1> @interleaved_load_vf32_i8_stride4(ptr %ptr) nounwind {
 ; AVX1-LABEL: interleaved_load_vf32_i8_stride4:
 ; AVX1:       # %bb.0:
 ; AVX1-NEXT:    vbroadcastss {{.*#+}} xmm6 = [0,4,8,12,0,4,8,12,0,4,8,12,0,4,8,12]
@@ -571,7 +571,7 @@ define <32 x i1> @interleaved_load_vf32_i8_stride4(<128 x i8>* %ptr) nounwind {
 ; AVX1-NEXT:    vpshufb %xmm6, %xmm3, %xmm4
 ; AVX1-NEXT:    vpshufb %xmm6, %xmm2, %xmm5
 ; AVX1-NEXT:    vpunpckldq {{.*#+}} xmm4 = xmm5[0],xmm4[0],xmm5[1],xmm4[1]
-; AVX1-NEXT:    vbroadcastss {{.*#+}} xmm8 = [0,4,8,12,0,4,8,12,0,4,8,12,0,4,8,12]
+; AVX1-NEXT:    vmovd {{.*#+}} xmm8 = [0,4,8,12,0,0,0,0,0,0,0,0,0,0,0,0]
 ; AVX1-NEXT:    vpshufb %xmm8, %xmm1, %xmm5
 ; AVX1-NEXT:    vpshufb %xmm8, %xmm0, %xmm7
 ; AVX1-NEXT:    vpunpckldq {{.*#+}} xmm5 = xmm7[0],xmm5[0],xmm7[1],xmm5[1]
@@ -591,7 +591,7 @@ define <32 x i1> @interleaved_load_vf32_i8_stride4(<128 x i8>* %ptr) nounwind {
 ; AVX1-NEXT:    vpshufb %xmm11, %xmm3, %xmm8
 ; AVX1-NEXT:    vpshufb %xmm11, %xmm2, %xmm12
 ; AVX1-NEXT:    vpunpckldq {{.*#+}} xmm8 = xmm12[0],xmm8[0],xmm12[1],xmm8[1]
-; AVX1-NEXT:    vbroadcastss {{.*#+}} xmm12 = [1,5,9,13,1,5,9,13,1,5,9,13,1,5,9,13]
+; AVX1-NEXT:    vmovd {{.*#+}} xmm12 = [1,5,9,13,0,0,0,0,0,0,0,0,0,0,0,0]
 ; AVX1-NEXT:    vpshufb %xmm12, %xmm1, %xmm13
 ; AVX1-NEXT:    vpshufb %xmm12, %xmm0, %xmm14
 ; AVX1-NEXT:    vpunpckldq {{.*#+}} xmm13 = xmm14[0],xmm13[0],xmm14[1],xmm13[1]
@@ -609,7 +609,7 @@ define <32 x i1> @interleaved_load_vf32_i8_stride4(<128 x i8>* %ptr) nounwind {
 ; AVX1-NEXT:    vpshufb %xmm10, %xmm3, %xmm11
 ; AVX1-NEXT:    vpshufb %xmm10, %xmm2, %xmm12
 ; AVX1-NEXT:    vpunpckldq {{.*#+}} xmm11 = xmm12[0],xmm11[0],xmm12[1],xmm11[1]
-; AVX1-NEXT:    vbroadcastss {{.*#+}} xmm12 = [2,6,10,14,2,6,10,14,2,6,10,14,2,6,10,14]
+; AVX1-NEXT:    vmovd {{.*#+}} xmm12 = [2,6,10,14,0,0,0,0,0,0,0,0,0,0,0,0]
 ; AVX1-NEXT:    vpshufb %xmm12, %xmm1, %xmm13
 ; AVX1-NEXT:    vpshufb %xmm12, %xmm0, %xmm14
 ; AVX1-NEXT:    vpunpckldq {{.*#+}} xmm13 = xmm14[0],xmm13[0],xmm14[1],xmm13[1]
@@ -625,7 +625,7 @@ define <32 x i1> @interleaved_load_vf32_i8_stride4(<128 x i8>* %ptr) nounwind {
 ; AVX1-NEXT:    vpshufb %xmm12, %xmm3, %xmm3
 ; AVX1-NEXT:    vpshufb %xmm12, %xmm2, %xmm2
 ; AVX1-NEXT:    vpunpckldq {{.*#+}} xmm2 = xmm2[0],xmm3[0],xmm2[1],xmm3[1]
-; AVX1-NEXT:    vbroadcastss {{.*#+}} xmm3 = [3,7,11,15,3,7,11,15,3,7,11,15,3,7,11,15]
+; AVX1-NEXT:    vmovd {{.*#+}} xmm3 = [3,7,11,15,0,0,0,0,0,0,0,0,0,0,0,0]
 ; AVX1-NEXT:    vpshufb %xmm3, %xmm1, %xmm1
 ; AVX1-NEXT:    vpshufb %xmm3, %xmm0, %xmm0
 ; AVX1-NEXT:    vpunpckldq {{.*#+}} xmm0 = xmm0[0],xmm1[0],xmm0[1],xmm1[1]
@@ -722,7 +722,7 @@ define <32 x i1> @interleaved_load_vf32_i8_stride4(<128 x i8>* %ptr) nounwind {
 ;
 ; AVX512-LABEL: interleaved_load_vf32_i8_stride4:
 ; AVX512:       # %bb.0:
-; AVX512-NEXT:    vmovdqa {{.*#+}} ymm0 = [0,4,8,12,1,5,9,13]
+; AVX512-NEXT:    vpmovsxbd {{.*#+}} ymm0 = [0,4,8,12,1,5,9,13]
 ; AVX512-NEXT:    vmovdqa64 (%rdi), %zmm1
 ; AVX512-NEXT:    vmovdqa64 64(%rdi), %zmm2
 ; AVX512-NEXT:    vpshufb {{.*#+}} zmm3 = zero,zero,zero,zero,zmm2[0,4,8,12,u,u,u,u,u,u,u,u],zero,zero,zero,zero,zmm2[16,20,24,28,u,u,u,u,u,u,u,u],zero,zero,zero,zero,zmm2[32,36,40,44,u,u,u,u,u,u,u,u],zero,zero,zero,zero,zmm2[48,52,56,60,u,u,u,u,u,u,u,u]
@@ -747,7 +747,7 @@ define <32 x i1> @interleaved_load_vf32_i8_stride4(<128 x i8>* %ptr) nounwind {
 ; AVX512-NEXT:    vpmovm2b %k0, %zmm0
 ; AVX512-NEXT:    # kill: def $ymm0 killed $ymm0 killed $zmm0
 ; AVX512-NEXT:    retq
-  %wide.vec = load <128 x i8>, <128 x i8>* %ptr
+  %wide.vec = load <128 x i8>, ptr %ptr
   %v1 = shufflevector <128 x i8> %wide.vec, <128 x i8> undef, <32 x i32> <i32 0, i32 4, i32 8, i32 12, i32 16, i32 20, i32 24, i32 28, i32 32, i32 36, i32 40, i32 44, i32 48, i32 52, i32 56, i32 60, i32 64, i32 68, i32 72, i32 76, i32 80, i32 84, i32 88, i32 92, i32 96, i32 100, i32 104, i32 108, i32 112, i32 116, i32 120, i32 124>
 
   %v2 = shufflevector <128 x i8> %wide.vec, <128 x i8> undef, <32 x i32> <i32 1, i32 5, i32 9, i32 13, i32 17, i32 21, i32 25, i32 29, i32 33, i32 37, i32 41, i32 45, i32 49, i32 53, i32 57, i32 61, i32 65, i32 69, i32 73, i32 77, i32 81, i32 85, i32 89, i32 93, i32 97, i32 101, i32 105, i32 109, i32 113, i32 117, i32 121, i32 125>
@@ -763,7 +763,7 @@ define <32 x i1> @interleaved_load_vf32_i8_stride4(<128 x i8>* %ptr) nounwind {
   ret <32 x i1> %res
 }
 
-define void @interleaved_store_vf8_i8_stride4(<8 x i8> %x1, <8 x i8> %x2, <8 x i8> %x3, <8 x i8> %x4, <32 x i8>* %p) nounwind {
+define void @interleaved_store_vf8_i8_stride4(<8 x i8> %x1, <8 x i8> %x2, <8 x i8> %x3, <8 x i8> %x4, ptr %p) nounwind {
 ; AVX-LABEL: interleaved_store_vf8_i8_stride4:
 ; AVX:       # %bb.0:
 ; AVX-NEXT:    vpunpcklbw {{.*#+}} xmm0 = xmm0[0],xmm1[0],xmm0[1],xmm1[1],xmm0[2],xmm1[2],xmm0[3],xmm1[3],xmm0[4],xmm1[4],xmm0[5],xmm1[5],xmm0[6],xmm1[6],xmm0[7],xmm1[7]
@@ -776,11 +776,11 @@ define void @interleaved_store_vf8_i8_stride4(<8 x i8> %x1, <8 x i8> %x2, <8 x i
 %v1 = shufflevector <8 x i8> %x1, <8 x i8> %x2, <16 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7, i32 8, i32 9, i32 10, i32 11, i32 12, i32 13, i32 14, i32 15>
 %v2 = shufflevector <8 x i8> %x3, <8 x i8> %x4, <16 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7, i32 8, i32 9, i32 10, i32 11, i32 12, i32 13, i32 14, i32 15>
 %interleaved.vec = shufflevector <16 x i8> %v1, <16 x i8> %v2, <32 x i32> <i32 0,i32 8,i32 16,i32 24,i32 1,i32 9,i32 17,i32 25,i32 2,i32 10,i32 18,i32 26,i32 3,i32 11,i32 19,i32 27,i32 4,i32 12,i32 20,i32 28,i32 5,i32 13,i32 21,i32 29,i32 6,i32 14,i32 22,i32 30,i32 7,i32 15,i32 23,i32 31>
-store <32 x i8> %interleaved.vec, <32 x i8>* %p
+store <32 x i8> %interleaved.vec, ptr %p
 ret void
 }
 
-define <32 x i8> @interleaved_load_vf32_i8_stride3(<96 x i8>* %ptr){
+define <32 x i8> @interleaved_load_vf32_i8_stride3(ptr %ptr){
 ; AVX1-LABEL: interleaved_load_vf32_i8_stride3:
 ; AVX1:       # %bb.0:
 ; AVX1-NEXT:    vmovdqa (%rdi), %xmm0
@@ -848,7 +848,7 @@ define <32 x i8> @interleaved_load_vf32_i8_stride3(<96 x i8>* %ptr){
 ; AVX2OR512-NEXT:    vpalignr {{.*#+}} ymm0 = ymm0[10,11,12,13,14,15,0,1,2,3,4,5,6,7,8,9,26,27,28,29,30,31,16,17,18,19,20,21,22,23,24,25]
 ; AVX2OR512-NEXT:    vpaddb %ymm0, %ymm1, %ymm0
 ; AVX2OR512-NEXT:    retq
-	%wide.vec = load <96 x i8>, <96 x i8>* %ptr
+	%wide.vec = load <96 x i8>, ptr %ptr
 	%v1 = shufflevector <96 x i8> %wide.vec, <96 x i8> undef,<32 x i32> <i32 0,i32 3,i32 6,i32 9,i32 12,i32 15,i32 18,i32 21,i32 24,i32 27,i32 30,i32 33,i32 36,i32 39,i32 42,i32 45,i32 48,i32 51,i32 54,i32 57,i32 60,i32 63,i32 66,i32 69,i32 72,i32 75,i32 78,i32 81,i32 84,i32 87,i32 90,i32 93>
 	%v2 = shufflevector <96 x i8> %wide.vec, <96 x i8> undef,<32 x i32> <i32 1,i32 4,i32 7,i32 10,i32 13,i32 16,i32 19,i32 22,i32 25,i32 28,i32 31,i32 34,i32 37,i32 40,i32 43,i32 46,i32 49,i32 52,i32 55,i32 58,i32 61,i32 64,i32 67,i32 70,i32 73,i32 76,i32 79,i32 82,i32 85,i32 88,i32 91,i32 94>
 	%v3 = shufflevector <96 x i8> %wide.vec, <96 x i8> undef,<32 x i32> <i32 2,i32 5,i32 8,i32 11,i32 14,i32 17,i32 20,i32 23,i32 26,i32 29,i32 32,i32 35,i32 38,i32 41,i32 44,i32 47,i32 50,i32 53,i32 56,i32 59,i32 62,i32 65,i32 68,i32 71,i32 74,i32 77,i32 80,i32 83,i32 86,i32 89,i32 92,i32 95>
@@ -857,7 +857,7 @@ define <32 x i8> @interleaved_load_vf32_i8_stride3(<96 x i8>* %ptr){
 	ret <32 x i8> %add2
 }
 
-define <16 x i8> @interleaved_load_vf16_i8_stride3(<48 x i8>* %ptr){
+define <16 x i8> @interleaved_load_vf16_i8_stride3(ptr %ptr){
 ; AVX-LABEL: interleaved_load_vf16_i8_stride3:
 ; AVX:       # %bb.0:
 ; AVX-NEXT:    vmovdqa (%rdi), %xmm0
@@ -871,14 +871,14 @@ define <16 x i8> @interleaved_load_vf16_i8_stride3(<48 x i8>* %ptr){
 ; AVX-NEXT:    vpalignr {{.*#+}} xmm0 = xmm0[11,12,13,14,15],xmm1[0,1,2,3,4,5,6,7,8,9,10]
 ; AVX-NEXT:    vpalignr {{.*#+}} xmm1 = xmm1[11,12,13,14,15],xmm2[0,1,2,3,4,5,6,7,8,9,10]
 ; AVX-NEXT:    vpalignr {{.*#+}} xmm2 = xmm3[11,12,13,14,15],xmm1[0,1,2,3,4,5,6,7,8,9,10]
-; AVX-NEXT:    vmovdqa {{.*#+}} xmm4 = [255,255,255,255,255,255,255,255,255,255,255,0,0,0,0,0]
+; AVX-NEXT:    vpmovsxdq {{.*#+}} xmm4 = [18446744073709551615,16777215]
 ; AVX-NEXT:    vpblendvb %xmm4, %xmm0, %xmm1, %xmm1
 ; AVX-NEXT:    vpaddb %xmm1, %xmm2, %xmm1
 ; AVX-NEXT:    vpalignr {{.*#+}} xmm0 = xmm0[11,12,13,14,15],xmm3[0,1,2,3,4,5,6,7,8,9,10]
 ; AVX-NEXT:    vpalignr {{.*#+}} xmm0 = xmm0[10,11,12,13,14,15,0,1,2,3,4,5,6,7,8,9]
 ; AVX-NEXT:    vpaddb %xmm0, %xmm1, %xmm0
 ; AVX-NEXT:    retq
-	%wide.vec = load <48 x i8>, <48 x i8>* %ptr
+	%wide.vec = load <48 x i8>, ptr %ptr
 	%v1 = shufflevector <48 x i8> %wide.vec, <48 x i8> undef,<16 x i32> <i32 0,i32 3,i32 6,i32 9,i32 12,i32 15,i32 18,i32 21,i32 24,i32 27,i32 30,i32 33,i32 36,i32 39,i32 42 ,i32 45>
 	%v2 = shufflevector <48 x i8> %wide.vec, <48 x i8> undef,<16 x i32> <i32 1,i32 4,i32 7,i32 10,i32 13,i32 16,i32 19,i32 22,i32 25,i32 28,i32 31,i32 34,i32 37,i32 40,i32 43,i32 46>
 	%v3 = shufflevector <48 x i8> %wide.vec, <48 x i8> undef,<16 x i32> <i32 2,i32 5,i32 8,i32 11,i32 14,i32 17,i32 20,i32 23,i32 26,i32 29,i32 32,i32 35,i32 38,i32 41,i32 44,i32 47>
@@ -887,7 +887,7 @@ define <16 x i8> @interleaved_load_vf16_i8_stride3(<48 x i8>* %ptr){
 	ret <16 x i8> %add2
 }
 
-define <8 x i8> @interleaved_load_vf8_i8_stride3(<24 x i8>* %ptr){
+define <8 x i8> @interleaved_load_vf8_i8_stride3(ptr %ptr){
 ; AVX-LABEL: interleaved_load_vf8_i8_stride3:
 ; AVX:       # %bb.0:
 ; AVX-NEXT:    vmovdqa (%rdi), %xmm0
@@ -904,7 +904,7 @@ define <8 x i8> @interleaved_load_vf8_i8_stride3(<24 x i8>* %ptr){
 ; AVX-NEXT:    vpor %xmm1, %xmm0, %xmm0
 ; AVX-NEXT:    vpaddb %xmm2, %xmm0, %xmm0
 ; AVX-NEXT:    retq
-	%wide.vec = load <24 x i8>, <24 x i8>* %ptr
+	%wide.vec = load <24 x i8>, ptr %ptr
 	%v1 = shufflevector <24 x i8> %wide.vec, <24 x i8> undef,<8 x i32> <i32 0,i32 3,i32 6,i32  9,i32 12,i32 15,i32 18,i32 21>
 	%v2 = shufflevector <24 x i8> %wide.vec, <24 x i8> undef,<8 x i32> <i32 1,i32 4,i32 7,i32 10,i32 13,i32 16,i32 19,i32 22>
 	%v3 = shufflevector <24 x i8> %wide.vec, <24 x i8> undef,<8 x i32> <i32 2,i32 5,i32 8,i32 11,i32 14,i32 17,i32 20,i32 23>
@@ -913,7 +913,7 @@ define <8 x i8> @interleaved_load_vf8_i8_stride3(<24 x i8>* %ptr){
 	ret <8 x i8> %add2
 }
 
-define void @interleaved_store_vf8_i8_stride3(<8 x i8> %a, <8 x i8> %b, <8 x i8> %c, <24 x i8>* %p) nounwind {
+define void @interleaved_store_vf8_i8_stride3(<8 x i8> %a, <8 x i8> %b, <8 x i8> %c, ptr %p) nounwind {
 ; AVX-LABEL: interleaved_store_vf8_i8_stride3:
 ; AVX:       # %bb.0:
 ; AVX-NEXT:    vpunpcklqdq {{.*#+}} xmm0 = xmm0[0],xmm1[0]
@@ -929,11 +929,11 @@ define void @interleaved_store_vf8_i8_stride3(<8 x i8> %a, <8 x i8> %b, <8 x i8>
 %1 = shufflevector <8 x i8> %a, <8 x i8> %b, <16 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7, i32 8, i32 9, i32 10, i32 11, i32 12, i32 13, i32 14, i32 15>
 %2 = shufflevector <8 x i8> %c, <8 x i8> undef, <16 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef>
 %interleaved.vec = shufflevector <16 x i8> %1, <16 x i8> %2, <24 x i32> <i32 0, i32 8, i32 16, i32 1, i32 9, i32 17, i32 2, i32 10, i32 18, i32 3, i32 11, i32 19, i32 4, i32 12, i32 20, i32 5, i32 13, i32 21, i32 6, i32 14, i32 22, i32 7, i32 15, i32 23>
-store <24 x i8> %interleaved.vec, <24 x i8>* %p, align 1
+store <24 x i8> %interleaved.vec, ptr %p, align 1
 ret void
 }
 
-define void @interleaved_store_vf16_i8_stride3(<16 x i8> %a, <16 x i8> %b, <16 x i8> %c, <48 x i8>* %p) nounwind {
+define void @interleaved_store_vf16_i8_stride3(<16 x i8> %a, <16 x i8> %b, <16 x i8> %c, ptr %p) nounwind {
 ; AVX1OR2-LABEL: interleaved_store_vf16_i8_stride3:
 ; AVX1OR2:       # %bb.0:
 ; AVX1OR2-NEXT:    vpalignr {{.*#+}} xmm0 = xmm0[6,7,8,9,10,11,12,13,14,15,0,1,2,3,4,5]
@@ -975,11 +975,11 @@ define void @interleaved_store_vf16_i8_stride3(<16 x i8> %a, <16 x i8> %b, <16 x
 %1 = shufflevector <16 x i8> %a, <16 x i8> %b, <32 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7, i32 8, i32 9, i32 10, i32 11, i32 12, i32 13, i32 14, i32 15, i32 16, i32 17, i32 18, i32 19, i32 20, i32 21, i32 22, i32 23, i32 24, i32 25, i32 26, i32 27, i32 28, i32 29, i32 30, i32 31>
 %2 = shufflevector <16 x i8> %c, <16 x i8> undef, <32 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7, i32 8, i32 9, i32 10, i32 11, i32 12, i32 13, i32 14, i32 15, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef>
 %interleaved.vec = shufflevector <32 x i8> %1, <32 x i8> %2, <48 x i32> <i32 0, i32 16, i32 32, i32 1, i32 17, i32 33, i32 2, i32 18, i32 34, i32 3, i32 19, i32 35, i32 4, i32 20, i32 36, i32 5, i32 21, i32 37, i32 6, i32 22, i32 38, i32 7, i32 23, i32 39, i32 8, i32 24, i32 40, i32 9, i32 25, i32 41, i32 10, i32 26, i32 42, i32 11, i32 27, i32 43, i32 12, i32 28, i32 44, i32 13, i32 29, i32 45, i32 14, i32 30, i32 46, i32 15, i32 31, i32 47>
-store <48 x i8> %interleaved.vec, <48 x i8>* %p, align 1
+store <48 x i8> %interleaved.vec, ptr %p, align 1
 ret void
 }
 
-define void @interleaved_store_vf32_i8_stride3(<32 x i8> %a, <32 x i8> %b, <32 x i8> %c, <96 x i8>* %p) nounwind {
+define void @interleaved_store_vf32_i8_stride3(<32 x i8> %a, <32 x i8> %b, <32 x i8> %c, ptr %p) nounwind {
 ; AVX1-LABEL: interleaved_store_vf32_i8_stride3:
 ; AVX1:       # %bb.0:
 ; AVX1-NEXT:    vextractf128 $1, %ymm0, %xmm3
@@ -1066,11 +1066,11 @@ define void @interleaved_store_vf32_i8_stride3(<32 x i8> %a, <32 x i8> %b, <32 x
 %1 = shufflevector <32 x i8> %a, <32 x i8> %b, <64 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7, i32 8, i32 9, i32 10, i32 11, i32 12, i32 13, i32 14, i32 15, i32 16, i32 17, i32 18, i32 19, i32 20, i32 21, i32 22, i32 23, i32 24, i32 25, i32 26, i32 27, i32 28, i32 29, i32 30, i32 31, i32 32, i32 33, i32 34, i32 35, i32 36, i32 37, i32 38, i32 39, i32 40, i32 41, i32 42, i32 43, i32 44, i32 45, i32 46, i32 47, i32 48, i32 49, i32 50, i32 51, i32 52, i32 53, i32 54, i32 55, i32 56, i32 57, i32 58, i32 59, i32 60, i32 61, i32 62, i32 63>
 %2 = shufflevector <32 x i8> %c, <32 x i8> undef, <64 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7, i32 8, i32 9, i32 10, i32 11, i32 12, i32 13, i32 14, i32 15, i32 16, i32 17, i32 18, i32 19, i32 20, i32 21, i32 22, i32 23, i32 24, i32 25, i32 26, i32 27, i32 28, i32 29, i32 30, i32 31, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef>
 %interleaved.vec = shufflevector <64 x i8> %1, <64 x i8> %2, <96 x i32> <i32 0, i32 32, i32 64, i32 1, i32 33, i32 65, i32 2, i32 34, i32 66, i32 3, i32 35, i32 67, i32 4, i32 36, i32 68, i32 5, i32 37, i32 69, i32 6, i32 38, i32 70, i32 7, i32 39, i32 71, i32 8, i32 40, i32 72, i32 9, i32 41, i32 73, i32 10, i32 42, i32 74, i32 11, i32 43, i32 75, i32 12, i32 44, i32 76, i32 13, i32 45, i32 77, i32 14, i32 46, i32 78, i32 15, i32 47, i32 79, i32 16, i32 48, i32 80, i32 17, i32 49, i32 81, i32 18, i32 50, i32 82, i32 19, i32 51, i32 83, i32 20, i32 52, i32 84, i32 21, i32 53, i32 85, i32 22, i32 54, i32 86, i32 23, i32 55, i32 87, i32 24, i32 56, i32 88, i32 25, i32 57, i32 89, i32 26, i32 58, i32 90, i32 27, i32 59, i32 91, i32 28, i32 60, i32 92, i32 29, i32 61, i32 93, i32 30, i32 62, i32 94, i32 31, i32 63, i32 95>
-store <96 x i8> %interleaved.vec, <96 x i8>* %p, align 1
+store <96 x i8> %interleaved.vec, ptr %p, align 1
 ret void
 }
 
-define void @interleaved_store_vf64_i8_stride3(<64 x i8> %a, <64 x i8> %b, <64 x i8> %c, <192 x i8>* %p) nounwind {
+define void @interleaved_store_vf64_i8_stride3(<64 x i8> %a, <64 x i8> %b, <64 x i8> %c, ptr %p) nounwind {
 ; AVX1-LABEL: interleaved_store_vf64_i8_stride3:
 ; AVX1:       # %bb.0:
 ; AVX1-NEXT:    subq $24, %rsp
@@ -1080,9 +1080,9 @@ define void @interleaved_store_vf64_i8_stride3(<64 x i8> %a, <64 x i8> %b, <64 x
 ; AVX1-NEXT:    vmovdqa %ymm0, %ymm2
 ; AVX1-NEXT:    vextractf128 $1, %ymm0, %xmm9
 ; AVX1-NEXT:    vextractf128 $1, %ymm1, %xmm12
-; AVX1-NEXT:    vmovdqa {{.*#+}} xmm13 = <u,u,u,u,u,128,128,128,128,128,128,6,7,8,9,10>
+; AVX1-NEXT:    vmovdqa {{.*#+}} xmm13 = [u,u,u,u,u,128,128,128,128,128,128,6,7,8,9,10]
 ; AVX1-NEXT:    vpshufb %xmm13, %xmm12, %xmm6
-; AVX1-NEXT:    vmovdqa {{.*#+}} xmm14 = <u,u,u,u,u,5,6,7,8,9,10,128,128,128,128,128>
+; AVX1-NEXT:    vmovdqa {{.*#+}} xmm14 = [u,u,u,u,u,5,6,7,8,9,10,128,128,128,128,128]
 ; AVX1-NEXT:    vextractf128 $1, %ymm3, %xmm11
 ; AVX1-NEXT:    vpshufb %xmm14, %xmm11, %xmm7
 ; AVX1-NEXT:    vpor %xmm6, %xmm7, %xmm0
@@ -1107,7 +1107,7 @@ define void @interleaved_store_vf64_i8_stride3(<64 x i8> %a, <64 x i8> %b, <64 x
 ; AVX1-NEXT:    vmovdqa %xmm1, {{[-0-9]+}}(%r{{[sb]}}p) # 16-byte Spill
 ; AVX1-NEXT:    vmovdqu {{[-0-9]+}}(%r{{[sb]}}p), %ymm6 # 32-byte Reload
 ; AVX1-NEXT:    vpunpckhbw {{.*#+}} xmm1 = xmm6[8],xmm4[8],xmm6[9],xmm4[9],xmm6[10],xmm4[10],xmm6[11],xmm4[11],xmm6[12],xmm4[12],xmm6[13],xmm4[13],xmm6[14],xmm4[14],xmm6[15],xmm4[15]
-; AVX1-NEXT:    vmovdqa {{.*#+}} xmm2 = <u,u,u,u,u,4,6,8,10,12,14,7,9,11,13,15>
+; AVX1-NEXT:    vmovdqa {{.*#+}} xmm2 = [u,u,u,u,u,4,6,8,10,12,14,7,9,11,13,15]
 ; AVX1-NEXT:    vpshufb %xmm2, %xmm1, %xmm1
 ; AVX1-NEXT:    vmovdqa %xmm1, {{[-0-9]+}}(%r{{[sb]}}p) # 16-byte Spill
 ; AVX1-NEXT:    vextractf128 $1, %ymm6, %xmm9
@@ -1267,11 +1267,11 @@ define void @interleaved_store_vf64_i8_stride3(<64 x i8> %a, <64 x i8> %b, <64 x
 %1 = shufflevector <64 x i8> %a, <64 x i8> %b, <128 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7, i32 8, i32 9, i32 10, i32 11, i32 12, i32 13, i32 14, i32 15, i32 16, i32 17, i32 18, i32 19, i32 20, i32 21, i32 22, i32 23, i32 24, i32 25, i32 26, i32 27, i32 28, i32 29, i32 30, i32 31, i32 32, i32 33, i32 34, i32 35, i32 36, i32 37, i32 38, i32 39, i32 40, i32 41, i32 42, i32 43, i32 44, i32 45, i32 46, i32 47, i32 48, i32 49, i32 50, i32 51, i32 52, i32 53, i32 54, i32 55, i32 56, i32 57, i32 58, i32 59, i32 60, i32 61, i32 62, i32 63, i32 64, i32 65, i32 66, i32 67, i32 68, i32 69, i32 70, i32 71, i32 72, i32 73, i32 74, i32 75, i32 76, i32 77, i32 78, i32 79, i32 80, i32 81, i32 82, i32 83, i32 84, i32 85, i32 86, i32 87, i32 88, i32 89, i32 90, i32 91, i32 92, i32 93, i32 94, i32 95, i32 96, i32 97, i32 98, i32 99, i32 100, i32 101, i32 102, i32 103, i32 104, i32 105, i32 106, i32 107, i32 108, i32 109, i32 110, i32 111, i32 112, i32 113, i32 114, i32 115, i32 116, i32 117, i32 118, i32 119, i32 120, i32 121, i32 122, i32 123, i32 124, i32 125, i32 126, i32 127>
 %2 = shufflevector <64 x i8> %c, <64 x i8> undef, <128 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7, i32 8, i32 9, i32 10, i32 11, i32 12, i32 13, i32 14, i32 15, i32 16, i32 17, i32 18, i32 19, i32 20, i32 21, i32 22, i32 23, i32 24, i32 25, i32 26, i32 27, i32 28, i32 29, i32 30, i32 31, i32 32, i32 33, i32 34, i32 35, i32 36, i32 37, i32 38, i32 39, i32 40, i32 41, i32 42, i32 43, i32 44, i32 45, i32 46, i32 47, i32 48, i32 49, i32 50, i32 51, i32 52, i32 53, i32 54, i32 55, i32 56, i32 57, i32 58, i32 59, i32 60, i32 61, i32 62, i32 63, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef>
 %3 = shufflevector <128 x i8> %1, <128 x i8> %2, <192 x i32> <i32 0, i32 64, i32 128, i32 1, i32 65, i32 129, i32 2, i32 66, i32 130, i32 3, i32 67, i32 131, i32 4, i32 68, i32 132, i32 5, i32 69, i32 133, i32 6, i32 70, i32 134, i32 7, i32 71, i32 135, i32 8, i32 72, i32 136, i32 9, i32 73, i32 137, i32 10, i32 74, i32 138, i32 11, i32 75, i32 139, i32 12, i32 76, i32 140, i32 13, i32 77, i32 141, i32 14, i32 78, i32 142, i32 15, i32 79, i32 143, i32 16, i32 80, i32 144, i32 17, i32 81, i32 145, i32 18, i32 82, i32 146, i32 19, i32 83, i32 147, i32 20, i32 84, i32 148, i32 21, i32 85, i32 149, i32 22, i32 86, i32 150, i32 23, i32 87, i32 151, i32 24, i32 88, i32 152, i32 25, i32 89, i32 153, i32 26, i32 90, i32 154, i32 27, i32 91, i32 155, i32 28, i32 92, i32 156, i32 29, i32 93, i32 157, i32 30, i32 94, i32 158, i32 31, i32 95, i32 159, i32 32, i32 96, i32 160, i32 33, i32 97, i32 161, i32 34, i32 98, i32 162, i32 35, i32 99, i32 163, i32 36, i32 100, i32 164, i32 37, i32 101, i32 165, i32 38, i32 102, i32 166, i32 39, i32 103, i32 167, i32 40, i32 104, i32 168, i32 41, i32 105, i32 169, i32 42, i32 106, i32 170, i32 43, i32 107, i32 171, i32 44, i32 108, i32 172, i32 45, i32 109, i32 173, i32 46, i32 110, i32 174, i32 47, i32 111, i32 175, i32 48, i32 112, i32 176, i32 49, i32 113, i32 177, i32 50, i32 114, i32 178, i32 51, i32 115, i32 179, i32 52, i32 116, i32 180, i32 53, i32 117, i32 181, i32 54, i32 118, i32 182, i32 55, i32 119, i32 183, i32 56, i32 120, i32 184, i32 57, i32 121, i32 185, i32 58, i32 122, i32 186, i32 59, i32 123, i32 187, i32 60, i32 124, i32 188, i32 61, i32 125, i32 189, i32 62, i32 126, i32 190, i32 63, i32 127, i32 191>
-store <192 x i8> %3, <192 x i8>* %p, align 1
+store <192 x i8> %3, ptr %p, align 1
 ret void
 }
 
-define <64 x i8> @interleaved_load_vf64_i8_stride3(<192 x i8>* %ptr){
+define <64 x i8> @interleaved_load_vf64_i8_stride3(ptr %ptr){
 ; AVX1-LABEL: interleaved_load_vf64_i8_stride3:
 ; AVX1:       # %bb.0:
 ; AVX1-NEXT:    vmovdqu (%rdi), %xmm11
@@ -1290,9 +1290,9 @@ define <64 x i8> @interleaved_load_vf64_i8_stride3(<192 x i8>* %ptr){
 ; AVX1-NEXT:    vpshufb %xmm9, %xmm10, %xmm7
 ; AVX1-NEXT:    vpshufb %xmm9, %xmm11, %xmm8
 ; AVX1-NEXT:    vpshufb %xmm9, %xmm13, %xmm9
-; AVX1-NEXT:    vmovdqa {{.*#+}} xmm14 = <1,4,7,10,13,128,128,128,128,128,128,u,u,u,u,u>
+; AVX1-NEXT:    vmovdqa {{.*#+}} xmm14 = [1,4,7,10,13,128,128,128,128,128,128,u,u,u,u,u]
 ; AVX1-NEXT:    vpshufb %xmm14, %xmm5, %xmm5
-; AVX1-NEXT:    vmovdqa {{.*#+}} xmm15 = <128,128,128,128,128,0,3,6,9,12,15,u,u,u,u,u>
+; AVX1-NEXT:    vmovdqa {{.*#+}} xmm15 = [128,128,128,128,128,0,3,6,9,12,15,u,u,u,u,u]
 ; AVX1-NEXT:    vpshufb %xmm15, %xmm2, %xmm12
 ; AVX1-NEXT:    vmovdqa %xmm2, {{[-0-9]+}}(%r{{[sb]}}p) # 16-byte Spill
 ; AVX1-NEXT:    vpor %xmm5, %xmm12, %xmm0
@@ -1477,7 +1477,7 @@ define <64 x i8> @interleaved_load_vf64_i8_stride3(<192 x i8>* %ptr){
 ; AVX512-NEXT:    vpalignr {{.*#+}} zmm0 = zmm0[10,11,12,13,14,15,0,1,2,3,4,5,6,7,8,9,26,27,28,29,30,31,16,17,18,19,20,21,22,23,24,25,42,43,44,45,46,47,32,33,34,35,36,37,38,39,40,41,58,59,60,61,62,63,48,49,50,51,52,53,54,55,56,57]
 ; AVX512-NEXT:    vpaddb %zmm0, %zmm1, %zmm0
 ; AVX512-NEXT:    retq
-%wide.vec = load <192 x i8>, <192 x i8>* %ptr, align 1
+%wide.vec = load <192 x i8>, ptr %ptr, align 1
 %v1 = shufflevector <192 x i8> %wide.vec, <192 x i8> undef, <64 x i32> <i32 0, i32 3, i32 6, i32 9, i32 12, i32 15, i32 18, i32 21, i32 24, i32 27, i32 30, i32 33, i32 36, i32 39, i32 42, i32 45, i32 48, i32 51, i32 54, i32 57, i32 60, i32 63, i32 66, i32 69, i32 72, i32 75, i32 78, i32 81, i32 84, i32 87, i32 90, i32 93, i32 96, i32 99, i32 102, i32 105, i32 108, i32 111, i32 114, i32 117, i32 120, i32 123, i32 126, i32 129, i32 132, i32 135, i32 138, i32 141, i32 144, i32 147, i32 150, i32 153, i32 156, i32 159, i32 162, i32 165, i32 168, i32 171, i32 174, i32 177, i32 180, i32 183, i32 186, i32 189>
 %v2 = shufflevector <192 x i8> %wide.vec, <192 x i8> undef, <64 x i32> <i32 1, i32 4, i32 7, i32 10, i32 13, i32 16, i32 19, i32 22, i32 25, i32 28, i32 31, i32 34, i32 37, i32 40, i32 43, i32 46, i32 49, i32 52, i32 55, i32 58, i32 61, i32 64, i32 67, i32 70, i32 73, i32 76, i32 79, i32 82, i32 85, i32 88, i32 91, i32 94, i32 97, i32 100, i32 103, i32 106, i32 109, i32 112, i32 115, i32 118, i32 121, i32 124, i32 127, i32 130, i32 133, i32 136, i32 139, i32 142, i32 145, i32 148, i32 151, i32 154, i32 157, i32 160, i32 163, i32 166, i32 169, i32 172, i32 175, i32 178, i32 181, i32 184, i32 187, i32 190>
 %v3 = shufflevector <192 x i8> %wide.vec, <192 x i8> undef, <64 x i32> <i32 2, i32 5, i32 8, i32 11, i32 14, i32 17, i32 20, i32 23, i32 26, i32 29, i32 32, i32 35, i32 38, i32 41, i32 44, i32 47, i32 50, i32 53, i32 56, i32 59, i32 62, i32 65, i32 68, i32 71, i32 74, i32 77, i32 80, i32 83, i32 86, i32 89, i32 92, i32 95, i32 98, i32 101, i32 104, i32 107, i32 110, i32 113, i32 116, i32 119, i32 122, i32 125, i32 128, i32 131, i32 134, i32 137, i32 140, i32 143, i32 146, i32 149, i32 152, i32 155, i32 158, i32 161, i32 164, i32 167, i32 170, i32 173, i32 176, i32 179, i32 182, i32 185, i32 188, i32 191>
@@ -1486,7 +1486,7 @@ define <64 x i8> @interleaved_load_vf64_i8_stride3(<192 x i8>* %ptr){
 ret <64 x i8> %add2
 }
 
-define void @interleaved_store_vf64_i8_stride4(<64 x i8> %a, <64 x i8> %b, <64 x i8> %c,<64 x i8> %d, <256 x i8>* %p) nounwind {
+define void @interleaved_store_vf64_i8_stride4(<64 x i8> %a, <64 x i8> %b, <64 x i8> %c,<64 x i8> %d, ptr %p) nounwind {
 ; AVX1-LABEL: interleaved_store_vf64_i8_stride4:
 ; AVX1:       # %bb.0:
 ; AVX1-NEXT:    vpunpcklbw {{.*#+}} xmm8 = xmm0[0],xmm2[0],xmm0[1],xmm2[1],xmm0[2],xmm2[2],xmm0[3],xmm2[3],xmm0[4],xmm2[4],xmm0[5],xmm2[5],xmm0[6],xmm2[6],xmm0[7],xmm2[7]
@@ -1624,11 +1624,11 @@ define void @interleaved_store_vf64_i8_stride4(<64 x i8> %a, <64 x i8> %b, <64 x
 %1 = shufflevector <64 x i8> %a, <64 x i8> %b, <128 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7, i32 8, i32 9, i32 10, i32 11, i32 12, i32 13, i32 14, i32 15, i32 16, i32 17, i32 18, i32 19, i32 20, i32 21, i32 22, i32 23, i32 24, i32 25, i32 26, i32 27, i32 28, i32 29, i32 30, i32 31, i32 32, i32 33, i32 34, i32 35, i32 36, i32 37, i32 38, i32 39, i32 40, i32 41, i32 42, i32 43, i32 44, i32 45, i32 46, i32 47, i32 48, i32 49, i32 50, i32 51, i32 52, i32 53, i32 54, i32 55, i32 56, i32 57, i32 58, i32 59, i32 60, i32 61, i32 62, i32 63, i32 64, i32 65, i32 66, i32 67, i32 68, i32 69, i32 70, i32 71, i32 72, i32 73, i32 74, i32 75, i32 76, i32 77, i32 78, i32 79, i32 80, i32 81, i32 82, i32 83, i32 84, i32 85, i32 86, i32 87, i32 88, i32 89, i32 90, i32 91, i32 92, i32 93, i32 94, i32 95, i32 96, i32 97, i32 98, i32 99, i32 100, i32 101, i32 102, i32 103, i32 104, i32 105, i32 106, i32 107, i32 108, i32 109, i32 110, i32 111, i32 112, i32 113, i32 114, i32 115, i32 116, i32 117, i32 118, i32 119, i32 120, i32 121, i32 122, i32 123, i32 124, i32 125, i32 126, i32 127>
 %2 = shufflevector <64 x i8> %c, <64 x i8> %d, <128 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7, i32 8, i32 9, i32 10, i32 11, i32 12, i32 13, i32 14, i32 15, i32 16, i32 17, i32 18, i32 19, i32 20, i32 21, i32 22, i32 23, i32 24, i32 25, i32 26, i32 27, i32 28, i32 29, i32 30, i32 31, i32 32, i32 33, i32 34, i32 35, i32 36, i32 37, i32 38, i32 39, i32 40, i32 41, i32 42, i32 43, i32 44, i32 45, i32 46, i32 47, i32 48, i32 49, i32 50, i32 51, i32 52, i32 53, i32 54, i32 55, i32 56, i32 57, i32 58, i32 59, i32 60, i32 61, i32 62, i32 63, i32 64, i32 65, i32 66, i32 67, i32 68, i32 69, i32 70, i32 71, i32 72, i32 73, i32 74, i32 75, i32 76, i32 77, i32 78, i32 79, i32 80, i32 81, i32 82, i32 83, i32 84, i32 85, i32 86, i32 87, i32 88, i32 89, i32 90, i32 91, i32 92, i32 93, i32 94, i32 95, i32 96, i32 97, i32 98, i32 99, i32 100, i32 101, i32 102, i32 103, i32 104, i32 105, i32 106, i32 107, i32 108, i32 109, i32 110, i32 111, i32 112, i32 113, i32 114, i32 115, i32 116, i32 117, i32 118, i32 119, i32 120, i32 121, i32 122, i32 123, i32 124, i32 125, i32 126, i32 127>
 %interleaved = shufflevector <128 x i8> %1, <128 x i8> %2, <256 x i32> <i32 0, i32 64, i32 128, i32 192, i32 1, i32 65, i32 129, i32 193, i32 2, i32 66, i32 130, i32 194, i32 3, i32 67, i32 131, i32 195, i32 4, i32 68, i32 132, i32 196, i32 5, i32 69, i32 133, i32 197, i32 6, i32 70, i32 134, i32 198, i32 7, i32 71, i32 135, i32 199, i32 8, i32 72, i32 136, i32 200, i32 9, i32 73, i32 137, i32 201, i32 10, i32 74, i32 138, i32 202, i32 11, i32 75, i32 139, i32 203, i32 12, i32 76, i32 140, i32 204, i32 13, i32 77, i32 141, i32 205, i32 14, i32 78, i32 142, i32 206, i32 15, i32 79, i32 143, i32 207, i32 16, i32 80, i32 144, i32 208, i32 17, i32 81, i32 145, i32 209, i32 18, i32 82, i32 146, i32 210, i32 19, i32 83, i32 147, i32 211, i32 20, i32 84, i32 148, i32 212, i32 21, i32 85, i32 149, i32 213, i32 22, i32 86, i32 150, i32 214, i32 23, i32 87, i32 151, i32 215, i32 24, i32 88, i32 152, i32 216, i32 25, i32 89, i32 153, i32 217, i32 26, i32 90, i32 154, i32 218, i32 27, i32 91, i32 155, i32 219, i32 28, i32 92, i32 156, i32 220, i32 29, i32 93, i32 157, i32 221, i32 30, i32 94, i32 158, i32 222, i32 31, i32 95, i32 159, i32 223, i32 32, i32 96, i32 160, i32 224, i32 33, i32 97, i32 161, i32 225, i32 34, i32 98, i32 162, i32 226, i32 35, i32 99, i32 163, i32 227, i32 36, i32 100, i32 164, i32 228, i32 37, i32 101, i32 165, i32 229, i32 38, i32 102, i32 166, i32 230, i32 39, i32 103, i32 167, i32 231, i32 40, i32 104, i32 168, i32 232, i32 41, i32 105, i32 169, i32 233, i32 42, i32 106, i32 170, i32 234, i32 43, i32 107, i32 171, i32 235, i32 44, i32 108, i32 172, i32 236, i32 45, i32 109, i32 173, i32 237, i32 46, i32 110, i32 174, i32 238, i32 47, i32 111, i32 175, i32 239, i32 48, i32 112, i32 176, i32 240, i32 49, i32 113, i32 177, i32 241, i32 50, i32 114, i32 178, i32 242, i32 51, i32 115, i32 179, i32 243, i32 52, i32 116, i32 180, i32 244, i32 53, i32 117, i32 181, i32 245, i32 54, i32 118, i32 182, i32 246, i32 55, i32 119, i32 183, i32 247, i32 56, i32 120, i32 184, i32 248, i32 57, i32 121, i32 185, i32 249, i32 58, i32 122, i32 186, i32 250, i32 59, i32 123, i32 187, i32 251, i32 60, i32 124, i32 188, i32 252, i32 61, i32 125, i32 189, i32 253, i32 62, i32 126, i32 190, i32 254, i32 63, i32 127, i32 191, i32 255>
-store <256 x i8> %interleaved, <256 x i8>* %p
+store <256 x i8> %interleaved, ptr %p
 ret void
 }
 
-define void @splat2_v4f64_load_store(<4 x double>* %s, <8 x double>* %d) nounwind {
+define void @splat2_v4f64_load_store(ptr %s, ptr %d) nounwind {
 ; AVX1-LABEL: splat2_v4f64_load_store:
 ; AVX1:       # %bb.0:
 ; AVX1-NEXT:    vperm2f128 $51, (%rdi), %ymm0, %ymm0 # ymm0 = mem[2,3,2,3]
@@ -1658,14 +1658,14 @@ define void @splat2_v4f64_load_store(<4 x double>* %s, <8 x double>* %d) nounwin
 ; AVX512-NEXT:    vmovups %zmm0, (%rsi)
 ; AVX512-NEXT:    vzeroupper
 ; AVX512-NEXT:    retq
-  %x = load <4 x double>, <4 x double>* %s, align 8
+  %x = load <4 x double>, ptr %s, align 8
   %x2 = shufflevector <4 x double> %x, <4 x double> undef, <8 x i32> <i32 0, i32 1, i32 2, i32 3, i32 0, i32 1, i32 2, i32 3>
   %r = shufflevector <8 x double> %x2, <8 x double> undef, <8 x i32> <i32 0, i32 4, i32 1, i32 5, i32 2, i32 6, i32 3, i32 7>
-  store <8 x double> %r, <8 x double>* %d, align 8
+  store <8 x double> %r, ptr %d, align 8
   ret void
 }
 
-define void @splat2_v4i64_load_store(<4 x i64>* %s, <8 x i64>* %d) nounwind {
+define void @splat2_v4i64_load_store(ptr %s, ptr %d) nounwind {
 ; AVX1-LABEL: splat2_v4i64_load_store:
 ; AVX1:       # %bb.0:
 ; AVX1-NEXT:    vperm2f128 $51, (%rdi), %ymm0, %ymm0 # ymm0 = mem[2,3,2,3]
@@ -1695,14 +1695,14 @@ define void @splat2_v4i64_load_store(<4 x i64>* %s, <8 x i64>* %d) nounwind {
 ; AVX512-NEXT:    vmovups %zmm0, (%rsi)
 ; AVX512-NEXT:    vzeroupper
 ; AVX512-NEXT:    retq
-  %x = load <4 x i64>, <4 x i64>* %s, align 8
+  %x = load <4 x i64>, ptr %s, align 8
   %x2 = shufflevector <4 x i64> %x, <4 x i64> undef, <8 x i32> <i32 0, i32 1, i32 2, i32 3, i32 0, i32 1, i32 2, i32 3>
   %r = shufflevector <8 x i64> %x2, <8 x i64> undef, <8 x i32> <i32 0, i32 4, i32 1, i32 5, i32 2, i32 6, i32 3, i32 7>
-  store <8 x i64> %r, <8 x i64>* %d, align 8
+  store <8 x i64> %r, ptr %d, align 8
   ret void
 }
 
-define void @splat4_v8f32_load_store(<8 x float>* %s, <32 x float>* %d) nounwind {
+define void @splat4_v8f32_load_store(ptr %s, ptr %d) nounwind {
 ; AVX1-LABEL: splat4_v8f32_load_store:
 ; AVX1:       # %bb.0:
 ; AVX1-NEXT:    vbroadcastss 16(%rdi), %xmm0
@@ -1745,23 +1745,23 @@ define void @splat4_v8f32_load_store(<8 x float>* %s, <32 x float>* %d) nounwind
 ; AVX512-LABEL: splat4_v8f32_load_store:
 ; AVX512:       # %bb.0:
 ; AVX512-NEXT:    vbroadcastf64x4 (%rdi), %zmm0 # zmm0 = mem[0,1,2,3,0,1,2,3]
-; AVX512-NEXT:    vmovdqa64 {{.*#+}} zmm1 = [0,8,0,8,1,9,1,9,2,10,2,10,3,11,3,11]
+; AVX512-NEXT:    vpmovsxbd {{.*#+}} zmm1 = [0,8,0,8,1,9,1,9,2,10,2,10,3,11,3,11]
 ; AVX512-NEXT:    vpermd %zmm0, %zmm1, %zmm1
-; AVX512-NEXT:    vmovdqa64 {{.*#+}} zmm2 = [4,12,4,12,5,13,5,13,6,14,6,14,7,15,7,15]
+; AVX512-NEXT:    vpmovsxbd {{.*#+}} zmm2 = [4,12,4,12,5,13,5,13,6,14,6,14,7,15,7,15]
 ; AVX512-NEXT:    vpermd %zmm0, %zmm2, %zmm0
 ; AVX512-NEXT:    vmovdqu64 %zmm0, 64(%rsi)
 ; AVX512-NEXT:    vmovdqu64 %zmm1, (%rsi)
 ; AVX512-NEXT:    vzeroupper
 ; AVX512-NEXT:    retq
-  %x = load <8 x float>, <8 x float>* %s, align 4
+  %x = load <8 x float>, ptr %s, align 4
   %x2 = shufflevector <8 x float> %x, <8 x float> undef, <16 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7, i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7>
   %x4 = shufflevector <16 x float> %x2, <16 x float> undef, <32 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7, i32 8, i32 9, i32 10, i32 11, i32 12, i32 13, i32 14, i32 15, i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7, i32 8, i32 9, i32 10, i32 11, i32 12, i32 13, i32 14, i32 15>
   %r = shufflevector <32 x float> %x4, <32 x float> undef, <32 x i32> <i32 0, i32 8, i32 16, i32 24, i32 1, i32 9, i32 17, i32 25, i32 2, i32 10, i32 18, i32 26, i32 3, i32 11, i32 19, i32 27, i32 4, i32 12, i32 20, i32 28, i32 5, i32 13, i32 21, i32 29, i32 6, i32 14, i32 22, i32 30, i32 7, i32 15, i32 23, i32 31>
-  store <32 x float> %r, <32 x float>* %d, align 4
+  store <32 x float> %r, ptr %d, align 4
   ret void
 }
 
-define void @splat4_v8i32_load_store(<8 x i32>* %s, <32 x i32>* %d) nounwind {
+define void @splat4_v8i32_load_store(ptr %s, ptr %d) nounwind {
 ; AVX1-LABEL: splat4_v8i32_load_store:
 ; AVX1:       # %bb.0:
 ; AVX1-NEXT:    vbroadcastss (%rdi), %xmm0
@@ -1805,23 +1805,23 @@ define void @splat4_v8i32_load_store(<8 x i32>* %s, <32 x i32>* %d) nounwind {
 ; AVX512-LABEL: splat4_v8i32_load_store:
 ; AVX512:       # %bb.0:
 ; AVX512-NEXT:    vbroadcasti64x4 (%rdi), %zmm0 # zmm0 = mem[0,1,2,3,0,1,2,3]
-; AVX512-NEXT:    vmovdqa64 {{.*#+}} zmm1 = [0,8,0,8,1,9,1,9,2,10,2,10,3,11,3,11]
+; AVX512-NEXT:    vpmovsxbd {{.*#+}} zmm1 = [0,8,0,8,1,9,1,9,2,10,2,10,3,11,3,11]
 ; AVX512-NEXT:    vpermd %zmm0, %zmm1, %zmm1
-; AVX512-NEXT:    vmovdqa64 {{.*#+}} zmm2 = [4,12,4,12,5,13,5,13,6,14,6,14,7,15,7,15]
+; AVX512-NEXT:    vpmovsxbd {{.*#+}} zmm2 = [4,12,4,12,5,13,5,13,6,14,6,14,7,15,7,15]
 ; AVX512-NEXT:    vpermd %zmm0, %zmm2, %zmm0
 ; AVX512-NEXT:    vmovdqu64 %zmm0, 64(%rsi)
 ; AVX512-NEXT:    vmovdqu64 %zmm1, (%rsi)
 ; AVX512-NEXT:    vzeroupper
 ; AVX512-NEXT:    retq
-  %x = load <8 x i32>, <8 x i32>* %s, align 4
+  %x = load <8 x i32>, ptr %s, align 4
   %x2 = shufflevector <8 x i32> %x, <8 x i32> undef, <16 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7, i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7>
   %x4 = shufflevector <16 x i32> %x2, <16 x i32> undef, <32 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7, i32 8, i32 9, i32 10, i32 11, i32 12, i32 13, i32 14, i32 15, i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7, i32 8, i32 9, i32 10, i32 11, i32 12, i32 13, i32 14, i32 15>
   %r = shufflevector <32 x i32> %x4, <32 x i32> undef, <32 x i32> <i32 0, i32 8, i32 16, i32 24, i32 1, i32 9, i32 17, i32 25, i32 2, i32 10, i32 18, i32 26, i32 3, i32 11, i32 19, i32 27, i32 4, i32 12, i32 20, i32 28, i32 5, i32 13, i32 21, i32 29, i32 6, i32 14, i32 22, i32 30, i32 7, i32 15, i32 23, i32 31>
-  store <32 x i32> %r, <32 x i32>* %d, align 4
+  store <32 x i32> %r, ptr %d, align 4
   ret void
 }
 
-define void @splat4_v4f64_load_store(<4 x double>* %s, <16 x double>* %d) nounwind {
+define void @splat4_v4f64_load_store(ptr %s, ptr %d) nounwind {
 ; AVX1OR2-LABEL: splat4_v4f64_load_store:
 ; AVX1OR2:       # %bb.0:
 ; AVX1OR2-NEXT:    vbroadcastsd (%rdi), %ymm0
@@ -1847,15 +1847,15 @@ define void @splat4_v4f64_load_store(<4 x double>* %s, <16 x double>* %d) nounwi
 ; AVX512-NEXT:    vmovups %zmm0, (%rsi)
 ; AVX512-NEXT:    vzeroupper
 ; AVX512-NEXT:    retq
-  %x = load <4 x double>, <4 x double>* %s, align 8
+  %x = load <4 x double>, ptr %s, align 8
   %x2 = shufflevector <4 x double> %x, <4 x double> undef, <8 x i32> <i32 0, i32 1, i32 2, i32 3, i32 0, i32 1, i32 2, i32 3>
   %x4 = shufflevector <8 x double> %x2, <8 x double> undef, <16 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7, i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7>
   %r = shufflevector <16 x double> %x4, <16 x double> undef, <16 x i32> <i32 0, i32 4, i32 8, i32 12, i32 1, i32 5, i32 9, i32 13, i32 2, i32 6, i32 10, i32 14, i32 3, i32 7, i32 11, i32 15>
-  store <16 x double> %r, <16 x double>* %d, align 8
+  store <16 x double> %r, ptr %d, align 8
   ret void
 }
 
-define void @splat4_v4i64_load_store(<4 x i64>* %s, <16 x i64>* %d) nounwind {
+define void @splat4_v4i64_load_store(ptr %s, ptr %d) nounwind {
 ; AVX1OR2-LABEL: splat4_v4i64_load_store:
 ; AVX1OR2:       # %bb.0:
 ; AVX1OR2-NEXT:    vbroadcastsd (%rdi), %ymm0
@@ -1881,15 +1881,15 @@ define void @splat4_v4i64_load_store(<4 x i64>* %s, <16 x i64>* %d) nounwind {
 ; AVX512-NEXT:    vmovups %zmm0, (%rsi)
 ; AVX512-NEXT:    vzeroupper
 ; AVX512-NEXT:    retq
-  %x = load <4 x i64>, <4 x i64>* %s, align 8
+  %x = load <4 x i64>, ptr %s, align 8
   %x2 = shufflevector <4 x i64> %x, <4 x i64> undef, <8 x i32> <i32 0, i32 1, i32 2, i32 3, i32 0, i32 1, i32 2, i32 3>
   %x4 = shufflevector <8 x i64> %x2, <8 x i64> undef, <16 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7, i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7>
   %r = shufflevector <16 x i64> %x4, <16 x i64> undef, <16 x i32> <i32 0, i32 4, i32 8, i32 12, i32 1, i32 5, i32 9, i32 13, i32 2, i32 6, i32 10, i32 14, i32 3, i32 7, i32 11, i32 15>
-  store <16 x i64> %r, <16 x i64>* %d, align 8
+  store <16 x i64> %r, ptr %d, align 8
   ret void
 }
 
-define <2 x i64> @PR37616(<16 x i64>* %a0) nounwind {
+define <2 x i64> @PR37616(ptr %a0) nounwind {
 ; AVX1-LABEL: PR37616:
 ; AVX1:       # %bb.0:
 ; AVX1-NEXT:    vmovaps 16(%rdi), %xmm0
@@ -1903,7 +1903,7 @@ define <2 x i64> @PR37616(<16 x i64>* %a0) nounwind {
 ; AVX2OR512-NEXT:    vextractf128 $1, %ymm0, %xmm0
 ; AVX2OR512-NEXT:    vzeroupper
 ; AVX2OR512-NEXT:    retq
-  %load = load <16 x i64>, <16 x i64>* %a0, align 128
+  %load = load <16 x i64>, ptr %a0, align 128
   %shuffle = shufflevector <16 x i64> %load, <16 x i64> undef, <2 x i32> <i32 2, i32 6>
   ret <2 x i64> %shuffle
 }

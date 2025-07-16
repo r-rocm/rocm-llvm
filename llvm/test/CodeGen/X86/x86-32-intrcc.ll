@@ -4,7 +4,7 @@
 
 %struct.interrupt_frame = type { i32, i32, i32, i32, i32 }
 
-@sink_address = global i32* null
+@sink_address = global ptr null
 @sink_i32 = global i32 0
 
 
@@ -149,7 +149,6 @@ define x86_intrcc void @test_isr_x87(ptr byval(%struct.interrupt_frame) %frame) 
 ; CHECK-NEXT:    pushl %ebp
 ; CHECK-NEXT:    movl %esp, %ebp
 ; CHECK-NEXT:    andl $-16, %esp
-; CHECK-NEXT:    cld
 ; CHECK-NEXT:    fldt f80
 ; CHECK-NEXT:    fld1
 ; CHECK-NEXT:    faddp %st, %st(1)
@@ -163,7 +162,6 @@ define x86_intrcc void @test_isr_x87(ptr byval(%struct.interrupt_frame) %frame) 
 ; CHECK0-NEXT:    pushl %ebp
 ; CHECK0-NEXT:    movl %esp, %ebp
 ; CHECK0-NEXT:    andl $-16, %esp
-; CHECK0-NEXT:    cld
 ; CHECK0-NEXT:    fldt f80
 ; CHECK0-NEXT:    fld1
 ; CHECK0-NEXT:    faddp %st, %st(1)
@@ -172,9 +170,9 @@ define x86_intrcc void @test_isr_x87(ptr byval(%struct.interrupt_frame) %frame) 
 ; CHECK0-NEXT:    popl %ebp
 ; CHECK0-NEXT:    iretl
 entry:
-  %ld = load x86_fp80, x86_fp80* @f80, align 4
+  %ld = load x86_fp80, ptr @f80, align 4
   %add = fadd x86_fp80 %ld, 0xK3FFF8000000000000000
-  store x86_fp80 %add, x86_fp80* @f80, align 4
+  store x86_fp80 %add, ptr @f80, align 4
   ret void
 }
 
@@ -188,7 +186,6 @@ define dso_local x86_intrcc void @test_fp_1(ptr byval(%struct.interrupt_frame) %
 ; CHECK-NEXT:    pushl %ecx
 ; CHECK-NEXT:    pushl %eax
 ; CHECK-NEXT:    andl $-16, %esp
-; CHECK-NEXT:    cld
 ; CHECK-NEXT:    leal 20(%ebp), %eax
 ; CHECK-NEXT:    leal 4(%ebp), %ecx
 ; CHECK-NEXT:    movl %ecx, sink_address
@@ -206,7 +203,6 @@ define dso_local x86_intrcc void @test_fp_1(ptr byval(%struct.interrupt_frame) %
 ; CHECK0-NEXT:    pushl %ecx
 ; CHECK0-NEXT:    pushl %eax
 ; CHECK0-NEXT:    andl $-16, %esp
-; CHECK0-NEXT:    cld
 ; CHECK0-NEXT:    leal 4(%ebp), %ecx
 ; CHECK0-NEXT:    movl %ecx, %eax
 ; CHECK0-NEXT:    addl $16, %eax
@@ -218,10 +214,9 @@ define dso_local x86_intrcc void @test_fp_1(ptr byval(%struct.interrupt_frame) %
 ; CHECK0-NEXT:    popl %ebp
 ; CHECK0-NEXT:    iretl
 entry:
-  %arrayidx = getelementptr inbounds %struct.interrupt_frame, %struct.interrupt_frame* %p, i32 0, i32 0
-  %arrayidx2 = getelementptr inbounds %struct.interrupt_frame, %struct.interrupt_frame* %p, i32 0, i32 4
-  store volatile i32* %arrayidx, i32** @sink_address
-  store volatile i32* %arrayidx2, i32** @sink_address
+  %arrayidx2 = getelementptr inbounds %struct.interrupt_frame, ptr %p, i32 0, i32 4
+  store volatile ptr %p, ptr @sink_address
+  store volatile ptr %arrayidx2, ptr @sink_address
   ret void
 }
 
@@ -235,7 +230,6 @@ define dso_local x86_intrcc void @test_fp_2(ptr byval(%struct.interrupt_frame) %
 ; CHECK-NEXT:    pushl %ecx
 ; CHECK-NEXT:    pushl %eax
 ; CHECK-NEXT:    andl $-16, %esp
-; CHECK-NEXT:    cld
 ; CHECK-NEXT:    movl 4(%ebp), %eax
 ; CHECK-NEXT:    leal 24(%ebp), %ecx
 ; CHECK-NEXT:    leal 8(%ebp), %edx
@@ -258,7 +252,6 @@ define dso_local x86_intrcc void @test_fp_2(ptr byval(%struct.interrupt_frame) %
 ; CHECK0-NEXT:    pushl %ecx
 ; CHECK0-NEXT:    pushl %eax
 ; CHECK0-NEXT:    andl $-16, %esp
-; CHECK0-NEXT:    cld
 ; CHECK0-NEXT:    movl 4(%ebp), %eax
 ; CHECK0-NEXT:    leal 8(%ebp), %edx
 ; CHECK0-NEXT:    movl %edx, %ecx
@@ -274,11 +267,10 @@ define dso_local x86_intrcc void @test_fp_2(ptr byval(%struct.interrupt_frame) %
 ; CHECK0-NEXT:    addl $4, %esp
 ; CHECK0-NEXT:    iretl
 entry:
-  %arrayidx = getelementptr inbounds %struct.interrupt_frame, %struct.interrupt_frame* %p, i32 0, i32 0
-  %arrayidx2 = getelementptr inbounds %struct.interrupt_frame, %struct.interrupt_frame* %p, i32 0, i32 4
-  store volatile i32* %arrayidx, i32** @sink_address
-  store volatile i32* %arrayidx2, i32** @sink_address
-  store volatile i32 %err, i32* @sink_i32
+  %arrayidx2 = getelementptr inbounds %struct.interrupt_frame, ptr %p, i32 0, i32 4
+  store volatile ptr %p, ptr @sink_address
+  store volatile ptr %arrayidx2, ptr @sink_address
+  store volatile i32 %err, ptr @sink_i32
   ret void
 }
 
@@ -290,7 +282,6 @@ define x86_intrcc void @test_copy_elide(ptr byval(%struct.interrupt_frame) %fram
 ; CHECK-NEXT:    movl %esp, %ebp
 ; CHECK-NEXT:    pushl %eax
 ; CHECK-NEXT:    andl $-16, %esp
-; CHECK-NEXT:    cld
 ; CHECK-NEXT:    leal 4(%ebp), %eax
 ; CHECK-NEXT:    movl %eax, sink_address
 ; CHECK-NEXT:    leal -4(%ebp), %esp
@@ -305,7 +296,6 @@ define x86_intrcc void @test_copy_elide(ptr byval(%struct.interrupt_frame) %fram
 ; CHECK0-NEXT:    movl %esp, %ebp
 ; CHECK0-NEXT:    pushl %eax
 ; CHECK0-NEXT:    andl $-16, %esp
-; CHECK0-NEXT:    cld
 ; CHECK0-NEXT:    movl 4(%ebp), %eax
 ; CHECK0-NEXT:    leal 4(%ebp), %eax
 ; CHECK0-NEXT:    movl %eax, sink_address
@@ -316,8 +306,8 @@ define x86_intrcc void @test_copy_elide(ptr byval(%struct.interrupt_frame) %fram
 ; CHECK0-NEXT:    iretl
 entry:
   %err.addr = alloca i32, align 4
-  store i32 %err, i32* %err.addr, align 4
-  store volatile i32* %err.addr, i32** @sink_address
+  store i32 %err, ptr %err.addr, align 4
+  store volatile ptr %err.addr, ptr @sink_address
   ret void
 }
 
@@ -360,7 +350,6 @@ define x86_intrcc void @test_isr_realign(ptr byval(%struct.interrupt_frame) %fra
 ; CHECK-NEXT:    pushl %eax
 ; CHECK-NEXT:    andl $-32, %esp
 ; CHECK-NEXT:    subl $32, %esp
-; CHECK-NEXT:    cld
 ; CHECK-NEXT:    movl 4(%ebp), %eax
 ; CHECK-NEXT:    movl %eax, (%esp)
 ; CHECK-NEXT:    leal -4(%ebp), %esp
@@ -376,7 +365,6 @@ define x86_intrcc void @test_isr_realign(ptr byval(%struct.interrupt_frame) %fra
 ; CHECK0-NEXT:    pushl %eax
 ; CHECK0-NEXT:    andl $-32, %esp
 ; CHECK0-NEXT:    subl $32, %esp
-; CHECK0-NEXT:    cld
 ; CHECK0-NEXT:    movl 4(%ebp), %eax
 ; CHECK0-NEXT:    movl %eax, (%esp)
 ; CHECK0-NEXT:    leal -4(%ebp), %esp

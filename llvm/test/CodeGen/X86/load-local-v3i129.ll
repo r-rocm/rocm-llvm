@@ -12,7 +12,7 @@ define void @_start() nounwind {
 ; FAST-SHLD-NEXT:    shrq $2, %rcx
 ; FAST-SHLD-NEXT:    shldq $2, %rdx, %rcx
 ; FAST-SHLD-NEXT:    andq $-4, %rax
-; FAST-SHLD-NEXT:    orq $1, %rax
+; FAST-SHLD-NEXT:    incq %rax
 ; FAST-SHLD-NEXT:    movq %rax, -40(%rsp)
 ; FAST-SHLD-NEXT:    movq %rcx, -32(%rsp)
 ; FAST-SHLD-NEXT:    orq $-2, -56(%rsp)
@@ -23,7 +23,7 @@ define void @_start() nounwind {
 ; SLOW-SHLD:       # %bb.0: # %Entry
 ; SLOW-SHLD-NEXT:    movq -40(%rsp), %rax
 ; SLOW-SHLD-NEXT:    andq $-4, %rax
-; SLOW-SHLD-NEXT:    orq $1, %rax
+; SLOW-SHLD-NEXT:    incq %rax
 ; SLOW-SHLD-NEXT:    movq %rax, -40(%rsp)
 ; SLOW-SHLD-NEXT:    orq $-2, -56(%rsp)
 ; SLOW-SHLD-NEXT:    movq $-1, -48(%rsp)
@@ -32,6 +32,6 @@ Entry:
   %y = alloca <3 x i129>, align 16
   %L = load <3 x i129>, ptr %y
   %I1 = insertelement <3 x i129> %L, i129 340282366920938463463374607431768211455, i32 1
-  store <3 x i129> %I1, <3 x i129>* %y
+  store <3 x i129> %I1, ptr %y
   ret void
 }

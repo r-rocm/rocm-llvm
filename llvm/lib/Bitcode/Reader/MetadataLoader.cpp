@@ -482,6 +482,9 @@ class MetadataLoader::MetadataLoaderImpl {
   /// True if metadata is being parsed for a module being ThinLTO imported.
   bool IsImporting = false;
 
+  template <class BuilderType>
+  Error appendDIOpsToBuilder(BuilderType &Builder, ArrayRef<uint64_t> Elems);
+
   Error parseOneMetadata(SmallVectorImpl<uint64_t> &Record, unsigned Code,
                          PlaceholderQueue &Placeholders, StringRef Blob,
                          unsigned &NextMetadataNo);
@@ -561,8 +564,8 @@ class MetadataLoader::MetadataLoaderImpl {
   /// DISubprogram's retainedNodes.
   void upgradeCULocals() {
     if (NamedMDNode *CUNodes = TheModule.getNamedMetadata("llvm.dbg.cu")) {
-      for (unsigned I = 0, E = CUNodes->getNumOperands(); I != E; ++I) {
-        auto *CU = dyn_cast<DICompileUnit>(CUNodes->getOperand(I));
+      for (MDNode *N : CUNodes->operands()) {
+        auto *CU = dyn_cast<DICompileUnit>(N);
         if (!CU)
           continue;
 
@@ -621,17 +624,25 @@ class MetadataLoader::MetadataLoaderImpl {
     if (!NeedDeclareExpressionUpgrade)
       return;
 
+    auto UpdateDeclareIfNeeded = [&](auto *Declare) {
+      auto *DIExpr = Declare->getExpression();
+      if (!DIExpr || !DIExpr->startsWithDeref() ||
+          !isa_and_nonnull<Argument>(Declare->getAddress()))
+        return;
+      SmallVector<uint64_t, 8> Ops;
+      Ops.append(std::next(DIExpr->elements_begin()), DIExpr->elements_end());
+      Declare->setExpression(DIExpression::get(Context, Ops));
+    };
+
     for (auto &BB : F)
-      for (auto &I : BB)
+      for (auto &I : BB) {
+        for (DbgVariableRecord &DVR : filterDbgVars(I.getDbgRecordRange())) {
+          if (DVR.isDbgDeclare())
+            UpdateDeclareIfNeeded(&DVR);
+        }
         if (auto *DDI = dyn_cast<DbgDeclareInst>(&I))
-          if (auto *DIExpr = DDI->getExpression())
-            if (DIExpr->startsWithDeref() &&
-                isa_and_nonnull<Argument>(DDI->getAddress())) {
-              SmallVector<uint64_t, 8> Ops;
-              Ops.append(std::next(DIExpr->elements_begin()),
-                         DIExpr->elements_end());
-              DDI->setExpression(DIExpression::get(Context, Ops));
-            }
+          UpdateDeclareIfNeeded(DDI);
+      }
   }
 
   /// Upgrade the expression from previous versions.
@@ -1248,6 +1259,184 @@ static Value *getValueFwdRef(BitcodeReaderValueList &ValueList, unsigned Idx,
   return nullptr;
 }
 
+/// Walk through the elements of a DIOp-based DIExpr/DIExpression record and add
+/// the operations to the builder type one by one.
+template <class BuilderType>
+Error MetadataLoader::MetadataLoaderImpl::appendDIOpsToBuilder(
+    BuilderType &Builder, ArrayRef<uint64_t> Elems) {
+  while (Elems.size() > 0) {
+    auto DIOpID = Elems[0];
+    Elems = Elems.slice(1);
+    switch (DIOpID) {
+    default:
+      return error("Invalid record");
+#define HANDLE_OP0(NAME)                                                       \
+  case DIOp::NAME::getBitcodeID():                                             \
+    Builder.template append<DIOp::NAME>();                                     \
+    break;
+#include "llvm/IR/DIExprOps.def"
+    case DIOp::Referrer::getBitcodeID(): {
+      if (Elems.size() < 1)
+        return error("Invalid record");
+      Type *Ty = Callbacks.GetTypeByID(Elems[0]);
+      if (!Ty || !Ty->isFirstClassType())
+        return error("Invalid record");
+      Builder.template append<DIOp::Referrer>(Ty);
+      Elems = Elems.slice(1);
+      break;
+    }
+    case DIOp::Arg::getBitcodeID(): {
+      if (Elems.size() < 2)
+        return error("Invalid record");
+      Type *Ty = Callbacks.GetTypeByID(Elems[0]);
+      if (!Ty || !Ty->isFirstClassType())
+        return error("Invalid record");
+      Builder.template append<DIOp::Arg>(Elems[1], Ty);
+      Elems = Elems.slice(2);
+      break;
+    }
+    case DIOp::TypeObject::getBitcodeID(): {
+      if (Elems.size() < 1)
+        return error("Invalid record");
+      Type *Ty = Callbacks.GetTypeByID(Elems[0]);
+      if (!Ty || !Ty->isFirstClassType())
+        return error("Invalid record");
+      Builder.template append<DIOp::TypeObject>(Ty);
+      Elems = Elems.slice(1);
+      break;
+    }
+    case DIOp::Constant::getBitcodeID(): {
+      if (Elems.size() < 2)
+        return error("Invalid record");
+      Type *Ty = Callbacks.GetTypeByID(Elems[0]);
+      if (!Ty || !Ty->isFirstClassType())
+        return error("Invalid record");
+      Value *V = ValueList[Elems[1]];
+      if (!V || !isa<ConstantData>(V))
+        return error("Invalid record");
+      if (Ty != V->getType())
+        report_fatal_error("Invalid record");
+      Builder.template append<DIOp::Constant>(cast<ConstantData>(V));
+      Elems = Elems.slice(2);
+      break;
+    }
+    case DIOp::Convert::getBitcodeID(): {
+      if (Elems.size() < 1)
+        return error("Invalid record");
+      Type *Ty = Callbacks.GetTypeByID(Elems[0]);
+      if (!Ty || !Ty->isFirstClassType())
+        return error("Invalid record");
+      Builder.template append<DIOp::Convert>(Ty);
+      Elems = Elems.slice(1);
+      break;
+    }
+    case DIOp::ZExt::getBitcodeID(): {
+      if (Elems.size() < 1)
+        return error("Invalid record");
+      Type *Ty = Callbacks.GetTypeByID(Elems[0]);
+      if (!Ty || !Ty->isFirstClassType())
+        return error("Invalid record");
+      Builder.template append<DIOp::ZExt>(Ty);
+      Elems = Elems.slice(1);
+      break;
+    }
+    case DIOp::SExt::getBitcodeID(): {
+      if (Elems.size() < 1)
+        return error("Invalid record");
+      Type *Ty = Callbacks.GetTypeByID(Elems[0]);
+      if (!Ty || !Ty->isFirstClassType())
+        return error("Invalid record");
+      Builder.template append<DIOp::SExt>(Ty);
+      Elems = Elems.slice(1);
+      break;
+    }
+    case DIOp::Reinterpret::getBitcodeID(): {
+      if (Elems.size() < 1)
+        return error("Invalid record");
+      Type *Ty = Callbacks.GetTypeByID(Elems[0]);
+      if (!Ty || !Ty->isFirstClassType())
+        return error("Invalid record");
+      Builder.template append<DIOp::Reinterpret>(Ty);
+      Elems = Elems.slice(1);
+      break;
+    }
+    case DIOp::BitOffset::getBitcodeID(): {
+      if (Elems.size() < 1)
+        return error("Invalid record");
+      Type *Ty = Callbacks.GetTypeByID(Elems[0]);
+      if (!Ty || !Ty->isFirstClassType())
+        return error("Invalid record");
+      Builder.template append<DIOp::BitOffset>(Ty);
+      Elems = Elems.slice(1);
+      break;
+    }
+    case DIOp::ByteOffset::getBitcodeID(): {
+      if (Elems.size() < 1)
+        return error("Invalid record");
+      Type *Ty = Callbacks.GetTypeByID(Elems[0]);
+      if (!Ty || !Ty->isFirstClassType())
+        return error("Invalid record");
+      Builder.template append<DIOp::ByteOffset>(Ty);
+      Elems = Elems.slice(1);
+      break;
+    }
+    case DIOp::Composite::getBitcodeID(): {
+      if (Elems.size() < 2)
+        return error("Invalid record");
+      Type *Ty = Callbacks.GetTypeByID(Elems[0]);
+      if (!Ty || !Ty->isFirstClassType())
+        return error("Invalid record");
+      Builder.template append<DIOp::Composite>(Elems[1], Ty);
+      Elems = Elems.slice(2);
+      break;
+    }
+    case DIOp::Extend::getBitcodeID(): {
+      if (Elems.size() < 1)
+        return error("Invalid record");
+      Builder.template append<DIOp::Extend>(Elems[0]);
+      Elems = Elems.slice(1);
+      break;
+    }
+    case DIOp::AddrOf::getBitcodeID(): {
+      if (Elems.size() < 1)
+        return error("Invalid record");
+      Builder.template append<DIOp::AddrOf>(Elems[0]);
+      Elems = Elems.slice(1);
+      break;
+    }
+    case DIOp::Deref::getBitcodeID(): {
+      if (Elems.size() < 1)
+        return error("Invalid record");
+      Type *Ty = Callbacks.GetTypeByID(Elems[0]);
+      if (!Ty || !Ty->isFirstClassType())
+        return error("Invalid record");
+      Builder.template append<DIOp::Deref>(Ty);
+      Elems = Elems.slice(1);
+      break;
+    }
+    case DIOp::PushLane::getBitcodeID(): {
+      if (Elems.size() < 1)
+        return error("Invalid record");
+      Type *Ty = Callbacks.GetTypeByID(Elems[0]);
+      if (!Ty || !Ty->isFirstClassType())
+        return error("Invalid record");
+      Builder.template append<DIOp::PushLane>(Ty);
+      Elems = Elems.slice(1);
+      break;
+    }
+    case DIOp::Fragment::getBitcodeID(): {
+      if (Elems.size() < 2)
+        return error("Invalid record");
+      Builder.template append<DIOp::Fragment>(Elems[0], Elems[1]);
+      Elems = Elems.slice(2);
+      break;
+    }
+    }
+  }
+
+  return Error::success();
+}
+
 Error MetadataLoader::MetadataLoaderImpl::parseOneMetadata(
     SmallVectorImpl<uint64_t> &Record, unsigned Code,
     PlaceholderQueue &Placeholders, StringRef Blob, unsigned &NextMetadataNo) {
@@ -1571,7 +1760,7 @@ Error MetadataLoader::MetadataLoaderImpl::parseOneMetadata(
     break;
   }
   case bitc::METADATA_DERIVED_TYPE: {
-    if (Record.size() < 12 || Record.size() > 15)
+    if (Record.size() < 12 || Record.size() > 16)
       return error("Invalid record");
 
     // DWARF address space is encoded as N->getDWARFAddressSpace() + 1. 0 means
@@ -1581,8 +1770,17 @@ Error MetadataLoader::MetadataLoaderImpl::parseOneMetadata(
       DWARFAddressSpace = Record[12] - 1;
 
     Metadata *Annotations = nullptr;
-    if (Record.size() > 13 && Record[13])
-      Annotations = getMDOrNull(Record[13]);
+    std::optional<DIDerivedType::PtrAuthData> PtrAuthData;
+
+    // Only look for annotations/ptrauth if both are allocated.
+    // If not, we can't tell which was intended to be embedded, as both ptrauth
+    // and annotations have been expected at Record[13] at various times.
+    if (Record.size() > 15) {
+      if (Record[13])
+        Annotations = getMDOrNull(Record[13]);
+      if (Record[15])
+        PtrAuthData.emplace(Record[15]);
+    }
 
     auto MSpace = getDWARFMemorySpaceAtPosition(Record, 14);
     if (!MSpace)
@@ -1596,7 +1794,7 @@ Error MetadataLoader::MetadataLoaderImpl::parseOneMetadata(
                          getMDOrNull(Record[3]), Record[4],
                          getDITypeRefOrNull(Record[5]),
                          getDITypeRefOrNull(Record[6]), Record[7], Record[8],
-                         Record[9], DWARFAddressSpace, *MSpace, Flags,
+                         Record[9], DWARFAddressSpace, *MSpace, PtrAuthData, Flags,
                          getDITypeRefOrNull(Record[11]), Annotations)),
         NextMetadataNo);
     NextMetadataNo++;
@@ -2182,6 +2380,16 @@ Error MetadataLoader::MetadataLoaderImpl::parseOneMetadata(
     uint64_t Version = Record[0] >> 1;
     auto Elts = MutableArrayRef<uint64_t>(Record).slice(1);
 
+    // Version 16 signifies a DIOp-based DIExpression.
+    if (Version == 16) {
+      DIExprBuilder Builder(Context);
+      if (Error Err = appendDIOpsToBuilder(Builder, Elts))
+        return Err;
+      MetadataList.assignValue(Builder.intoExpression(), NextMetadataNo);
+      NextMetadataNo++;
+      break;
+    }
+
     SmallVector<uint64_t, 6> Buffer;
     if (Error Err = upgradeDIExpression(Version, Elts, Buffer))
       return Err;
@@ -2199,147 +2407,9 @@ Error MetadataLoader::MetadataLoaderImpl::parseOneMetadata(
       return error("Invalid record: unknown DIExpr version " + Twine(Version));
 
     DIExprBuilder Builder(Context);
-
-    for (auto Elems = ArrayRef<uint64_t>(Record).slice(1); Elems.size() > 0;) {
-      auto DIOpID = Elems[0];
-      Elems = Elems.slice(1);
-      switch (DIOpID) {
-#define HANDLE_OP0(NAME)                                                       \
-  case DIOp::NAME::getBitcodeID():                                             \
-    Builder.append<DIOp::NAME>();                                              \
-    break;
-#include "llvm/IR/DIExprOps.def"
-      case DIOp::Referrer::getBitcodeID(): {
-        if (Elems.size() < 1)
-          return error("Invalid record");
-        Type *Ty = Callbacks.GetTypeByID(Elems[0]);
-        if (!Ty || !Ty->isFirstClassType())
-          return error("Invalid record");
-        Builder.append<DIOp::Referrer>(Ty);
-        Elems = Elems.slice(1);
-        break;
-      }
-      case DIOp::Arg::getBitcodeID(): {
-        if (Elems.size() < 2)
-          return error("Invalid record");
-        Type *Ty = Callbacks.GetTypeByID(Elems[0]);
-        if (!Ty || !Ty->isFirstClassType())
-          return error("Invalid record");
-        Builder.append<DIOp::Arg>(Elems[1], Ty);
-        Elems = Elems.slice(2);
-        break;
-      }
-      case DIOp::TypeObject::getBitcodeID(): {
-        if (Elems.size() < 1)
-          return error("Invalid record");
-        Type *Ty = Callbacks.GetTypeByID(Elems[0]);
-        if (!Ty || !Ty->isFirstClassType())
-          return error("Invalid record");
-        Builder.append<DIOp::TypeObject>(Ty);
-        Elems = Elems.slice(1);
-        break;
-      }
-      case DIOp::Constant::getBitcodeID(): {
-        if (Elems.size() < 2)
-          return error("Invalid record");
-        Type *Ty = Callbacks.GetTypeByID(Elems[0]);
-        if (!Ty || !Ty->isFirstClassType())
-          return error("Invalid record");
-        Value *V = ValueList[Elems[1]];
-        if (!V || !isa<ConstantData>(V))
-          return error("Invalid record");
-        if (Ty != V->getType())
-          report_fatal_error("Invalid record");
-        Builder.append<DIOp::Constant>(cast<ConstantData>(V));
-        Elems = Elems.slice(2);
-        break;
-      }
-      case DIOp::Convert::getBitcodeID(): {
-        if (Elems.size() < 1)
-          return error("Invalid record");
-        Type *Ty = Callbacks.GetTypeByID(Elems[0]);
-        if (!Ty || !Ty->isFirstClassType())
-          return error("Invalid record");
-        Builder.append<DIOp::Convert>(Ty);
-        Elems = Elems.slice(1);
-        break;
-      }
-      case DIOp::Reinterpret::getBitcodeID(): {
-        if (Elems.size() < 1)
-          return error("Invalid record");
-        Type *Ty = Callbacks.GetTypeByID(Elems[0]);
-        if (!Ty || !Ty->isFirstClassType())
-          return error("Invalid record");
-        Builder.append<DIOp::Reinterpret>(Ty);
-        Elems = Elems.slice(1);
-        break;
-      }
-      case DIOp::BitOffset::getBitcodeID(): {
-        if (Elems.size() < 1)
-          return error("Invalid record");
-        Type *Ty = Callbacks.GetTypeByID(Elems[0]);
-        if (!Ty || !Ty->isFirstClassType())
-          return error("Invalid record");
-        Builder.append<DIOp::BitOffset>(Ty);
-        Elems = Elems.slice(1);
-        break;
-      }
-      case DIOp::ByteOffset::getBitcodeID(): {
-        if (Elems.size() < 1)
-          return error("Invalid record");
-        Type *Ty = Callbacks.GetTypeByID(Elems[0]);
-        if (!Ty || !Ty->isFirstClassType())
-          return error("Invalid record");
-        Builder.append<DIOp::ByteOffset>(Ty);
-        Elems = Elems.slice(1);
-        break;
-      }
-      case DIOp::Composite::getBitcodeID(): {
-        if (Elems.size() < 2)
-          return error("Invalid record");
-        Type *Ty = Callbacks.GetTypeByID(Elems[0]);
-        if (!Ty || !Ty->isFirstClassType())
-          return error("Invalid record");
-        Builder.append<DIOp::Composite>(Elems[1], Ty);
-        Elems = Elems.slice(2);
-        break;
-      }
-      case DIOp::Extend::getBitcodeID(): {
-        if (Elems.size() < 1)
-          return error("Invalid record");
-        Builder.append<DIOp::Extend>(Elems[0]);
-        Elems = Elems.slice(1);
-        break;
-      }
-      case DIOp::AddrOf::getBitcodeID(): {
-        if (Elems.size() < 1)
-          return error("Invalid record");
-        Builder.append<DIOp::AddrOf>(Elems[0]);
-        Elems = Elems.slice(1);
-        break;
-      }
-      case DIOp::Deref::getBitcodeID(): {
-        if (Elems.size() < 1)
-          return error("Invalid record");
-        Type *Ty = Callbacks.GetTypeByID(Elems[0]);
-        if (!Ty || !Ty->isFirstClassType())
-          return error("Invalid record");
-        Builder.append<DIOp::Deref>(Ty);
-        Elems = Elems.slice(1);
-        break;
-      }
-      case DIOp::PushLane::getBitcodeID(): {
-        if (Elems.size() < 1)
-          return error("Invalid record");
-        Type *Ty = Callbacks.GetTypeByID(Elems[0]);
-        if (!Ty || !Ty->isFirstClassType())
-          return error("Invalid record");
-        Builder.append<DIOp::PushLane>(Ty);
-        Elems = Elems.slice(1);
-        break;
-      }
-      }
-    }
+    if (Error Err =
+            appendDIOpsToBuilder(Builder, ArrayRef<uint64_t>(Record).slice(1)))
+      return Err;
 
     MetadataList.assignValue(Builder.intoExpr(), NextMetadataNo);
     NextMetadataNo++;

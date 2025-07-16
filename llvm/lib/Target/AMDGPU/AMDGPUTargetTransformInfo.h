@@ -19,6 +19,7 @@
 
 #include "AMDGPU.h"
 #include "llvm/CodeGen/BasicTTIImpl.h"
+#include "llvm/Support/AMDGPUAddrSpace.h"
 #include <optional>
 
 namespace llvm {
@@ -138,15 +139,16 @@ public:
                                     unsigned AddrSpace) const;
 
   int64_t getMaxMemIntrinsicInlineSizeThreshold() const;
-  Type *getMemcpyLoopLoweringType(
-      LLVMContext & Context, Value * Length, unsigned SrcAddrSpace,
-      unsigned DestAddrSpace, unsigned SrcAlign, unsigned DestAlign,
-      std::optional<uint32_t> AtomicElementSize) const;
+  Type *
+  getMemcpyLoopLoweringType(LLVMContext &Context, Value *Length,
+                            unsigned SrcAddrSpace, unsigned DestAddrSpace,
+                            Align SrcAlign, Align DestAlign,
+                            std::optional<uint32_t> AtomicElementSize) const;
 
   void getMemcpyLoopResidualLoweringType(
       SmallVectorImpl<Type *> &OpsOut, LLVMContext &Context,
       unsigned RemainingBytes, unsigned SrcAddrSpace, unsigned DestAddrSpace,
-      unsigned SrcAlign, unsigned DestAlign,
+      Align SrcAlign, Align DestAlign,
       std::optional<uint32_t> AtomicCpySize) const;
   unsigned getMaxInterleaveFactor(ElementCount VF);
 
@@ -156,7 +158,7 @@ public:
       unsigned Opcode, Type *Ty, TTI::TargetCostKind CostKind,
       TTI::OperandValueInfo Op1Info = {TTI::OK_AnyValue, TTI::OP_None},
       TTI::OperandValueInfo Op2Info = {TTI::OK_AnyValue, TTI::OP_None},
-      ArrayRef<const Value *> Args = ArrayRef<const Value *>(),
+      ArrayRef<const Value *> Args = std::nullopt,
       const Instruction *CxtI = nullptr);
 
   InstructionCost getCFInstrCost(unsigned Opcode, TTI::TargetCostKind CostKind,
@@ -175,24 +177,23 @@ public:
   bool isAlwaysUniform(const Value *V) const;
 
   bool isValidAddrSpaceCast(unsigned FromAS, unsigned ToAS) const {
-    if (ToAS == AMDGPUAS::FLAT_ADDRESS) {
-      switch (FromAS) {
-      case AMDGPUAS::GLOBAL_ADDRESS:
-      case AMDGPUAS::CONSTANT_ADDRESS:
-      case AMDGPUAS::CONSTANT_ADDRESS_32BIT:
-      case AMDGPUAS::LOCAL_ADDRESS:
-      case AMDGPUAS::PRIVATE_ADDRESS:
-        return true;
-      default:
-        break;
-      }
+    // Address space casts must cast between different address spaces.
+    if (FromAS == ToAS)
       return false;
-    }
-    if ((FromAS == AMDGPUAS::CONSTANT_ADDRESS_32BIT &&
-         ToAS == AMDGPUAS::CONSTANT_ADDRESS) ||
-        (FromAS == AMDGPUAS::CONSTANT_ADDRESS &&
-         ToAS == AMDGPUAS::CONSTANT_ADDRESS_32BIT))
-      return true;
+
+    if (FromAS == AMDGPUAS::FLAT_ADDRESS)
+      return AMDGPU::isExtendedGlobalAddrSpace(ToAS) ||
+             ToAS == AMDGPUAS::LOCAL_ADDRESS ||
+             ToAS == AMDGPUAS::PRIVATE_ADDRESS;
+
+    if (AMDGPU::isExtendedGlobalAddrSpace(FromAS))
+      return AMDGPU::isFlatGlobalAddrSpace(ToAS) ||
+             ToAS == AMDGPUAS::CONSTANT_ADDRESS_32BIT;
+
+    if (FromAS == AMDGPUAS::LOCAL_ADDRESS ||
+        FromAS == AMDGPUAS::PRIVATE_ADDRESS)
+      return ToAS == AMDGPUAS::FLAT_ADDRESS;
+
     return false;
   }
 
@@ -235,7 +236,8 @@ public:
                                  ArrayRef<int> Mask,
                                  TTI::TargetCostKind CostKind, int Index,
                                  VectorType *SubTp,
-                                 ArrayRef<const Value *> Args = std::nullopt);
+                                 ArrayRef<const Value *> Args = std::nullopt,
+                                 const Instruction *CxtI = nullptr);
 
   bool areInlineCompatible(const Function *Caller,
                            const Function *Callee) const;

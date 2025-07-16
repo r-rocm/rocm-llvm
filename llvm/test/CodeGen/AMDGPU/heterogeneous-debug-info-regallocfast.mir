@@ -160,6 +160,9 @@
   ; Function Attrs: convergent nounwind willreturn
   declare i1 @llvm.amdgcn.loop.i64(i64) #2
 
+  ; Function Attrs: convergent nounwind willreturn
+  declare void @llvm.amdgcn.end.cf.i64(i64) #2
+
   attributes #0 = { nocallback nofree nosync nounwind readnone speculatable willreturn "target-cpu"="gfx900" }
   attributes #1 = { convergent mustprogress noinline nounwind optnone "frame-pointer"="none" "min-legal-vector-width"="0" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="gfx900" "target-features"="+16-bit-insts,+ci-insts,+dpp,+flat-address-space,+gfx8-insts,+gfx9-insts,+s-memrealtime,+s-memtime-inst" "uniform-work-group-size"="false" }
   attributes #2 = { convergent nounwind willreturn }
@@ -1130,25 +1133,25 @@ body:             |
 
 # DWARF: .debug_loc contents:
 # DWARF-NEXT: 0x00000000:
-# DWARF-NEXT:             (0x0000000000000008, 0x0000000000000014): DW_OP_regx SGPR4_LO16
+# DWARF-NEXT:             (0x0000000000000008, 0x0000000000000014): DW_OP_regx SGPR4
 # DWARF-EMPTY:
 # DWARF-NEXT: 0x00000024:
-# DWARF-NEXT:             (0x0000000000000020, 0x0000000000000024): DW_OP_regx SGPR4_LO16
+# DWARF-NEXT:             (0x0000000000000020, 0x0000000000000024): DW_OP_regx SGPR4
 # DWARF-EMPTY:
 # DWARF-NEXT: 0x00000048:
-# DWARF-NEXT:             (0x0000000000000044, 0x0000000000000048): DW_OP_regx SGPR4_LO16
+# DWARF-NEXT:             (0x0000000000000044, 0x0000000000000048): DW_OP_regx SGPR4
 # DWARF-EMPTY:
 # DWARF-NEXT: 0x0000006c:
-# DWARF-NEXT:             (0x0000000000000060, 0x0000000000000064): DW_OP_regx SGPR4_LO16
+# DWARF-NEXT:             (0x0000000000000060, 0x0000000000000064): DW_OP_regx SGPR4
 # DWARF-EMPTY:
 # DWARF-NEXT: 0x00000090:
-# DWARF-NEXT:             (0x0000000000000080, 0x0000000000000088): DW_OP_regx SGPR4_LO16
+# DWARF-NEXT:             (0x0000000000000080, 0x0000000000000088): DW_OP_regx SGPR4
 # DWARF-EMPTY:
 # DWARF-NEXT: 0x000000b4:
-# DWARF-NEXT:             (0x000000000000009c, 0x000000000000009c): DW_OP_regx SGPR4_LO16
+# DWARF-NEXT:             (0x000000000000009c, 0x000000000000009c): DW_OP_regx SGPR4
 # DWARF-EMPTY:
 # DWARF-NEXT: 0x000000d8:
-# DWARF-NEXT:             (0x00000000000000ac, 0x00000000000000ac): DW_OP_regx SGPR4_LO16
+# DWARF-NEXT:             (0x00000000000000ac, 0x00000000000000ac): DW_OP_regx SGPR4
 
 # DISASM: Disassembly of section .text:
 # DISASM-EMPTY:

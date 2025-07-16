@@ -641,10 +641,12 @@ define void @expect_with_probability(i16 %0) {
   ret void
 }
 
+@tls_var = dso_local thread_local global i32 0, align 4
+
 ; CHECK-LABEL: llvm.func @threadlocal_test
-define void @threadlocal_test(ptr %0) {
+define void @threadlocal_test() {
   ; CHECK: "llvm.intr.threadlocal.address"(%{{.*}}) : (!llvm.ptr) -> !llvm.ptr
-  %local = call ptr @llvm.threadlocal.address.p0(ptr %0)
+  %local = call ptr @llvm.threadlocal.address.p0(ptr @tls_var)
   ret void
 }
 
@@ -730,7 +732,7 @@ define void @coro_promise(ptr %0, i32 %1, i1 %2) {
 ; CHECK-LABEL:  llvm.func @eh_typeid_for
 define void @eh_typeid_for(ptr %0) {
   ; CHECK: llvm.intr.eh.typeid.for %{{.*}} : (!llvm.ptr) -> i32
-  %2 = call i32 @llvm.eh.typeid.for(ptr %0)
+  %2 = call i32 @llvm.eh.typeid.for.p0(ptr %0)
   ret void
 }
 
@@ -781,6 +783,15 @@ define void @vector_insert(<vscale x 4 x float> %0, <4 x float> %1) {
 define void @vector_extract(<vscale x 4 x float> %0) {
   ; llvm.intr.vector.extract %{{.*}}[0] : vector<4xf32> from !llvm.vec<? x 4 x  f32>
   %2 = call <4 x float> @llvm.vector.extract.v4f32.nxv4f32(<vscale x 4 x float> %0, i64 0);
+  ret void
+}
+
+; CHECK-LABEL: llvm.func @vector_deinterleave2
+define void @vector_deinterleave2(<4 x double> %0, <vscale x 8 x i32> %1) {
+  ; CHECK: "llvm.intr.vector.deinterleave2"(%{{.*}}) : (vector<4xf64>) -> !llvm.struct<(vector<2xf64>, vector<2xf64>)>
+  %3 = call { <2 x double>, <2 x double> } @llvm.vector.deinterleave2.v4f64(<4 x double> %0);
+  ; CHECK: "llvm.intr.vector.deinterleave2"(%{{.*}}) : (!llvm.vec<? x 8 x i32>) -> !llvm.struct<(vec<? x 4 x i32>, vec<? x 4 x i32>)>
+  %4 = call { <vscale x 4 x i32>, <vscale x 4 x i32> } @llvm.vector.deinterleave2.nxv8i32(<vscale x 8 x i32> %1);
   ret void
 }
 
@@ -892,6 +903,23 @@ define float @ssa_copy(float %0) {
   ; CHECK: %{{.*}} = llvm.intr.ssa.copy %{{.*}} : f32
   %2 = call float @llvm.ssa.copy.f32(float %0)
   ret float %2
+}
+
+; CHECK-LABEL: experimental_constrained_fptrunc
+define void @experimental_constrained_fptrunc(double %s, <4 x double> %v) {
+  ; CHECK: llvm.intr.experimental.constrained.fptrunc %{{.*}} towardzero ignore : f64 to f32
+  %1 = call float @llvm.experimental.constrained.fptrunc.f32.f64(double %s, metadata !"round.towardzero", metadata !"fpexcept.ignore")
+  ; CHECK: llvm.intr.experimental.constrained.fptrunc %{{.*}} tonearest maytrap : f64 to f32
+  %2 = call float @llvm.experimental.constrained.fptrunc.f32.f64(double %s, metadata !"round.tonearest", metadata !"fpexcept.maytrap")
+  ; CHECK: llvm.intr.experimental.constrained.fptrunc %{{.*}} upward strict : f64 to f32
+  %3 = call float @llvm.experimental.constrained.fptrunc.f32.f64(double %s, metadata !"round.upward", metadata !"fpexcept.strict")
+  ; CHECK: llvm.intr.experimental.constrained.fptrunc %{{.*}} downward ignore : f64 to f32
+  %4 = call float @llvm.experimental.constrained.fptrunc.f32.f64(double %s, metadata !"round.downward", metadata !"fpexcept.ignore")
+  ; CHECK: llvm.intr.experimental.constrained.fptrunc %{{.*}} tonearestaway ignore : f64 to f32
+  %5 = call float @llvm.experimental.constrained.fptrunc.f32.f64(double %s, metadata !"round.tonearestaway", metadata !"fpexcept.ignore")
+  ; CHECK: llvm.intr.experimental.constrained.fptrunc %{{.*}} tonearestaway ignore : vector<4xf64> to vector<4xf16>
+  %6 = call <4 x half> @llvm.experimental.constrained.fptrunc.v4f16.v4f64(<4 x double> %v, metadata !"round.tonearestaway", metadata !"fpexcept.ignore")
+  ret void
 }
 
 declare float @llvm.fmuladd.f32(float, float, float)
@@ -1054,7 +1082,7 @@ declare i1 @llvm.coro.end(ptr, i1, token)
 declare ptr @llvm.coro.free(token, ptr nocapture readonly)
 declare void @llvm.coro.resume(ptr)
 declare ptr @llvm.coro.promise(ptr nocapture, i32, i1)
-declare i32 @llvm.eh.typeid.for(ptr)
+declare i32 @llvm.eh.typeid.for.p0(ptr)
 declare ptr @llvm.stacksave.p0()
 declare ptr addrspace(1) @llvm.stacksave.p1()
 declare void @llvm.stackrestore.p0(ptr)
@@ -1120,3 +1148,5 @@ declare void @llvm.assume(i1)
 declare float @llvm.ssa.copy.f32(float returned)
 declare <vscale x 4 x float> @llvm.vector.insert.nxv4f32.v4f32(<vscale x 4 x float>, <4 x float>, i64)
 declare <4 x float> @llvm.vector.extract.v4f32.nxv4f32(<vscale x 4 x float>, i64)
+declare <4 x half> @llvm.experimental.constrained.fptrunc.v4f16.v4f64(<4 x double>, metadata, metadata)
+declare float @llvm.experimental.constrained.fptrunc.f32.f64(double, metadata, metadata)

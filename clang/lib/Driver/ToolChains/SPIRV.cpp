@@ -7,6 +7,7 @@
 //===----------------------------------------------------------------------===//
 #include "SPIRV.h"
 #include "CommonArgs.h"
+#include "clang/Basic/Version.h"
 #include "clang/Driver/Compilation.h"
 #include "clang/Driver/Driver.h"
 #include "clang/Driver/InputInfo.h"
@@ -32,8 +33,21 @@ void SPIRV::constructTranslateCommand(Compilation &C, const Tool &T,
 
   CmdArgs.append({"-o", Output.getFilename()});
 
-  const char *Exec =
-      C.getArgs().MakeArgString(T.getToolChain().GetProgramPath("llvm-spirv"));
+  // Try to find "llvm-spirv-<LLVM_VERSION_MAJOR>". Otherwise, fall back to
+  // plain "llvm-spirv".
+  // AMD FORK ONLY: instead of llvm-spirv we look for the amd-llvm-spirv, which
+  // is our ephemeral, temporary build of the translator that nests changes that
+  // are not in upstream. This will be removed in the future.
+  using namespace std::string_literals;
+  auto VersionedTool = "llvm-spirv-"s + std::to_string(LLVM_VERSION_MAJOR);
+  if (T.getToolChain().getTriple().getVendor() == llvm::Triple::VendorType::AMD)
+    VersionedTool.insert(0, "amd-");
+  std::string ExeCand = T.getToolChain().GetProgramPath(VersionedTool.c_str());
+  if (!llvm::sys::fs::can_execute(ExeCand))
+    ExeCand = T.getToolChain().GetProgramPath(
+        VersionedTool.substr(0, VersionedTool.find_last_of('-')).c_str());
+
+  const char *Exec = C.getArgs().MakeArgString(ExeCand);
   C.addCommand(std::make_unique<Command>(JA, T, ResponseFileSupport::None(),
                                          Exec, CmdArgs, Input, Output));
 }

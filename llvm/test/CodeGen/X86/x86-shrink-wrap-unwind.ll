@@ -51,8 +51,8 @@ define i32 @framelessUnwind(i32 %a, i32 %b) #0 {
   br i1 %tmp2, label %true, label %false
 
 true:
-  store i32 %a, i32* %tmp, align 4
-  %tmp4 = call i32 @doSomething(i32 0, i32* %tmp)
+  store i32 %a, ptr %tmp, align 4
+  %tmp4 = call i32 @doSomething(i32 0, ptr %tmp)
   br label %false
 
 false:
@@ -60,7 +60,7 @@ false:
   ret i32 %tmp.0
 }
 
-declare i32 @doSomething(i32, i32*)
+declare i32 @doSomething(i32, ptr)
 
 attributes #0 = { "frame-pointer"="none" }
 
@@ -114,8 +114,8 @@ define i32 @frameUnwind(i32 %a, i32 %b) #1 {
   br i1 %tmp2, label %true, label %false
 
 true:
-  store i32 %a, i32* %tmp, align 4
-  %tmp4 = call i32 @doSomething(i32 0, i32* %tmp)
+  store i32 %a, ptr %tmp, align 4
+  %tmp4 = call i32 @doSomething(i32 0, ptr %tmp)
   br label %false
 
 false:
@@ -161,8 +161,8 @@ define i32 @framelessnoUnwind(i32 %a, i32 %b) #2 {
   br i1 %tmp2, label %true, label %false
 
 true:
-  store i32 %a, i32* %tmp, align 4
-  %tmp4 = call i32 @doSomething(i32 0, i32* %tmp)
+  store i32 %a, ptr %tmp, align 4
+  %tmp4 = call i32 @doSomething(i32 0, ptr %tmp)
   br label %false
 
 false:
@@ -181,38 +181,40 @@ define zeroext i1 @segmentedStack(ptr readonly %vk1, ptr readonly %vk2, i64 %key
 ; CHECK-LABEL: segmentedStack:
 ; CHECK:       ## %bb.0:
 ; CHECK-NEXT:    cmpq %gs:816, %rsp
-; CHECK-NEXT:    jbe LBB3_7
+; CHECK-NEXT:    jbe LBB3_6
 ; CHECK-NEXT:  LBB3_1: ## %entry
 ; CHECK-NEXT:    pushq %rax
 ; CHECK-NEXT:    .cfi_def_cfa_offset 16
+; CHECK-NEXT:    testq %rdi, %rdi
+; CHECK-NEXT:    sete %al
+; CHECK-NEXT:    testq %rsi, %rsi
+; CHECK-NEXT:    sete %cl
+; CHECK-NEXT:    orb %al, %cl
 ; CHECK-NEXT:    movq %rdi, %rax
 ; CHECK-NEXT:    orq %rsi, %rax
 ; CHECK-NEXT:    sete %al
-; CHECK-NEXT:    testq %rdi, %rdi
-; CHECK-NEXT:    je LBB3_5
-; CHECK-NEXT:  ## %bb.2: ## %entry
-; CHECK-NEXT:    testq %rsi, %rsi
-; CHECK-NEXT:    je LBB3_5
-; CHECK-NEXT:  ## %bb.3: ## %if.end4.i
+; CHECK-NEXT:    testb %cl, %cl
+; CHECK-NEXT:    jne LBB3_4
+; CHECK-NEXT:  ## %bb.2: ## %if.end4.i
 ; CHECK-NEXT:    movq 8(%rdi), %rdx
 ; CHECK-NEXT:    cmpq 8(%rsi), %rdx
-; CHECK-NEXT:    jne LBB3_6
-; CHECK-NEXT:  ## %bb.4: ## %land.rhs.i.i
+; CHECK-NEXT:    jne LBB3_5
+; CHECK-NEXT:  ## %bb.3: ## %land.rhs.i.i
 ; CHECK-NEXT:    movq (%rsi), %rsi
 ; CHECK-NEXT:    movq (%rdi), %rdi
 ; CHECK-NEXT:    callq _memcmp
 ; CHECK-NEXT:    testl %eax, %eax
 ; CHECK-NEXT:    sete %al
-; CHECK-NEXT:  LBB3_5: ## %__go_ptr_strings_equal.exit
+; CHECK-NEXT:  LBB3_4: ## %__go_ptr_strings_equal.exit
 ; CHECK-NEXT:    ## kill: def $al killed $al killed $eax
 ; CHECK-NEXT:    popq %rcx
 ; CHECK-NEXT:    retq
-; CHECK-NEXT:  LBB3_6:
+; CHECK-NEXT:  LBB3_5:
 ; CHECK-NEXT:    xorl %eax, %eax
 ; CHECK-NEXT:    ## kill: def $al killed $al killed $eax
 ; CHECK-NEXT:    popq %rcx
 ; CHECK-NEXT:    retq
-; CHECK-NEXT:  LBB3_7:
+; CHECK-NEXT:  LBB3_6:
 ; CHECK-NEXT:    movl $8, %r10d
 ; CHECK-NEXT:    movl $0, %r11d
 ; CHECK-NEXT:    callq ___morestack
@@ -222,69 +224,67 @@ define zeroext i1 @segmentedStack(ptr readonly %vk1, ptr readonly %vk2, i64 %key
 ; NOCOMPACTUNWIND-LABEL: segmentedStack:
 ; NOCOMPACTUNWIND:       # %bb.0:
 ; NOCOMPACTUNWIND-NEXT:    cmpq %fs:112, %rsp
-; NOCOMPACTUNWIND-NEXT:    jbe .LBB3_7
+; NOCOMPACTUNWIND-NEXT:    jbe .LBB3_6
 ; NOCOMPACTUNWIND-NEXT:  .LBB3_1: # %entry
 ; NOCOMPACTUNWIND-NEXT:    pushq %rax
 ; NOCOMPACTUNWIND-NEXT:    .cfi_def_cfa_offset 16
+; NOCOMPACTUNWIND-NEXT:    testq %rdi, %rdi
+; NOCOMPACTUNWIND-NEXT:    sete %al
+; NOCOMPACTUNWIND-NEXT:    testq %rsi, %rsi
+; NOCOMPACTUNWIND-NEXT:    sete %cl
+; NOCOMPACTUNWIND-NEXT:    orb %al, %cl
 ; NOCOMPACTUNWIND-NEXT:    movq %rdi, %rax
 ; NOCOMPACTUNWIND-NEXT:    orq %rsi, %rax
 ; NOCOMPACTUNWIND-NEXT:    sete %al
-; NOCOMPACTUNWIND-NEXT:    testq %rdi, %rdi
-; NOCOMPACTUNWIND-NEXT:    je .LBB3_5
-; NOCOMPACTUNWIND-NEXT:  # %bb.2: # %entry
-; NOCOMPACTUNWIND-NEXT:    testq %rsi, %rsi
-; NOCOMPACTUNWIND-NEXT:    je .LBB3_5
-; NOCOMPACTUNWIND-NEXT:  # %bb.3: # %if.end4.i
+; NOCOMPACTUNWIND-NEXT:    testb %cl, %cl
+; NOCOMPACTUNWIND-NEXT:    jne .LBB3_4
+; NOCOMPACTUNWIND-NEXT:  # %bb.2: # %if.end4.i
 ; NOCOMPACTUNWIND-NEXT:    movq 8(%rdi), %rdx
 ; NOCOMPACTUNWIND-NEXT:    cmpq 8(%rsi), %rdx
-; NOCOMPACTUNWIND-NEXT:    jne .LBB3_6
-; NOCOMPACTUNWIND-NEXT:  # %bb.4: # %land.rhs.i.i
+; NOCOMPACTUNWIND-NEXT:    jne .LBB3_5
+; NOCOMPACTUNWIND-NEXT:  # %bb.3: # %land.rhs.i.i
 ; NOCOMPACTUNWIND-NEXT:    movq (%rsi), %rsi
 ; NOCOMPACTUNWIND-NEXT:    movq (%rdi), %rdi
 ; NOCOMPACTUNWIND-NEXT:    callq memcmp@PLT
 ; NOCOMPACTUNWIND-NEXT:    testl %eax, %eax
 ; NOCOMPACTUNWIND-NEXT:    sete %al
-; NOCOMPACTUNWIND-NEXT:  .LBB3_5: # %__go_ptr_strings_equal.exit
+; NOCOMPACTUNWIND-NEXT:  .LBB3_4: # %__go_ptr_strings_equal.exit
 ; NOCOMPACTUNWIND-NEXT:    # kill: def $al killed $al killed $eax
 ; NOCOMPACTUNWIND-NEXT:    popq %rcx
 ; NOCOMPACTUNWIND-NEXT:    .cfi_def_cfa_offset 8
 ; NOCOMPACTUNWIND-NEXT:    retq
-; NOCOMPACTUNWIND-NEXT:  .LBB3_6:
+; NOCOMPACTUNWIND-NEXT:  .LBB3_5:
 ; NOCOMPACTUNWIND-NEXT:    .cfi_def_cfa_offset 16
 ; NOCOMPACTUNWIND-NEXT:    xorl %eax, %eax
 ; NOCOMPACTUNWIND-NEXT:    # kill: def $al killed $al killed $eax
 ; NOCOMPACTUNWIND-NEXT:    popq %rcx
 ; NOCOMPACTUNWIND-NEXT:    .cfi_def_cfa_offset 8
 ; NOCOMPACTUNWIND-NEXT:    retq
-; NOCOMPACTUNWIND-NEXT:  .LBB3_7:
+; NOCOMPACTUNWIND-NEXT:  .LBB3_6:
 ; NOCOMPACTUNWIND-NEXT:    movl $8, %r10d
 ; NOCOMPACTUNWIND-NEXT:    movl $0, %r11d
 ; NOCOMPACTUNWIND-NEXT:    callq __morestack
 ; NOCOMPACTUNWIND-NEXT:    retq
 ; NOCOMPACTUNWIND-NEXT:    jmp .LBB3_1
 entry:
-  %cmp.i = icmp eq i8* %vk1, null
-  %cmp1.i = icmp eq i8* %vk2, null
+  %cmp.i = icmp eq ptr %vk1, null
+  %cmp1.i = icmp eq ptr %vk2, null
   %brmerge.i = or i1 %cmp.i, %cmp1.i
   %cmp1.mux.i = and i1 %cmp.i, %cmp1.i
   br i1 %brmerge.i, label %__go_ptr_strings_equal.exit, label %if.end4.i
 
 if.end4.i:                                        ; preds = %entry
-  %tmp = getelementptr inbounds i8, i8* %vk1, i64 8
-  %tmp1 = bitcast i8* %tmp to i64*
-  %tmp2 = load i64, i64* %tmp1, align 8
-  %tmp3 = getelementptr inbounds i8, i8* %vk2, i64 8
-  %tmp4 = bitcast i8* %tmp3 to i64*
-  %tmp5 = load i64, i64* %tmp4, align 8
+  %tmp = getelementptr inbounds i8, ptr %vk1, i64 8
+  %tmp2 = load i64, ptr %tmp, align 8
+  %tmp3 = getelementptr inbounds i8, ptr %vk2, i64 8
+  %tmp5 = load i64, ptr %tmp3, align 8
   %cmp.i.i = icmp eq i64 %tmp2, %tmp5
   br i1 %cmp.i.i, label %land.rhs.i.i, label %__go_ptr_strings_equal.exit
 
 land.rhs.i.i:                                     ; preds = %if.end4.i
-  %tmp6 = bitcast i8* %vk2 to i8**
-  %tmp7 = load i8*, i8** %tmp6, align 8
-  %tmp8 = bitcast i8* %vk1 to i8**
-  %tmp9 = load i8*, i8** %tmp8, align 8
-  %call.i.i = tail call i32 @memcmp(i8* %tmp9, i8* %tmp7, i64 %tmp2) #5
+  %tmp7 = load ptr, ptr %vk2, align 8
+  %tmp9 = load ptr, ptr %vk1, align 8
+  %call.i.i = tail call i32 @memcmp(ptr %tmp9, ptr %tmp7, i64 %tmp2) #5
   %cmp4.i.i = icmp eq i32 %call.i.i, 0
   br label %__go_ptr_strings_equal.exit
 
@@ -294,7 +294,7 @@ __go_ptr_strings_equal.exit:                      ; preds = %land.rhs.i.i, %if.e
 }
 
 ; Function Attrs: nounwind readonly
-declare i32 @memcmp(i8* nocapture, i8* nocapture, i64) #5
+declare i32 @memcmp(ptr nocapture, ptr nocapture, i64) #5
 
 attributes #5 = { nounwind readonly ssp uwtable "split-stack" }
 
@@ -360,8 +360,8 @@ unreachable:
   unreachable
 
 landing:
-  %pad = landingpad { i8*, i32 }
-          catch i8* null
+  %pad = landingpad { ptr, i32 }
+          catch ptr null
   ret void
 
 return:
@@ -423,8 +423,8 @@ throw:
   invoke void @throw_exception()
           to label %fallthrough unwind label %landing
 landing:
-  %pad = landingpad { i8*, i32 }
-          catch i8* null
+  %pad = landingpad { ptr, i32 }
+          catch ptr null
   br label %fallthrough
 
 fallthrough:

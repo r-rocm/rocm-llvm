@@ -60,6 +60,7 @@ FunctionPass *createAMDGPUReserveWWMRegsPass();
 FunctionPass *createAMDGPURewriteOutArgumentsPass();
 ModulePass *
 createAMDGPULowerModuleLDSLegacyPass(const AMDGPUTargetMachine *TM = nullptr);
+ModulePass *createAMDGPULowerBufferFatPointersPass();
 FunctionPass *createSIModeRegisterPass();
 FunctionPass *createGCNPreRAOptimizationsPass();
 
@@ -81,7 +82,7 @@ struct AMDGPUUseNativeCallsPass : PassInfoMixin<AMDGPUUseNativeCallsPass> {
   PreservedAnalyses run(Function &F, FunctionAnalysisManager &AM);
 };
 
-void initializeAMDGPUDAGToDAGISelPass(PassRegistry&);
+void initializeAMDGPUDAGToDAGISelLegacyPass(PassRegistry &);
 
 void initializeAMDGPUMachineCFGStructurizerPass(PassRegistry&);
 extern char &AMDGPUMachineCFGStructurizerID;
@@ -135,6 +136,18 @@ struct AMDGPULowerModuleLDSPass : PassInfoMixin<AMDGPULowerModuleLDSPass> {
   AMDGPULowerModuleLDSPass(const AMDGPUTargetMachine &TM_) : TM(TM_) {}
 
   PreservedAnalyses run(Module &M, ModuleAnalysisManager &AM);
+};
+
+void initializeAMDGPULowerBufferFatPointersPass(PassRegistry &);
+extern char &AMDGPULowerBufferFatPointersID;
+
+struct AMDGPULowerBufferFatPointersPass
+    : PassInfoMixin<AMDGPULowerBufferFatPointersPass> {
+  AMDGPULowerBufferFatPointersPass(const TargetMachine &TM) : TM(TM) {}
+  PreservedAnalyses run(Module &M, ModuleAnalysisManager &AM);
+
+private:
+  const TargetMachine &TM;
 };
 
 void initializeAMDGPUReserveWWMRegsPass(PassRegistry &);
@@ -252,6 +265,17 @@ struct AMDGPUAlwaysInlinePass : PassInfoMixin<AMDGPUAlwaysInlinePass> {
 
 private:
   bool GlobalOpt;
+};
+
+void initializeAMDGPUSwLowerLDSLegacyPass(PassRegistry &);
+extern char &AMDGPUSwLowerLDSLegacyPassID;
+ModulePass *
+createAMDGPUSwLowerLDSLegacyPass(const AMDGPUTargetMachine *TM = nullptr);
+
+struct AMDGPUSwLowerLDSPass : PassInfoMixin<AMDGPUSwLowerLDSPass> {
+  const AMDGPUTargetMachine &TM;
+  AMDGPUSwLowerLDSPass(const AMDGPUTargetMachine &TM_) : TM(TM_) {}
+  PreservedAnalyses run(Module &M, ModuleAnalysisManager &AM);
 };
 
 class AMDGPUCodeGenPreparePass
@@ -396,6 +420,9 @@ void initializeAMDGPUSetWavePriorityPass(PassRegistry &);
 
 void initializeGCNRewritePartialRegUsesPass(llvm::PassRegistry &);
 extern char &GCNRewritePartialRegUsesID;
+
+void initializeAMDGPUWaitSGPRHazardsLegacyPass(PassRegistry &);
+extern char &AMDGPUWaitSGPRHazardsLegacyID;
 
 namespace AMDGPU {
 enum TargetIndex {

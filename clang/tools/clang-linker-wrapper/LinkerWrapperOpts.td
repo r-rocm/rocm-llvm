@@ -74,6 +74,10 @@ def wrapper_jobs : Joined<["--"], "wrapper-jobs=">,
   Flags<[WrapperOnlyOption]>, MetaVarName<"<number>">,
   HelpText<"Sets the number of parallel jobs to use for device linking">;
 
+def override_image : Joined<["--"], "override-image=">,
+  Flags<[WrapperOnlyOption]>, MetaVarName<"<kind=file>">,
+  HelpText<"Uses the provided file as if it were the output of the device link step">;
+
 // Flags passed to the device linker.
 def arch_EQ : Joined<["--"], "arch=">,
   Flags<[DeviceOnlyOption, HelpHidden]>, MetaVarName<"<arch>">,
@@ -88,15 +92,15 @@ def linker_arg_EQ : Joined<["--"], "linker-arg=">,
   Flags<[DeviceOnlyOption, HelpHidden]>,
   HelpText<"An extra argument to be passed to the linker">;
 
-// Separator between the linker wrapper and host linker flags.
-def separator : Flag<["--"], "">, Flags<[WrapperOnlyOption]>,
-  HelpText<"The separator for the wrapped linker arguments">;
-
 // Arguments for the LLVM backend.
 def mllvm : Separate<["-"], "mllvm">, Flags<[WrapperOnlyOption]>,
-  MetaVarName<"<arg>">, HelpText<"Arguments passed to the LLVM invocation">;
+  MetaVarName<"<arg>">,
+  HelpText<"Arguments passed to LLVM, including Clang invocations, for which "
+           "the '-mllvm' prefix is preserved. Use '-mllvm --help' for a list "
+           "of options.">;
 def offload_opt_eq_minus : Joined<["--", "-"], "offload-opt=-">, Flags<[HelpHidden, WrapperOnlyOption]>,
-  HelpText<"Options passed to LLVM">;
+  HelpText<"Options passed to LLVM, not including the Clang invocation. Use "
+           "'--offload-opt=--help' for a list of options.">;
 
 // Standard linker flags also used by the linker wrapper.
 def sysroot_EQ : Joined<["--"], "sysroot=">, HelpText<"Set the system root">;
@@ -130,6 +134,10 @@ def version : Flag<["--", "-"], "version">, Flags<[HelpHidden]>, Alias<v>;
 
 def whole_archive : Flag<["--", "-"], "whole-archive">, Flags<[HelpHidden]>;
 def no_whole_archive : Flag<["--", "-"], "no-whole-archive">, Flags<[HelpHidden]>;
+
+def relocatable : Flag<["--", "-"], "relocatable">, 
+    HelpText<"Link device code to create a relocatable offloading application">;
+def r : Flag<["-"], "r">, Alias<relocatable>;
 
 // link.exe-style linker options.
 def out : Joined<["/", "-", "/?", "-?"], "out:">, Flags<[HelpHidden]>;

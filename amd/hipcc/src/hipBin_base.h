@@ -51,10 +51,7 @@ THE SOFTWARE.
 # define HIPCC_VERBOSE                  "HIPCC_VERBOSE"
 # define HCC_AMDGPU_TARGET              "HCC_AMDGPU_TARGET"
 
-# define HIP_BASE_VERSION_MAJOR     "6"
-# define HIP_BASE_VERSION_MINOR     "2"
-# define HIP_BASE_VERSION_PATCH     "0"
-# define HIP_BASE_VERSION_GITHASH   "0"
+# define HIP_BASE_VERSION_DEFAULT     "9999"
 
 enum PlatformType {
   amd = 0,
@@ -239,12 +236,14 @@ class HipBinBase {
   bool canRunCompiler(string exeName, string& cmdOut);
   HipBinCommand gethipconfigCmd(string argument);
   const string& getrocm_pathOption() const;
+  const string& gethip_pathOption() const;
 
  protected:
   // hipBinUtilPtr used by derived platforms
   // so therefore its protected
   HipBinUtil* hipBinUtilPtr_;
   string rocm_pathOption_ = "";
+  string hip_pathOption_ = "";
   void readOSInfo();
   void readEnvVariables();
   void constructHipPath();
@@ -320,11 +319,16 @@ void HipBinBase::readEnvVariables() {
 
 // constructs the HIP path
 void HipBinBase::constructHipPath() {
-  fs::path full_path(hipBinUtilPtr_->getSelfPath());
-  if (envVariables_.hipPathEnv_.empty())
+  // we need to use --hip-path option
+  string hip_path_name = gethip_pathOption();
+  if (!hip_path_name.empty()) {
+    variables_.hipPathEnv_ = hip_path_name;
+  } else if (envVariables_.hipPathEnv_.empty()) {
+    fs::path full_path(hipBinUtilPtr_->getSelfPath());
     variables_.hipPathEnv_ = (full_path.parent_path()).string();
-  else
+  } else {
     variables_.hipPathEnv_ = envVariables_.hipPathEnv_;
+  }
 }
 
 
@@ -337,14 +341,7 @@ void HipBinBase::constructRoccmPath() {
   if (!rocm_path_name.empty())
     variables_.roccmPathEnv_ = rocm_path_name;
   else if (envVariables_.roccmPathEnv_.empty()) {
-    const string& hipPath = getHipPath();
-    fs::path roccm_path(hipPath);
-    fs::path rocm_agent_enumerator_file(roccm_path);
-    rocm_agent_enumerator_file /= "bin/rocm_agent_enumerator";
-    if (!fs::exists(rocm_agent_enumerator_file)) {
-      roccm_path = "/opt/rocm";
-    }
-    variables_.roccmPathEnv_ = roccm_path.string();
+    variables_.roccmPathEnv_ = getHipPath();
   } else {
     variables_.roccmPathEnv_ = envVariables_.roccmPathEnv_;}
 }
@@ -361,23 +358,29 @@ void HipBinBase::readHipVersion() {
     hipVersionPath /= "share/hip/version";
   map<string, string> hipVersionMap;
   hipVersionMap = hipBinUtilPtr_->parseConfigFile(hipVersionPath);
-  string hip_version_major, hip_version_minor,
-         hip_version_patch, hip_version_githash;
-  hip_version_major = hipBinUtilPtr_->readConfigMap(
-                      hipVersionMap, "HIP_VERSION_MAJOR",
-                      HIP_BASE_VERSION_MAJOR);
-  hip_version_minor = hipBinUtilPtr_->readConfigMap(
-                      hipVersionMap, "HIP_VERSION_MINOR",
-                      HIP_BASE_VERSION_MINOR);
-  hip_version_patch = hipBinUtilPtr_->readConfigMap(
-                      hipVersionMap, "HIP_VERSION_PATCH",
-                      HIP_BASE_VERSION_PATCH);
-  hip_version_githash = hipBinUtilPtr_->readConfigMap(
-                      hipVersionMap, "HIP_VERSION_GITHASH",
-                      HIP_BASE_VERSION_GITHASH);
-  hipVersion = hip_version_major + "." + hip_version_minor +
-               "." + hip_version_patch  + "-" + hip_version_githash;
-  hipVersion_ = hipVersion;
+
+  if (hipVersionMap.empty()) {
+    std::cerr << "Warning: HIP version file: " << hipVersionPath << " not found.  Cannot give HIP version information." << endl;
+    return;
+  } else {
+    string hip_version_major, hip_version_minor,
+           hip_version_patch, hip_version_githash;
+    hip_version_major = hipBinUtilPtr_->readConfigMap(
+                        hipVersionMap, "HIP_VERSION_MAJOR",
+                        HIP_BASE_VERSION_DEFAULT);
+    hip_version_minor = hipBinUtilPtr_->readConfigMap(
+                        hipVersionMap, "HIP_VERSION_MINOR",
+                        HIP_BASE_VERSION_DEFAULT);
+    hip_version_patch = hipBinUtilPtr_->readConfigMap(
+                        hipVersionMap, "HIP_VERSION_PATCH",
+                        HIP_BASE_VERSION_DEFAULT);
+    hip_version_githash = hipBinUtilPtr_->readConfigMap(
+                        hipVersionMap, "HIP_VERSION_GITHASH",
+                        HIP_BASE_VERSION_DEFAULT);
+    hipVersion = hip_version_major + "." + hip_version_minor +
+                 "." + hip_version_patch  + "-" + hip_version_githash;
+    hipVersion_ = hipVersion;
+  }
 }
 
 // prints system information
@@ -531,6 +534,10 @@ HipBinCommand HipBinBase::gethipconfigCmd(string argument) {
 
 const  string& HipBinBase::getrocm_pathOption() const {
   return rocm_pathOption_;
+}
+
+const  string& HipBinBase::gethip_pathOption() const {
+  return hip_pathOption_;
 }
 
 #endif  // SRC_HIPBIN_BASE_H_

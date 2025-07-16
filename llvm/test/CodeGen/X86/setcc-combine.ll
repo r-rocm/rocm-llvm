@@ -240,7 +240,7 @@ define i32 @test_gt_2(<4 x i32> %A, <4 x i32> %B) {
 
 ; (and (setne X, 0), (setne X, -1)) --> (setuge (add X, 1), 2)
 ; Don't combine with i1 - out of range constant
-define void @test_i1_uge(i1 *%A2) {
+define void @test_i1_uge(ptr%A2) {
 ; CHECK-LABEL: test_i1_uge:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    movzbl (%rdi), %eax
@@ -248,12 +248,12 @@ define void @test_i1_uge(i1 *%A2) {
 ; CHECK-NEXT:    andb $1, %al
 ; CHECK-NEXT:    movb %al, (%rdi)
 ; CHECK-NEXT:    retq
-  %L5 = load i1, i1* %A2
+  %L5 = load i1, ptr %A2
   %C3 = icmp ne i1 %L5, true
   %C8 = icmp eq i1 %L5, false
   %C9 = icmp ugt i1 %C3, %C8
-  %G3 = getelementptr i1, i1* %A2, i1 %C9
-  store i1 %C3, i1* %G3
+  %G3 = getelementptr i1, ptr %A2, i1 %C9
+  store i1 %C3, ptr %G3
   ret void
 }
 
@@ -488,7 +488,7 @@ define double @ogt_no_zero(double %x) {
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    movapd {{.*#+}} xmm1 = [-0.0E+0,-0.0E+0]
 ; CHECK-NEXT:    xorpd %xmm0, %xmm1
-; CHECK-NEXT:    movsd {{.*#+}} xmm2 = mem[0],zero
+; CHECK-NEXT:    movsd {{.*#+}} xmm2 = [1.0E+0,0.0E+0]
 ; CHECK-NEXT:    cmpltsd %xmm0, %xmm2
 ; CHECK-NEXT:    andpd %xmm2, %xmm0
 ; CHECK-NEXT:    andnpd %xmm1, %xmm2
