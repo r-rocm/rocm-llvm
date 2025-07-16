@@ -1,4 +1,3 @@
-; XFAIL: *
 ; RUN: llc -mtriple=amdgcn -verify-machineinstrs < %s | FileCheck --check-prefix=CHECK %s
 ; RUN: llc -mtriple=amdgcn -mcpu=tonga -mattr=-flat-for-global -verify-machineinstrs < %s | FileCheck  --check-prefix=CHECK %s
 
@@ -313,5 +312,23 @@ exit:
   %v1 = extractvalue { i64, i64 } %s1, 1
   tail call void asm sideeffect "; use $0", "v"(i64 %v0)
   tail call void asm sideeffect "; use $0", "v"(i64 %v1)
+  ret void
+}
+
+; CHECK-LABEL: {{^}}scc_as_i32:
+; CHECK: ; def scc
+; CHECK: ; use scc
+define void @scc_as_i32() {
+  %scc = call i32 asm sideeffect "; def $0", "={scc}"()
+  call void asm sideeffect "; use $0 ", "{scc}"(i32 %scc)
+  ret void
+}
+
+; CHECK-LABEL: {{^}}scc_as_i1:
+; CHECK: ; def scc
+; CHECK: ; use scc
+define void @scc_as_i1() {
+  %scc = call i1 asm sideeffect "; def $0", "={scc}"()
+  call void asm sideeffect "; use $0 ", "{scc}"(i1 %scc)
   ret void
 }

@@ -18,11 +18,11 @@ define i32 @divergent_lshr_and_cmp(i32 %x) {
   ; GCN-NEXT: {{  $}}
   ; GCN-NEXT:   [[S_MOV_B32_:%[0-9]+]]:sreg_32 = S_MOV_B32 2
   ; GCN-NEXT:   [[V_LSHLREV_B32_e64_:%[0-9]+]]:vgpr_32 = V_LSHLREV_B32_e64 killed [[S_MOV_B32_]], [[COPY]], implicit $exec
-  ; GCN-NEXT:   SI_WAVE_RECONVERGE [[SI_IF]], implicit-def dead $exec, implicit-def dead $scc, implicit $exec
   ; GCN-NEXT:   S_BRANCH %bb.2
   ; GCN-NEXT: {{  $}}
   ; GCN-NEXT: bb.2.UnifiedReturnBlock:
   ; GCN-NEXT:   [[PHI:%[0-9]+]]:vgpr_32 = PHI [[COPY]], %bb.0, [[V_LSHLREV_B32_e64_]], %bb.1
+  ; GCN-NEXT:   SI_END_CF [[SI_IF]], implicit-def dead $exec, implicit-def dead $scc, implicit $exec
   ; GCN-NEXT:   $vgpr0 = COPY [[PHI]]
   ; GCN-NEXT:   SI_RETURN implicit $vgpr0
 entry:
@@ -96,4 +96,4 @@ out.else:
 }
 
 !llvm.module.flags = !{!0}
-!0 = !{i32 1, !"amdgpu_code_object_version", i32 500}
+!0 = !{i32 1, !"amdhsa_code_object_version", i32 500}

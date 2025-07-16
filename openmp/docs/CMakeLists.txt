@@ -78,6 +78,7 @@ if (LLVM_ENABLE_DOXYGEN)
     COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/doxygen.cfg
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     COMMENT "Generating openmp doxygen documentation." VERBATIM)
+  set_target_properties(doxygen-openmp PROPERTIES FOLDER "OpenMP/Docs")
 
   if (LLVM_BUILD_DOCS)
     add_dependencies(doxygen doxygen-openmp)
@@ -85,7 +86,7 @@ if (LLVM_ENABLE_DOXYGEN)
 
   if (NOT LLVM_INSTALL_TOOLCHAIN_ONLY)
     install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/doxygen/html
-      DESTINATION ${DEVEL_PACKAGE}docs/html)
+      DESTINATION docs/html)
   endif()
 endif()
 endif()

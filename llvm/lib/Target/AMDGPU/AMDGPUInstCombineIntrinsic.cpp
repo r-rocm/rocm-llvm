@@ -343,13 +343,9 @@ bool GCNTTIImpl::canSimplifyLegacyMulToMul(const Instruction &I,
     return true;
   }
 
-  auto *TLI = &IC.getTargetLibraryInfo();
-  if (isKnownNeverInfOrNaN(Op0, IC.getDataLayout(), TLI, 0,
-                           &IC.getAssumptionCache(), &I,
-                           &IC.getDominatorTree()) &&
-      isKnownNeverInfOrNaN(Op1, IC.getDataLayout(), TLI, 0,
-                           &IC.getAssumptionCache(), &I,
-                           &IC.getDominatorTree())) {
+  SimplifyQuery SQ = IC.getSimplifyQuery().getWithInstruction(&I);
+  if (isKnownNeverInfOrNaN(Op0, /*Depth=*/0, SQ) &&
+      isKnownNeverInfOrNaN(Op1, /*Depth=*/0, SQ)) {
     // Neither operand is infinity or NaN.
     return true;
   }
@@ -771,19 +767,21 @@ GCNTTIImpl::instCombineIntrinsic(InstCombiner &IC, IntrinsicInst &II) const {
     // Checking for NaN before canonicalization provides better fidelity when
     // mapping other operations onto fmed3 since the order of operands is
     // unchanged.
-    CallInst *NewCall = nullptr;
+    Value *V = nullptr;
     if (match(Src0, PatternMatch::m_NaN()) || isa<UndefValue>(Src0)) {
-      NewCall = IC.Builder.CreateMinNum(Src1, Src2);
+      V = IC.Builder.CreateMinNum(Src1, Src2);
     } else if (match(Src1, PatternMatch::m_NaN()) || isa<UndefValue>(Src1)) {
-      NewCall = IC.Builder.CreateMinNum(Src0, Src2);
+      V = IC.Builder.CreateMinNum(Src0, Src2);
     } else if (match(Src2, PatternMatch::m_NaN()) || isa<UndefValue>(Src2)) {
-      NewCall = IC.Builder.CreateMaxNum(Src0, Src1);
+      V = IC.Builder.CreateMaxNum(Src0, Src1);
     }
 
-    if (NewCall) {
-      NewCall->copyFastMathFlags(&II);
-      NewCall->takeName(&II);
-      return IC.replaceInstUsesWith(II, NewCall);
+    if (V) {
+      if (auto *CI = dyn_cast<CallInst>(V)) {
+        CI->copyFastMathFlags(&II);
+        CI->takeName(&II);
+      }
+      return IC.replaceInstUsesWith(II, V);
     }
 
     bool Swap = false;
@@ -856,8 +854,9 @@ GCNTTIImpl::instCombineIntrinsic(InstCombiner &IC, IntrinsicInst &II) const {
 
     if (auto *CSrc0 = dyn_cast<Constant>(Src0)) {
       if (auto *CSrc1 = dyn_cast<Constant>(Src1)) {
-        Constant *CCmp = ConstantExpr::getCompare(CCVal, CSrc0, CSrc1);
-        if (CCmp->isNullValue()) {
+        Constant *CCmp = ConstantFoldCompareInstOperands(
+            (ICmpInst::Predicate)CCVal, CSrc0, CSrc1, DL);
+        if (CCmp && CCmp->isNullValue()) {
           return IC.replaceInstUsesWith(
               II, IC.Builder.CreateSExt(CCmp, II.getType()));
         }
@@ -950,7 +949,7 @@ GCNTTIImpl::instCombineIntrinsic(InstCombiner &IC, IntrinsicInst &II) const {
           NewWidth = 32;
         else if (Width <= 64)
           NewWidth = 64;
-        else if (Width > 64)
+        else
           break; // Can't handle this.
 
         if (Width != NewWidth) {
@@ -1004,6 +1003,13 @@ GCNTTIImpl::instCombineIntrinsic(InstCombiner &IC, IntrinsicInst &II) const {
       return IC.replaceInstUsesWith(II, Call);
     }
     break;
+  }
+  case Intrinsic::amdgcn_wavefrontsize: {
+    if ((ST->getCPU().empty() || ST->getCPU().starts_with("generic")) &&
+        !ST->getFeatureString().contains("+wavefrontsize"))
+      break;
+    return IC.replaceInstUsesWith(
+        II, ConstantInt::get(II.getType(), ST->getWavefrontSize()));
   }
   case Intrinsic::amdgcn_wqm_vote: {
     // wqm_vote is identity when the argument is constant.
@@ -1103,6 +1109,78 @@ GCNTTIImpl::instCombineIntrinsic(InstCombiner &IC, IntrinsicInst &II) const {
 
     break;
   }
+  case Intrinsic::amdgcn_trig_preop: {
+    // The intrinsic is declared with name mangling, but currently the
+    // instruction only exists for f64
+    if (!II.getType()->isDoubleTy())
+      break;
+
+    Value *Src = II.getArgOperand(0);
+    Value *Segment = II.getArgOperand(1);
+    if (isa<PoisonValue>(Src) || isa<PoisonValue>(Segment))
+      return IC.replaceInstUsesWith(II, PoisonValue::get(II.getType()));
+
+    if (isa<UndefValue>(Src)) {
+      auto *QNaN = ConstantFP::get(
+          II.getType(), APFloat::getQNaN(II.getType()->getFltSemantics()));
+      return IC.replaceInstUsesWith(II, QNaN);
+    }
+
+    const ConstantFP *Csrc = dyn_cast<ConstantFP>(Src);
+    if (!Csrc)
+      break;
+
+    if (II.isStrictFP())
+      break;
+
+    const APFloat &Fsrc = Csrc->getValueAPF();
+    if (Fsrc.isNaN()) {
+      auto *Quieted = ConstantFP::get(II.getType(), Fsrc.makeQuiet());
+      return IC.replaceInstUsesWith(II, Quieted);
+    }
+
+    const ConstantInt *Cseg = dyn_cast<ConstantInt>(Segment);
+    if (!Cseg)
+      break;
+
+    unsigned Exponent = (Fsrc.bitcastToAPInt().getZExtValue() >> 52) & 0x7ff;
+    unsigned SegmentVal = Cseg->getValue().trunc(5).getZExtValue();
+    unsigned Shift = SegmentVal * 53;
+    if (Exponent > 1077)
+      Shift += Exponent - 1077;
+
+    // 2.0/PI table.
+    static const uint32_t TwoByPi[] = {
+        0xa2f9836e, 0x4e441529, 0xfc2757d1, 0xf534ddc0, 0xdb629599, 0x3c439041,
+        0xfe5163ab, 0xdebbc561, 0xb7246e3a, 0x424dd2e0, 0x06492eea, 0x09d1921c,
+        0xfe1deb1c, 0xb129a73e, 0xe88235f5, 0x2ebb4484, 0xe99c7026, 0xb45f7e41,
+        0x3991d639, 0x835339f4, 0x9c845f8b, 0xbdf9283b, 0x1ff897ff, 0xde05980f,
+        0xef2f118b, 0x5a0a6d1f, 0x6d367ecf, 0x27cb09b7, 0x4f463f66, 0x9e5fea2d,
+        0x7527bac7, 0xebe5f17b, 0x3d0739f7, 0x8a5292ea, 0x6bfb5fb1, 0x1f8d5d08,
+        0x56033046};
+
+    // Return 0 for outbound segment (hardware behavior).
+    unsigned Idx = Shift >> 5;
+    if (Idx + 2 >= std::size(TwoByPi)) {
+      APFloat Zero = APFloat::getZero(II.getType()->getFltSemantics());
+      return IC.replaceInstUsesWith(II, ConstantFP::get(II.getType(), Zero));
+    }
+
+    unsigned BShift = Shift & 0x1f;
+    uint64_t Thi = Make_64(TwoByPi[Idx], TwoByPi[Idx + 1]);
+    uint64_t Tlo = Make_64(TwoByPi[Idx + 2], 0);
+    if (BShift)
+      Thi = (Thi << BShift) | (Tlo >> (64 - BShift));
+    Thi = Thi >> 11;
+    APFloat Result = APFloat((double)Thi);
+
+    int Scale = -53 - Shift;
+    if (Exponent >= 1968)
+      Scale += 128;
+
+    Result = scalbn(Result, Scale, RoundingMode::NearestTiesToEven);
+    return IC.replaceInstUsesWith(II, ConstantFP::get(Src->getType(), Result));
+  }
   case Intrinsic::amdgcn_fmul_legacy: {
     Value *Op0 = II.getArgOperand(0);
     Value *Op1 = II.getArgOperand(1);
@@ -1197,6 +1275,69 @@ GCNTTIImpl::instCombineIntrinsic(InstCombiner &IC, IntrinsicInst &II) const {
     }
 
     break;
+  }
+  case Intrinsic::amdgcn_prng_b32: {
+    auto *Src = II.getArgOperand(0);
+    if (isa<UndefValue>(Src)) {
+      return IC.replaceInstUsesWith(II, Src);
+    }
+    return std::nullopt;
+  }
+  case Intrinsic::amdgcn_mfma_scale_f32_16x16x128_f8f6f4:
+  case Intrinsic::amdgcn_mfma_scale_f32_32x32x64_f8f6f4: {
+    Value *Src0 = II.getArgOperand(0);
+    Value *Src1 = II.getArgOperand(1);
+    uint64_t CBSZ = cast<ConstantInt>(II.getArgOperand(3))->getZExtValue();
+    uint64_t BLGP = cast<ConstantInt>(II.getArgOperand(4))->getZExtValue();
+    auto *Src0Ty = cast<FixedVectorType>(Src0->getType());
+    auto *Src1Ty = cast<FixedVectorType>(Src1->getType());
+
+    auto getFormatNumRegs = [](unsigned FormatVal) {
+      switch (FormatVal) {
+      case AMDGPU::MFMAScaleFormats::FP6_E2M3:
+      case AMDGPU::MFMAScaleFormats::FP6_E3M2:
+        return 6u;
+      case AMDGPU::MFMAScaleFormats::FP4_E2M1:
+        return 4u;
+      case AMDGPU::MFMAScaleFormats::FP8_E4M3:
+      case AMDGPU::MFMAScaleFormats::FP8_E5M2:
+        return 8u;
+      default:
+        llvm_unreachable("invalid format value");
+      }
+    };
+
+    bool MadeChange = false;
+    unsigned Src0NumElts = getFormatNumRegs(CBSZ);
+    unsigned Src1NumElts = getFormatNumRegs(BLGP);
+
+    // Depending on the used format, fewer registers are required so shrink the
+    // vector type.
+    if (Src0Ty->getNumElements() > Src0NumElts) {
+      Src0 = IC.Builder.CreateExtractVector(
+          FixedVectorType::get(Src0Ty->getElementType(), Src0NumElts), Src0,
+          IC.Builder.getInt64(0));
+      MadeChange = true;
+    }
+
+    if (Src1Ty->getNumElements() > Src1NumElts) {
+      Src1 = IC.Builder.CreateExtractVector(
+          FixedVectorType::get(Src0Ty->getElementType(), Src1NumElts), Src1,
+          IC.Builder.getInt64(0));
+      MadeChange = true;
+    }
+
+    if (!MadeChange)
+      return std::nullopt;
+
+    SmallVector<Value *, 10> Args(II.args());
+    Args[0] = Src0;
+    Args[1] = Src1;
+
+    CallInst *NewII = IC.Builder.CreateIntrinsic(
+        IID, {Src0->getType(), Src1->getType()}, Args, &II);
+    NewII->takeName(&II);
+    return IC.replaceInstUsesWith(II, NewII);
   }
   }
   if (const AMDGPU::ImageDimIntrinsicInfo *ImageDimIntr =

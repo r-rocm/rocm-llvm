@@ -58,16 +58,17 @@ define amdgpu_kernel void @flat_atomic_fadd_f32_noret_pat(ptr %ptr) {
 ; GFX12-NEXT:    ; =>This Inner Loop Header: Depth=1
 ; GFX12-NEXT:    s_wait_loadcnt_dscnt 0x0
 ; GFX12-NEXT:    v_add_f32_e32 v2, 4.0, v3
-; GFX12-NEXT:    flat_atomic_cmpswap_b32 v2, v[0:1], v[2:3] th:TH_ATOMIC_RETURN
+; GFX12-NEXT:    global_wb scope:SCOPE_SYS
+; GFX12-NEXT:    flat_atomic_cmpswap_b32 v2, v[0:1], v[2:3] th:TH_ATOMIC_RETURN scope:SCOPE_SYS
 ; GFX12-NEXT:    s_wait_loadcnt_dscnt 0x0
 ; GFX12-NEXT:    global_inv scope:SCOPE_SYS
 ; GFX12-NEXT:    v_cmp_eq_u32_e32 vcc_lo, v2, v3
 ; GFX12-NEXT:    v_mov_b32_e32 v3, v2
+; GFX12-NEXT:    s_wait_alu 0xfffe
 ; GFX12-NEXT:    s_or_b32 s0, vcc_lo, s0
-; GFX12-NEXT:    s_delay_alu instid0(SALU_CYCLE_1) | instskip(NEXT) | instid1(SALU_CYCLE_1)
-; GFX12-NEXT:    s_and_not1_b32 s1, exec_lo, s0
-; GFX12-NEXT:    s_cselect_b32 exec_lo, s1, s0
-; GFX12-NEXT:    s_cbranch_scc1 .LBB1_1
+; GFX12-NEXT:    s_wait_alu 0xfffe
+; GFX12-NEXT:    s_and_not1_b32 exec_lo, exec_lo, s0
+; GFX12-NEXT:    s_cbranch_execnz .LBB1_1
 ; GFX12-NEXT:  ; %bb.2: ; %atomicrmw.end
 ; GFX12-NEXT:    s_endpgm
   %ret = atomicrmw fadd ptr %ptr, float 4.0 seq_cst
@@ -98,16 +99,17 @@ define amdgpu_kernel void @flat_atomic_fadd_f32_noret_pat_ieee(ptr %ptr) #0 {
 ; GFX12-NEXT:    ; =>This Inner Loop Header: Depth=1
 ; GFX12-NEXT:    s_wait_loadcnt_dscnt 0x0
 ; GFX12-NEXT:    v_add_f32_e32 v2, 4.0, v3
-; GFX12-NEXT:    flat_atomic_cmpswap_b32 v2, v[0:1], v[2:3] th:TH_ATOMIC_RETURN
+; GFX12-NEXT:    global_wb scope:SCOPE_SYS
+; GFX12-NEXT:    flat_atomic_cmpswap_b32 v2, v[0:1], v[2:3] th:TH_ATOMIC_RETURN scope:SCOPE_SYS
 ; GFX12-NEXT:    s_wait_loadcnt_dscnt 0x0
 ; GFX12-NEXT:    global_inv scope:SCOPE_SYS
 ; GFX12-NEXT:    v_cmp_eq_u32_e32 vcc_lo, v2, v3
 ; GFX12-NEXT:    v_mov_b32_e32 v3, v2
+; GFX12-NEXT:    s_wait_alu 0xfffe
 ; GFX12-NEXT:    s_or_b32 s0, vcc_lo, s0
-; GFX12-NEXT:    s_delay_alu instid0(SALU_CYCLE_1) | instskip(NEXT) | instid1(SALU_CYCLE_1)
-; GFX12-NEXT:    s_and_not1_b32 s1, exec_lo, s0
-; GFX12-NEXT:    s_cselect_b32 exec_lo, s1, s0
-; GFX12-NEXT:    s_cbranch_scc1 .LBB2_1
+; GFX12-NEXT:    s_wait_alu 0xfffe
+; GFX12-NEXT:    s_and_not1_b32 exec_lo, exec_lo, s0
+; GFX12-NEXT:    s_cbranch_execnz .LBB2_1
 ; GFX12-NEXT:  ; %bb.2: ; %atomicrmw.end
 ; GFX12-NEXT:    s_endpgm
   %ret = atomicrmw fadd ptr %ptr, float 4.0 seq_cst
@@ -162,17 +164,19 @@ define float @flat_atomic_fadd_f32_rtn_pat(ptr %ptr, float %data) {
 ; GFX12-NEXT:    v_mov_b32_e32 v3, v2
 ; GFX12-NEXT:    s_delay_alu instid0(VALU_DEP_1)
 ; GFX12-NEXT:    v_add_f32_e32 v2, 4.0, v3
+; GFX12-NEXT:    global_wb scope:SCOPE_SYS
 ; GFX12-NEXT:    s_wait_storecnt 0x0
-; GFX12-NEXT:    flat_atomic_cmpswap_b32 v2, v[0:1], v[2:3] th:TH_ATOMIC_RETURN
+; GFX12-NEXT:    flat_atomic_cmpswap_b32 v2, v[0:1], v[2:3] th:TH_ATOMIC_RETURN scope:SCOPE_SYS
 ; GFX12-NEXT:    s_wait_loadcnt_dscnt 0x0
 ; GFX12-NEXT:    global_inv scope:SCOPE_SYS
 ; GFX12-NEXT:    v_cmp_eq_u32_e32 vcc_lo, v2, v3
+; GFX12-NEXT:    s_wait_alu 0xfffe
 ; GFX12-NEXT:    s_or_b32 s0, vcc_lo, s0
-; GFX12-NEXT:    s_delay_alu instid0(SALU_CYCLE_1) | instskip(NEXT) | instid1(SALU_CYCLE_1)
-; GFX12-NEXT:    s_and_not1_b32 s1, exec_lo, s0
-; GFX12-NEXT:    s_cselect_b32 exec_lo, s1, s0
-; GFX12-NEXT:    s_cbranch_scc1 .LBB4_1
+; GFX12-NEXT:    s_wait_alu 0xfffe
+; GFX12-NEXT:    s_and_not1_b32 exec_lo, exec_lo, s0
+; GFX12-NEXT:    s_cbranch_execnz .LBB4_1
 ; GFX12-NEXT:  ; %bb.2: ; %atomicrmw.end
+; GFX12-NEXT:    s_or_b32 exec_lo, exec_lo, s0
 ; GFX12-NEXT:    v_mov_b32_e32 v0, v2
 ; GFX12-NEXT:    s_setpc_b64 s[30:31]
   %ret = atomicrmw fadd ptr %ptr, float 4.0 seq_cst
@@ -323,6 +327,7 @@ define amdgpu_kernel void @local_atomic_fadd_v2f16_noret(ptr addrspace(3) %ptr, 
 ; GFX940-NEXT:    v_mov_b32_e32 v0, s0
 ; GFX940-NEXT:    v_mov_b32_e32 v1, s1
 ; GFX940-NEXT:    ds_pk_add_f16 v0, v1
+; GFX940-NEXT:    s_waitcnt lgkmcnt(0)
 ; GFX940-NEXT:    s_endpgm
 ;
 ; GFX12-LABEL: local_atomic_fadd_v2f16_noret:
@@ -330,7 +335,10 @@ define amdgpu_kernel void @local_atomic_fadd_v2f16_noret(ptr addrspace(3) %ptr, 
 ; GFX12-NEXT:    s_load_b64 s[0:1], s[0:1], 0x24
 ; GFX12-NEXT:    s_wait_kmcnt 0x0
 ; GFX12-NEXT:    v_dual_mov_b32 v0, s0 :: v_dual_mov_b32 v1, s1
+; GFX12-NEXT:    global_wb scope:SCOPE_SE
 ; GFX12-NEXT:    ds_pk_add_f16 v0, v1
+; GFX12-NEXT:    s_wait_dscnt 0x0
+; GFX12-NEXT:    global_inv scope:SCOPE_SE
 ; GFX12-NEXT:    s_endpgm
   %ret = call <2 x half> @llvm.amdgcn.ds.fadd.v2f16(ptr addrspace(3) %ptr, <2 x half> %data, i32 0, i32 0, i1 0)
   ret void
@@ -351,8 +359,11 @@ define <2 x half> @local_atomic_fadd_v2f16_rtn(ptr addrspace(3) %ptr, <2 x half>
 ; GFX12-NEXT:    s_wait_samplecnt 0x0
 ; GFX12-NEXT:    s_wait_bvhcnt 0x0
 ; GFX12-NEXT:    s_wait_kmcnt 0x0
+; GFX12-NEXT:    global_wb scope:SCOPE_SE
+; GFX12-NEXT:    s_wait_storecnt 0x0
 ; GFX12-NEXT:    ds_pk_add_rtn_f16 v0, v0, v1
 ; GFX12-NEXT:    s_wait_dscnt 0x0
+; GFX12-NEXT:    global_inv scope:SCOPE_SE
 ; GFX12-NEXT:    s_setpc_b64 s[30:31]
   %ret = call <2 x half> @llvm.amdgcn.ds.fadd.v2f16(ptr addrspace(3) %ptr, <2 x half> %data, i32 0, i32 0, i1 0)
   ret <2 x half> %ret
@@ -365,10 +376,8 @@ define amdgpu_kernel void @local_atomic_fadd_v2bf16_noret(ptr addrspace(3) %ptr,
 ; GFX940-NEXT:    s_waitcnt lgkmcnt(0)
 ; GFX940-NEXT:    v_mov_b32_e32 v0, s0
 ; GFX940-NEXT:    v_mov_b32_e32 v1, s1
-; GFX940-NEXT:    buffer_wbl2 sc0 sc1
 ; GFX940-NEXT:    ds_pk_add_bf16 v0, v1
 ; GFX940-NEXT:    s_waitcnt lgkmcnt(0)
-; GFX940-NEXT:    buffer_inv sc0 sc1
 ; GFX940-NEXT:    s_endpgm
 ;
 ; GFX12-LABEL: local_atomic_fadd_v2bf16_noret:
@@ -376,9 +385,10 @@ define amdgpu_kernel void @local_atomic_fadd_v2bf16_noret(ptr addrspace(3) %ptr,
 ; GFX12-NEXT:    s_load_b64 s[0:1], s[0:1], 0x24
 ; GFX12-NEXT:    s_wait_kmcnt 0x0
 ; GFX12-NEXT:    v_dual_mov_b32 v0, s0 :: v_dual_mov_b32 v1, s1
+; GFX12-NEXT:    global_wb scope:SCOPE_SE
 ; GFX12-NEXT:    ds_pk_add_bf16 v0, v1
 ; GFX12-NEXT:    s_wait_dscnt 0x0
-; GFX12-NEXT:    global_inv scope:SCOPE_SYS
+; GFX12-NEXT:    global_inv scope:SCOPE_SE
 ; GFX12-NEXT:    s_endpgm
   %ret = call <2 x i16> @llvm.amdgcn.ds.fadd.v2bf16(ptr addrspace(3) %ptr, <2 x i16> %data)
   ret void
@@ -388,10 +398,8 @@ define <2 x i16> @local_atomic_fadd_v2bf16_rtn(ptr addrspace(3) %ptr, <2 x i16> 
 ; GFX940-LABEL: local_atomic_fadd_v2bf16_rtn:
 ; GFX940:       ; %bb.0:
 ; GFX940-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
-; GFX940-NEXT:    buffer_wbl2 sc0 sc1
 ; GFX940-NEXT:    ds_pk_add_rtn_bf16 v0, v0, v1
 ; GFX940-NEXT:    s_waitcnt lgkmcnt(0)
-; GFX940-NEXT:    buffer_inv sc0 sc1
 ; GFX940-NEXT:    s_setpc_b64 s[30:31]
 ;
 ; GFX12-LABEL: local_atomic_fadd_v2bf16_rtn:
@@ -401,10 +409,11 @@ define <2 x i16> @local_atomic_fadd_v2bf16_rtn(ptr addrspace(3) %ptr, <2 x i16> 
 ; GFX12-NEXT:    s_wait_samplecnt 0x0
 ; GFX12-NEXT:    s_wait_bvhcnt 0x0
 ; GFX12-NEXT:    s_wait_kmcnt 0x0
+; GFX12-NEXT:    global_wb scope:SCOPE_SE
 ; GFX12-NEXT:    s_wait_storecnt 0x0
 ; GFX12-NEXT:    ds_pk_add_rtn_bf16 v0, v0, v1
 ; GFX12-NEXT:    s_wait_dscnt 0x0
-; GFX12-NEXT:    global_inv scope:SCOPE_SYS
+; GFX12-NEXT:    global_inv scope:SCOPE_SE
 ; GFX12-NEXT:    s_setpc_b64 s[30:31]
   %ret = call <2 x i16> @llvm.amdgcn.ds.fadd.v2bf16(ptr addrspace(3) %ptr, <2 x i16> %data)
   ret <2 x i16> %ret

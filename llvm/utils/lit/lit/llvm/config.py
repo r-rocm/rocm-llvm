@@ -57,6 +57,13 @@ class LLVMConfig(object):
                 self.lit_config.note("using lit tools: {}".format(path))
                 lit_path_displayed = True
 
+        if platform.system() == "OS/390":
+            self.with_environment("_BPXK_AUTOCVT", "ON")
+            self.with_environment("_TAG_REDIR_IN", "TXT")
+            self.with_environment("_TAG_REDIR_OUT", "TXT")
+            self.with_environment("_TAG_REDIR_ERR", "TXT")
+            self.with_environment("_CEE_RUNOPTS", "FILETAG(AUTOCVT,AUTOTAG) POSIX(ON)")
+
         # Choose between lit's internal shell pipeline runner and a real shell.
         # If LIT_USE_INTERNAL_SHELL is in the environment, we use that as an
         # override.
@@ -83,9 +90,6 @@ class LLVMConfig(object):
 
         # Running on Darwin OS
         if platform.system() == "Darwin":
-            # FIXME: lld uses the first, other projects use the second.
-            # We should standardize on the former.
-            features.add("system-linker-mach-o")
             features.add("system-darwin")
         elif platform.system() == "Windows":
             # For tests that require Windows to run.
@@ -124,6 +128,8 @@ class LLVMConfig(object):
             features.add("msan")
         if "undefined" in sanitizers:
             features.add("ubsan")
+        if "thread" in sanitizers:
+            features.add("tsan")
 
         have_zlib = getattr(config, "have_zlib", None)
         if have_zlib:
@@ -344,6 +350,14 @@ class LLVMConfig(object):
             return major_version_number >= 5
 
         return False
+
+    # Normalize 3-field target triple to 4-field triple with "unknown" as environment
+    def normalize_triple(self, triple):
+        compoments = triple.split("-", maxsplit=3)
+        if len(compoments) == 4:
+            return triple
+        assert len(compoments) == 3
+        return triple + "-unknown"
 
     def make_itanium_abi_triple(self, triple):
         m = re.match(r"(\w+)-(\w+)-(\w+)", triple)
@@ -581,7 +595,10 @@ class LLVMConfig(object):
             if getattr(self.config, pp, None)
         ]
 
-        self.with_environment("LD_LIBRARY_PATH", lib_paths, append_path=True)
+        if platform.system() == "AIX":
+            self.with_environment("LIBPATH", lib_paths, append_path=True)
+        else:
+            self.with_environment("LD_LIBRARY_PATH", lib_paths, append_path=True)
 
         shl = getattr(self.config, "llvm_shlib_dir", None)
         pext = getattr(self.config, "llvm_plugin_ext", None)
@@ -652,7 +669,9 @@ class LLVMConfig(object):
             self.config.substitutions.append(
                 (
                     "%itanium_abi_triple",
-                    self.make_itanium_abi_triple(self.config.target_triple),
+                    self.normalize_triple(
+                        self.make_itanium_abi_triple(self.config.target_triple)
+                    ),
                 )
             )
             self.config.substitutions.append(

@@ -1,5 +1,5 @@
 // REQUIRES: amdgpu-registered-target
-// RUN: %clang_cc1 -O0 -debug-info-kind=limited -gheterogeneous-dwarf -triple amdgcn-amd-amdhsa -x hip -emit-llvm -fcuda-is-device -o - %s | FileCheck %s
+// RUN: %clang_cc1 -O0 -debug-info-kind=limited -gheterogeneous-dwarf=diexpr -triple amdgcn-amd-amdhsa -x hip -emit-llvm -fcuda-is-device -o - %s | FileCheck %s
 
 // Notes:
 // * There is no test involving transparent_union, as this isn't supported in
@@ -450,14 +450,10 @@ __device__ void Test_Func_EnumUInt64T(EnumUInt64T) {}
 __global__ void Test_Kern_EnumUInt64T(EnumUInt64T) {}
 // CHECK: define dso_local void @_Z27Test_Func_PromotableIntegerb(i1 noundef zeroext %0)
 // CHECK: %.addr = alloca i8, align 1, addrspace(5)
-// CHECK: %frombool = zext i1 %0 to i8
-// CHECK: store i8 %frombool,
 // CHECK: call void @llvm.dbg.def(metadata !{{[0-9]+}}, metadata ptr addrspace(5) %.addr),
 __device__ void Test_Func_PromotableInteger(bool) {}
 // CHECK: define dso_local amdgpu_kernel void @_Z27Test_Kern_PromotableIntegerb(i1 noundef %0)
 // CHECK: %.addr = alloca i8, align 1, addrspace(5)
-// CHECK: %frombool = zext i1 %0 to i8
-// CHECK: store i8 %frombool,
 // CHECK: call void @llvm.dbg.def(metadata !{{[0-9]+}}, metadata ptr addrspace(5) %.addr),
 __global__ void Test_Kern_PromotableInteger(bool) {}
 // CHECK: define dso_local void @_Z17Test_Func_PointerPi(ptr noundef %0)

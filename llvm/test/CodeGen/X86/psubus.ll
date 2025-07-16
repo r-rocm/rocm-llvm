@@ -65,7 +65,7 @@ define <8 x i16> @ashr_add_and(<8 x i16> %x) nounwind {
 
 ; negative test - extra uses may lead to extra instructions when custom-lowered
 
-define <16 x i8> @ashr_xor_and_commute_uses(<16 x i8> %x, <16 x i8>* %p1, <16 x i8>* %p2) nounwind {
+define <16 x i8> @ashr_xor_and_commute_uses(<16 x i8> %x, ptr %p1, ptr %p2) nounwind {
 ; SSE-LABEL: ashr_xor_and_commute_uses:
 ; SSE:       # %bb.0:
 ; SSE-NEXT:    pxor %xmm1, %xmm1
@@ -106,9 +106,9 @@ define <16 x i8> @ashr_xor_and_commute_uses(<16 x i8> %x, <16 x i8>* %p1, <16 x 
 ; AVX512-NEXT:    vpand %xmm1, %xmm0, %xmm0
 ; AVX512-NEXT:    retq
   %signsplat = ashr <16 x i8> %x, <i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7>
-  store <16 x i8> %signsplat, <16 x i8>* %p1
+  store <16 x i8> %signsplat, ptr %p1
   %flipsign = xor <16 x i8> %x, <i8 undef, i8 128, i8 128, i8 128, i8 128, i8 128, i8 128, i8 128, i8 128, i8 128, i8 128, i8 128, i8 128, i8 128, i8 128, i8 128>
-  store <16 x i8> %flipsign, <16 x i8>* %p2
+  store <16 x i8> %flipsign, ptr %p2
   %res = and <16 x i8> %flipsign, %signsplat
   ret <16 x i8> %res
 }
@@ -208,7 +208,7 @@ define <4 x i32> @usubsat_custom(<4 x i32> %x) nounwind {
 ;
 ; SSE41-LABEL: usubsat_custom:
 ; SSE41:       # %bb.0:
-; SSE41-NEXT:    movdqa {{.*#+}} xmm1 = <2147483648,2147483648,2147483648,u>
+; SSE41-NEXT:    movdqa {{.*#+}} xmm1 = [2147483648,2147483648,2147483648,u]
 ; SSE41-NEXT:    pmaxud %xmm1, %xmm0
 ; SSE41-NEXT:    psubd %xmm1, %xmm0
 ; SSE41-NEXT:    retq
@@ -793,7 +793,7 @@ define <8 x i16> @test13(<8 x i16> %x, <8 x i32> %y) nounwind {
 ;
 ; SSE41-LABEL: test13:
 ; SSE41:       # %bb.0: # %vector.ph
-; SSE41-NEXT:    movdqa {{.*#+}} xmm3 = [65535,65535,65535,65535]
+; SSE41-NEXT:    pmovsxbw {{.*#+}} xmm3 = [65535,0,65535,0,65535,0,65535,0]
 ; SSE41-NEXT:    pminud %xmm3, %xmm2
 ; SSE41-NEXT:    pminud %xmm3, %xmm1
 ; SSE41-NEXT:    packusdw %xmm2, %xmm1
@@ -903,7 +903,7 @@ define <16 x i8> @test14(<16 x i8> %x, <16 x i32> %y) nounwind {
 ; SSE41-NEXT:    pcmpeqd %xmm2, %xmm5
 ; SSE41-NEXT:    packssdw %xmm5, %xmm6
 ; SSE41-NEXT:    packsswb %xmm7, %xmm6
-; SSE41-NEXT:    movdqa {{.*#+}} xmm5 = [255,0,0,0,255,0,0,0,255,0,0,0,255,0,0,0]
+; SSE41-NEXT:    pmovzxbd {{.*#+}} xmm5 = [255,255,255,255]
 ; SSE41-NEXT:    pand %xmm5, %xmm4
 ; SSE41-NEXT:    pand %xmm5, %xmm3
 ; SSE41-NEXT:    packusdw %xmm4, %xmm3
@@ -1047,7 +1047,7 @@ define <8 x i16> @test15(<8 x i16> %x, <8 x i32> %y) nounwind {
 ;
 ; SSE41-LABEL: test15:
 ; SSE41:       # %bb.0: # %vector.ph
-; SSE41-NEXT:    movdqa {{.*#+}} xmm3 = [65535,65535,65535,65535]
+; SSE41-NEXT:    pmovsxbw {{.*#+}} xmm3 = [65535,0,65535,0,65535,0,65535,0]
 ; SSE41-NEXT:    pminud %xmm3, %xmm2
 ; SSE41-NEXT:    pminud %xmm3, %xmm1
 ; SSE41-NEXT:    packusdw %xmm2, %xmm1
@@ -1565,7 +1565,7 @@ define <8 x i16> @psubus_8i32_max(<8 x i16> %x, <8 x i32> %y) nounwind {
 ;
 ; SSE41-LABEL: psubus_8i32_max:
 ; SSE41:       # %bb.0: # %vector.ph
-; SSE41-NEXT:    movdqa {{.*#+}} xmm3 = [65535,65535,65535,65535]
+; SSE41-NEXT:    pmovsxbw {{.*#+}} xmm3 = [65535,0,65535,0,65535,0,65535,0]
 ; SSE41-NEXT:    pminud %xmm3, %xmm2
 ; SSE41-NEXT:    pminud %xmm3, %xmm1
 ; SSE41-NEXT:    packusdw %xmm2, %xmm1
@@ -1871,7 +1871,7 @@ define <16 x i16> @psubus_16i32_max(<16 x i16> %x, <16 x i32> %y) nounwind {
 ;
 ; SSE41-LABEL: psubus_16i32_max:
 ; SSE41:       # %bb.0: # %vector.ph
-; SSE41-NEXT:    movdqa {{.*#+}} xmm6 = [65535,65535,65535,65535]
+; SSE41-NEXT:    pmovsxbw {{.*#+}} xmm6 = [65535,0,65535,0,65535,0,65535,0]
 ; SSE41-NEXT:    pminud %xmm6, %xmm3
 ; SSE41-NEXT:    pminud %xmm6, %xmm2
 ; SSE41-NEXT:    packusdw %xmm3, %xmm2
@@ -1975,7 +1975,7 @@ define <8 x i16> @psubus_i16_i32_max_swapped(<8 x i16> %x, <8 x i32> %y) nounwin
 ;
 ; SSE41-LABEL: psubus_i16_i32_max_swapped:
 ; SSE41:       # %bb.0: # %vector.ph
-; SSE41-NEXT:    movdqa {{.*#+}} xmm3 = [65535,65535,65535,65535]
+; SSE41-NEXT:    pmovsxbw {{.*#+}} xmm3 = [65535,0,65535,0,65535,0,65535,0]
 ; SSE41-NEXT:    pminud %xmm3, %xmm2
 ; SSE41-NEXT:    pminud %xmm3, %xmm1
 ; SSE41-NEXT:    packusdw %xmm2, %xmm1
@@ -2070,7 +2070,7 @@ define <8 x i16> @psubus_i16_i32_min(<8 x i16> %x, <8 x i32> %y) nounwind {
 ;
 ; SSE41-LABEL: psubus_i16_i32_min:
 ; SSE41:       # %bb.0: # %vector.ph
-; SSE41-NEXT:    movdqa {{.*#+}} xmm3 = [65535,65535,65535,65535]
+; SSE41-NEXT:    pmovsxbw {{.*#+}} xmm3 = [65535,0,65535,0,65535,0,65535,0]
 ; SSE41-NEXT:    pminud %xmm3, %xmm2
 ; SSE41-NEXT:    pminud %xmm3, %xmm1
 ; SSE41-NEXT:    packusdw %xmm2, %xmm1
@@ -2113,7 +2113,7 @@ vector.ph:
   ret <8 x i16> %res
 }
 
-define void @subus_v8i8(<8 x i8>* %p1, <8 x i8>* %p2) {
+define void @subus_v8i8(ptr %p1, ptr %p2) {
 ; SSE-LABEL: subus_v8i8:
 ; SSE:       # %bb.0:
 ; SSE-NEXT:    movq {{.*#+}} xmm0 = mem[0],zero
@@ -2129,16 +2129,16 @@ define void @subus_v8i8(<8 x i8>* %p1, <8 x i8>* %p2) {
 ; AVX-NEXT:    vpsubusb %xmm1, %xmm0, %xmm0
 ; AVX-NEXT:    vmovq %xmm0, (%rdi)
 ; AVX-NEXT:    retq
-  %ld1 = load <8 x i8>, <8 x i8>* %p1, align 8
-  %ld2 = load <8 x i8>, <8 x i8>* %p2, align 8
+  %ld1 = load <8 x i8>, ptr %p1, align 8
+  %ld2 = load <8 x i8>, ptr %p2, align 8
   %1 = sub <8 x i8> %ld1, %ld2
   %2 = icmp ugt <8 x i8> %ld1, %ld2
   %sh3 = select <8 x i1> %2, <8 x i8> %1, <8 x i8> zeroinitializer
-  store <8 x i8> %sh3, <8 x i8>* %p1, align 8
+  store <8 x i8> %sh3, ptr %p1, align 8
   ret void
 }
 
-define void @subus_v4i8(<4 x i8>* %p1, <4 x i8>* %p2) {
+define void @subus_v4i8(ptr %p1, ptr %p2) {
 ; SSE-LABEL: subus_v4i8:
 ; SSE:       # %bb.0:
 ; SSE-NEXT:    movq {{.*#+}} xmm0 = mem[0],zero
@@ -2154,16 +2154,16 @@ define void @subus_v4i8(<4 x i8>* %p1, <4 x i8>* %p2) {
 ; AVX-NEXT:    vpsubusb %xmm1, %xmm0, %xmm0
 ; AVX-NEXT:    vmovd %xmm0, (%rdi)
 ; AVX-NEXT:    retq
-  %ld1 = load <4 x i8>, <4 x i8>* %p1, align 8
-  %ld2 = load <4 x i8>, <4 x i8>* %p2, align 8
+  %ld1 = load <4 x i8>, ptr %p1, align 8
+  %ld2 = load <4 x i8>, ptr %p2, align 8
   %1 = sub <4 x i8> %ld1, %ld2
   %2 = icmp ugt <4 x i8> %ld1, %ld2
   %sh3 = select <4 x i1> %2, <4 x i8> %1, <4 x i8> zeroinitializer
-  store <4 x i8> %sh3, <4 x i8>* %p1, align 8
+  store <4 x i8> %sh3, ptr %p1, align 8
   ret void
 }
 
-define void @subus_v2i8(<2 x i8>* %p1, <2 x i8>* %p2) {
+define void @subus_v2i8(ptr %p1, ptr %p2) {
 ; SSE2OR3-LABEL: subus_v2i8:
 ; SSE2OR3:       # %bb.0:
 ; SSE2OR3-NEXT:    movq {{.*#+}} xmm0 = mem[0],zero
@@ -2188,16 +2188,16 @@ define void @subus_v2i8(<2 x i8>* %p1, <2 x i8>* %p2) {
 ; AVX-NEXT:    vpsubusb %xmm1, %xmm0, %xmm0
 ; AVX-NEXT:    vpextrw $0, %xmm0, (%rdi)
 ; AVX-NEXT:    retq
-  %ld1 = load <2 x i8>, <2 x i8>* %p1, align 8
-  %ld2 = load <2 x i8>, <2 x i8>* %p2, align 8
+  %ld1 = load <2 x i8>, ptr %p1, align 8
+  %ld2 = load <2 x i8>, ptr %p2, align 8
   %1 = sub <2 x i8> %ld1, %ld2
   %2 = icmp ugt <2 x i8> %ld1, %ld2
   %sh3 = select <2 x i1> %2, <2 x i8> %1, <2 x i8> zeroinitializer
-  store <2 x i8> %sh3, <2 x i8>* %p1, align 8
+  store <2 x i8> %sh3, ptr %p1, align 8
   ret void
 }
 
-define void @subus_v4i16(<4 x i16>* %p1, <4 x i16>* %p2) {
+define void @subus_v4i16(ptr %p1, ptr %p2) {
 ; SSE-LABEL: subus_v4i16:
 ; SSE:       # %bb.0:
 ; SSE-NEXT:    movq {{.*#+}} xmm0 = mem[0],zero
@@ -2213,16 +2213,16 @@ define void @subus_v4i16(<4 x i16>* %p1, <4 x i16>* %p2) {
 ; AVX-NEXT:    vpsubusw %xmm1, %xmm0, %xmm0
 ; AVX-NEXT:    vmovq %xmm0, (%rdi)
 ; AVX-NEXT:    retq
-  %ld1 = load <4 x i16>, <4 x i16>* %p1, align 8
-  %ld2 = load <4 x i16>, <4 x i16>* %p2, align 8
+  %ld1 = load <4 x i16>, ptr %p1, align 8
+  %ld2 = load <4 x i16>, ptr %p2, align 8
   %1 = sub <4 x i16> %ld1, %ld2
   %2 = icmp ugt <4 x i16> %ld1, %ld2
   %sh3 = select <4 x i1> %2, <4 x i16> %1, <4 x i16> zeroinitializer
-  store <4 x i16> %sh3, <4 x i16>* %p1, align 8
+  store <4 x i16> %sh3, ptr %p1, align 8
   ret void
 }
 
-define void @subus_v2i16(<2 x i16>* %p1, <2 x i16>* %p2) {
+define void @subus_v2i16(ptr %p1, ptr %p2) {
 ; SSE-LABEL: subus_v2i16:
 ; SSE:       # %bb.0:
 ; SSE-NEXT:    movq {{.*#+}} xmm0 = mem[0],zero
@@ -2238,12 +2238,12 @@ define void @subus_v2i16(<2 x i16>* %p1, <2 x i16>* %p2) {
 ; AVX-NEXT:    vpsubusw %xmm1, %xmm0, %xmm0
 ; AVX-NEXT:    vmovd %xmm0, (%rdi)
 ; AVX-NEXT:    retq
-  %ld1 = load <2 x i16>, <2 x i16>* %p1, align 8
-  %ld2 = load <2 x i16>, <2 x i16>* %p2, align 8
+  %ld1 = load <2 x i16>, ptr %p1, align 8
+  %ld2 = load <2 x i16>, ptr %p2, align 8
   %1 = sub <2 x i16> %ld1, %ld2
   %2 = icmp ugt <2 x i16> %ld1, %ld2
   %sh3 = select <2 x i1> %2, <2 x i16> %1, <2 x i16> zeroinitializer
-  store <2 x i16> %sh3, <2 x i16>* %p1, align 8
+  store <2 x i16> %sh3, ptr %p1, align 8
   ret void
 }
 
@@ -2659,7 +2659,7 @@ define <8 x i16> @test32(<8 x i16> %a0, <8 x i32> %a1) {
 ;
 ; SSE41-LABEL: test32:
 ; SSE41:       # %bb.0:
-; SSE41-NEXT:    movdqa {{.*#+}} xmm3 = [65535,65535,65535,65535]
+; SSE41-NEXT:    pmovsxbw {{.*#+}} xmm3 = [65535,0,65535,0,65535,0,65535,0]
 ; SSE41-NEXT:    pminud %xmm3, %xmm2
 ; SSE41-NEXT:    pminud %xmm3, %xmm1
 ; SSE41-NEXT:    packusdw %xmm2, %xmm1
@@ -2993,7 +2993,7 @@ define <8 x i32> @test34(<8 x i32> %a0, <8 x i64> %a1) {
 ; SSE41-LABEL: test34:
 ; SSE41:       # %bb.0:
 ; SSE41-NEXT:    movdqa %xmm0, %xmm6
-; SSE41-NEXT:    movdqa {{.*#+}} xmm0 = [1,1,1,1]
+; SSE41-NEXT:    pmovsxbd {{.*#+}} xmm0 = [1,1,1,1]
 ; SSE41-NEXT:    pand %xmm0, %xmm1
 ; SSE41-NEXT:    pand %xmm0, %xmm6
 ; SSE41-NEXT:    movdqa {{.*#+}} xmm10 = [9223372039002259456,9223372039002259456]

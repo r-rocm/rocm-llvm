@@ -104,9 +104,9 @@ static bool lowerKernelArguments(Function &F, const TargetMachine &TM) {
 
   const GCNSubtarget &ST = TM.getSubtarget<GCNSubtarget>(F);
   LLVMContext &Ctx = F.getParent()->getContext();
-  const DataLayout &DL = F.getParent()->getDataLayout();
+  const DataLayout &DL = F.getDataLayout();
   BasicBlock &EntryBlock = *F.begin();
-  IRBuilder<> Builder(&*getInsertPt(EntryBlock));
+  IRBuilder<> Builder(&EntryBlock, getInsertPt(EntryBlock));
 
   const Align KernArgBaseAlign(16); // FIXME: Increase if necessary
   const uint64_t BaseOffset = ST.getExplicitKernelArgOffset();
@@ -120,7 +120,6 @@ static bool lowerKernelArguments(Function &F, const TargetMachine &TM) {
   CallInst *KernArgSegment =
       Builder.CreateIntrinsic(Intrinsic::amdgcn_kernarg_segment_ptr, {}, {},
                               nullptr, F.getName() + ".kernarg.segment");
-
   KernArgSegment->addRetAttr(Attribute::NonNull);
   KernArgSegment->addRetAttr(
       Attribute::getWithDereferenceableBytes(Ctx, TotalKernArgSize));

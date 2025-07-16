@@ -1,4 +1,6 @@
 ; RUN: llc -mtriple=amdgcn -mcpu=gfx908 -O3 < %s | FileCheck %s
+; RUN: llc -mtriple=amdgcn -mcpu=gfx908 -O3 -misched=gcn-iterative-max-occupancy-experimental < %s | FileCheck %s
+; RUN: llc -mtriple=amdgcn -mcpu=gfx908 -O3 -misched=gcn-iterative-ilp < %s | FileCheck %s
 
 ; Test should not result in build failure
 ; CHECK-LABEL: shouldNotReApply
@@ -13,10 +15,3 @@ entry:
   tail call void @llvm.amdgcn.sched.group.barrier(i32 0, i32 0, i32 0)
   ret void
 }
-
-; Function Attrs: convergent nocallback nofree nounwind willreturn
-declare void @llvm.amdgcn.sched.barrier(i32 immarg) #0
-
-; Function Attrs: convergent nocallback nofree nounwind willreturn
-declare void @llvm.amdgcn.sched.group.barrier(i32 immarg, i32 immarg, i32 immarg) #0
-

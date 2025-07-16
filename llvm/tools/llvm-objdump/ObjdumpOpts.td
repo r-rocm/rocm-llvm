@@ -108,6 +108,9 @@ def fault_map_section : Flag<["--"], "fault-map-section">,
 def offloading : Flag<["--"], "offloading">,
   HelpText<"Display the content of the offloading section">;
 
+def offload_fatbin : Flag<["--"], "offload-fatbin">,
+  HelpText<"Display the content of the offload FatBin section">;
+
 def file_headers : Flag<["--"], "file-headers">,
   HelpText<"Display the contents of the overall file header">;
 def : Flag<["-"], "f">, Alias<file_headers>,
@@ -209,6 +212,10 @@ def : Flag<["-"], "t">, Alias<syms>, HelpText<"Alias for --syms">;
 
 def symbolize_operands : Flag<["--"], "symbolize-operands">,
   HelpText<"Symbolize instruction operands when disassembling">;
+
+def pretty_pgo_analysis_map : Flag<["--"], "pretty-pgo-analysis-map">,
+                              HelpText<"Display PGO analysis values with "
+                                       "formatting rather than raw numbers">;
 
 def dynamic_syms : Flag<["--"], "dynamic-syms">,
   HelpText<"Display the contents of the dynamic symbol table">;

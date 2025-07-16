@@ -109,33 +109,36 @@ static Error bundleImages() {
           inconvertibleErrorCode(),
           "'file' and 'triple' are required image arguments");
 
-    OffloadBinary::OffloadingImage ImageBinary{};
-    std::unique_ptr<llvm::MemoryBuffer> DeviceImage;
-    for (const auto &[Key, Value] : Args) {
-      if (Key == "file") {
-        llvm::ErrorOr<std::unique_ptr<llvm::MemoryBuffer>> ObjectOrErr =
-            llvm::MemoryBuffer::getFileOrSTDIN(Value);
-        if (std::error_code EC = ObjectOrErr.getError())
-          return errorCodeToError(EC);
+    // Permit using multiple instances of `file` in a single string.
+    for (auto &File : llvm::split(Args["file"], ",")) {
+      OffloadBinary::OffloadingImage ImageBinary{};
+      std::unique_ptr<llvm::MemoryBuffer> DeviceImage;
 
-        // Clang uses the '.o' suffix for LTO bitcode.
-        if (identify_magic((*ObjectOrErr)->getBuffer()) == file_magic::bitcode)
-          ImageBinary.TheImageKind = object::IMG_Bitcode;
-        else
-          ImageBinary.TheImageKind =
-              getImageKind(sys::path::extension(Value).drop_front());
-        ImageBinary.Image = std::move(*ObjectOrErr);
-      } else if (Key == "kind") {
-        ImageBinary.TheOffloadKind = getOffloadKind(Value);
-      } else {
-        ImageBinary.StringData[Key] = Value;
+      llvm::ErrorOr<std::unique_ptr<llvm::MemoryBuffer>> ObjectOrErr =
+          llvm::MemoryBuffer::getFileOrSTDIN(File);
+      if (std::error_code EC = ObjectOrErr.getError())
+        return errorCodeToError(EC);
+
+      // Clang uses the '.o' suffix for LTO bitcode.
+      if (identify_magic((*ObjectOrErr)->getBuffer()) == file_magic::bitcode)
+        ImageBinary.TheImageKind = object::IMG_Bitcode;
+      else
+        ImageBinary.TheImageKind =
+            getImageKind(sys::path::extension(File).drop_front());
+      ImageBinary.Image = std::move(*ObjectOrErr);
+      for (const auto &[Key, Value] : Args) {
+        if (Key == "kind") {
+          ImageBinary.TheOffloadKind = getOffloadKind(Value);
+        } else if (Key != "file") {
+          ImageBinary.StringData[Key] = Value;
+        }
       }
+      llvm::SmallString<0> Buffer = OffloadBinary::write(ImageBinary);
+      if (Buffer.size() % OffloadBinary::getAlignment() != 0)
+        return createStringError(inconvertibleErrorCode(),
+                                 "Offload binary has invalid size alignment");
+      OS << Buffer;
     }
-    llvm::SmallString<0> Buffer = OffloadBinary::write(ImageBinary);
-    if (Buffer.size() % OffloadBinary::getAlignment() != 0)
-      return createStringError(inconvertibleErrorCode(),
-                               "Offload binary has invalid size alignment");
-    OS << Buffer;
   }
 
   if (Error E = writeFile(OutputFile,
@@ -171,6 +174,16 @@ static Error unbundleImages() {
     SmallVector<const OffloadBinary *> Extracted;
     for (const OffloadFile &File : Binaries) {
       const auto *Binary = File.getBinary();
+      // If the user lists a .so file on the command line for the program
+      // that invokes this one (probably clang), it may contain offload
+      // binary sections that resemble those in an object file.  However,
+      // there is no late binding/shared object support on the target side
+      // (i.e. you cannot define a target function in a shared object and
+      // call it from a target region in the main program), and we don't want
+      // to *early* bind target regions in a shared object either.  So,
+      // ignore shared objects here.
+      if (identify_magic(Binary->getImage()) == file_magic::elf_shared_object)
+        continue;
       // We handle the 'file' and 'kind' identifiers differently.
       bool Match = llvm::all_of(Args, [&](auto &Arg) {
         const auto [Key, Value] = Arg;
@@ -205,7 +218,7 @@ static Error unbundleImages() {
 
       if (Error E = writeArchive(
               Args["file"], Members, SymtabWritingMode::NormalSymtab,
-              Archive::getDefaultKindForHost(), true, false, nullptr))
+              Archive::getDefaultKind(), true, false, nullptr))
         return E;
     } else if (Args.count("file")) {
       if (Extracted.size() > 1)

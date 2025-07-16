@@ -9,10 +9,10 @@
 # CHECK: DW_TAG_subprogram
 # CHECK:   DW_AT_name      ("live_through")
 # CHECK:   DW_TAG_variable
-# CHECK:     DW_AT_location        (DW_OP_regx SGPR32_LO16, {{.*}})
+# CHECK:     DW_AT_location        (DW_OP_regx SGPR32, {{.*}})
 # CHECK:     DW_AT_name    ("x")
 # CHECK:   DW_TAG_variable
-# CHECK:     DW_AT_location        (DW_OP_regx SGPR32_LO16, {{.*}})
+# CHECK:     DW_AT_location        (DW_OP_regx SGPR32, {{.*}})
 # CHECK:     DW_AT_name    ("y")
 
 # Also confirm that we correctly fall back to the complete loclist when there
@@ -23,12 +23,12 @@
 # CHECK:   DW_AT_name      ("not_live_through")
 # CHECK:   DW_TAG_variable
 # CHECK:     DW_AT_location        (0x[[#%x,]]:
-# CHECK-NEXT:  [0x[[#%x,]], 0x[[#%x,]]): DW_OP_regx SGPR32_LO16, {{.*}}
-# CHECK-NEXT:  [0x[[#%x,]], 0x[[#%x,]]): DW_OP_regx SGPR32_LO16, {{.*}})
+# CHECK-NEXT:  [0x[[#%x,]], 0x[[#%x,]]): DW_OP_regx SGPR32, {{.*}}
+# CHECK-NEXT:  [0x[[#%x,]], 0x[[#%x,]]): DW_OP_regx SGPR32, {{.*}})
 # CHECK:     DW_AT_name    ("x")
 # CHECK:   DW_TAG_variable
 # CHECK:     DW_AT_location        (0x[[#%x,]]:
-# CHECK-NEXT:  [0x[[#%x,]], 0x[[#%x,]]): DW_OP_regx SGPR32_LO16, {{.*}})
+# CHECK-NEXT:  [0x[[#%x,]], 0x[[#%x,]]): DW_OP_regx SGPR32, {{.*}})
 # CHECK:     DW_AT_name    ("y")
 
 --- |
@@ -76,6 +76,9 @@
   ; Function Attrs: convergent nounwind willreturn
   declare i1 @llvm.amdgcn.loop.i64(i64) #2
   
+  ; Function Attrs: convergent nounwind willreturn
+  declare void @llvm.amdgcn.end.cf.i64(i64) #2
+  
   attributes #0 = { convergent mustprogress noinline nounwind optnone "amdgpu-stack-objects" "frame-pointer"="none" "min-legal-vector-width"="0" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="gfx900" "target-features"="+16-bit-insts,+ci-insts,+dpp,+flat-address-space,+gfx8-insts,+gfx9-insts,+s-memrealtime,+s-memtime-inst" "uniform-work-group-size"="false" }
   attributes #1 = { nocallback nofree nosync nounwind readnone speculatable willreturn }
   attributes #2 = { convergent nounwind willreturn }
@@ -97,18 +100,18 @@
   !9 = !DILocalVariable(name: "x", scope: !5, file: !1, line: 1, type: !10)
   !10 = !DIBasicType(name: "int", size: 32, encoding: DW_ATE_signed)
   !11 = !DILocalVariable(name: "y", scope: !5, file: !1, line: 1, type: !10)
-  !12 = distinct !DILifetime(object: !9, location: !DIExpr(DIOpReferrer(i32), DIOpConstant(i32 6), DIOpShr(), DIOpReinterpret(ptr addrspace(5)), DIOpDeref(i32), DIOpConstant(i32 0), DIOpByteOffset(i32)))
+  !12 = distinct !DILifetime(object: !9, location: !DIExpr(DIOpReferrer(i32), DIOpConstant(i32 6), DIOpLShr(), DIOpReinterpret(ptr addrspace(5)), DIOpDeref(i32), DIOpConstant(i32 0), DIOpByteOffset(i32)))
   !13 = !DILocation(line: 1, column: 51, scope: !5)
-  !14 = distinct !DILifetime(object: !11, location: !DIExpr(DIOpReferrer(i32), DIOpConstant(i32 6), DIOpShr(), DIOpReinterpret(ptr addrspace(5)), DIOpDeref(i32), DIOpConstant(i32 4), DIOpByteOffset(i32)))
+  !14 = distinct !DILifetime(object: !11, location: !DIExpr(DIOpReferrer(i32), DIOpConstant(i32 6), DIOpLShr(), DIOpReinterpret(ptr addrspace(5)), DIOpDeref(i32), DIOpConstant(i32 4), DIOpByteOffset(i32)))
   !15 = !DILocation(line: 1, column: 54, scope: !5)
   !16 = !DILocation(line: 1, column: 57, scope: !5)
   !17 = distinct !DISubprogram(name: "not_live_through", linkageName: "_Z16not_live_throughv", scope: !1, file: !1, line: 1, type: !6, scopeLine: 1, flags: DIFlagPrototyped, spFlags: DISPFlagDefinition, unit: !0, retainedNodes: !18)
   !18 = !{!19, !20}
   !19 = !DILocalVariable(name: "x", scope: !17, file: !1, line: 1, type: !10)
   !20 = !DILocalVariable(name: "y", scope: !17, file: !1, line: 1, type: !10)
-  !21 = distinct !DILifetime(object: !19, location: !DIExpr(DIOpReferrer(i32), DIOpConstant(i32 6), DIOpShr(), DIOpReinterpret(ptr addrspace(5)), DIOpDeref(i32), DIOpConstant(i32 0), DIOpByteOffset(i32)))
+  !21 = distinct !DILifetime(object: !19, location: !DIExpr(DIOpReferrer(i32), DIOpConstant(i32 6), DIOpLShr(), DIOpReinterpret(ptr addrspace(5)), DIOpDeref(i32), DIOpConstant(i32 0), DIOpByteOffset(i32)))
   !22 = !DILocation(line: 1, column: 113, scope: !17)
-  !23 = distinct !DILifetime(object: !20, location: !DIExpr(DIOpReferrer(i32), DIOpConstant(i32 6), DIOpShr(), DIOpReinterpret(ptr addrspace(5)), DIOpDeref(i32), DIOpConstant(i32 4), DIOpByteOffset(i32)))
+  !23 = distinct !DILifetime(object: !20, location: !DIExpr(DIOpReferrer(i32), DIOpConstant(i32 6), DIOpLShr(), DIOpReinterpret(ptr addrspace(5)), DIOpDeref(i32), DIOpConstant(i32 4), DIOpByteOffset(i32)))
   !24 = !DILocation(line: 1, column: 116, scope: !17)
   !25 = !DILocation(line: 1, column: 119, scope: !17)
 

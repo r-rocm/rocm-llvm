@@ -310,7 +310,28 @@ string HipBinAmd::getCppConfig() {
 
 string HipBinAmd::getDeviceLibPath() const {
   const EnvVariables& var = getEnvVariables();
+  const string& rocclrHomePath = getRocclrHomePath();
+  const string& roccmPath = getRoccmPath();
+  fs::path bitCodePath = rocclrHomePath;
+  bitCodePath /= "lib/bitcode";
   string deviceLibPath = var.deviceLibPathEnv_;
+  if (deviceLibPath.empty() && fs::exists(bitCodePath)) {
+    deviceLibPath = bitCodePath.string();
+  }
+
+  if (deviceLibPath.empty()) {
+    fs::path amdgcnBitcode = roccmPath;
+    amdgcnBitcode /= "amdgcn/bitcode";
+    if (fs::exists(amdgcnBitcode)) {
+      deviceLibPath = amdgcnBitcode.string();
+    } else {
+      // This path is to support an older build of the device library
+      // TODO(hipcc): To be removed in the future.
+      fs::path lib = roccmPath;
+      lib /= "lib";
+      deviceLibPath = lib.string();
+    }
+  }
   return deviceLibPath;
 }
 
@@ -324,7 +345,12 @@ bool HipBinAmd::detectPlatform() {
   const EnvVariables& var = getEnvVariables();
   bool detected = false;
   if (var.hipPlatformEnv_.empty()) {
-    if (canRunCompiler(cmdAmd.string(), out)){
+    string cmd = cmdAmd.string();
+    if (getOSInfo() == windows) {
+      cmd = "\"" + cmd + "\"";
+    }
+
+    if (canRunCompiler(cmd, out)){
       detected = true;
     }
   } else {
@@ -534,6 +560,10 @@ void HipBinAmd::executeHipCCCmd(vector<string> argv) {
     const string& rocmPathOption = "--rocm-path=";
     if (arg.compare(0,rocmPathOption.length(),rocmPathOption) == 0)
     	rocm_pathOption_ = arg.substr(rocmPathOption.length());
+    // Process --hip-path option
+    const string& hipPathOption = "--hip-path=";
+    if (arg.compare(0,hipPathOption.length(),hipPathOption) == 0)
+    	hip_pathOption_ = arg.substr(hipPathOption.length());
 
     // Check target selection option: --offload-arch= and --amdgpu-target=...
     for (unsigned int i = 0; i <targetOpts.size(); i++) {
@@ -835,11 +865,18 @@ void HipBinAmd::executeHipCCCmd(vector<string> argv) {
   }
 
   if (hasHIP) {
-    if (!deviceLibPath.empty()) {
+    fs::path bitcodeFs = roccmPath;
+    bitcodeFs /= "amdgcn/bitcode";
+    if (deviceLibPath != bitcodeFs.string()) {
       string hip_device_lib_str = " --hip-device-lib-path=\""
                                   + deviceLibPath + "\"";
       HIPCXXFLAGS += hip_device_lib_str;
     }
+  }
+
+  // to avoid using dk linker or MSVC linker
+  if (isWindows()) {
+    HIPLDFLAGS += " -fuse-ld=lld --ld-path=\"" + hipClangPath + "/lld-link.exe\"";
   }
 
   if (!compileOnly) {

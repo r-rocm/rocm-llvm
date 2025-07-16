@@ -112,7 +112,7 @@ public:
   virtual ~InstructionRule() = default;
 };
 
-typedef DenseMap<SUnit *, SmallVector<int, 4>> SUnitsToCandidateSGsMap;
+using SUnitsToCandidateSGsMap = DenseMap<SUnit *, SmallVector<int, 4>>;
 
 // Classify instructions into groups to enable fine tuned control over the
 // scheduler. These groups may be more specific than current SchedModel
@@ -190,13 +190,9 @@ public:
   // Returns true if the SU matches all rules
   bool allowedByRules(const SUnit *SU,
                       SmallVectorImpl<SchedGroup> &SyncPipe) const {
-    if (Rules.empty())
-      return true;
-    for (size_t I = 0; I < Rules.size(); I++) {
-      auto TheRule = Rules[I].get();
-      if (!TheRule->apply(SU, Collection, SyncPipe)) {
+    for (auto &Rule : Rules) {
+      if (!Rule.get()->apply(SU, Collection, SyncPipe))
         return false;
-      }
     }
     return true;
   }
@@ -244,25 +240,8 @@ public:
   }
 };
 
-// Remove all existing edges from a SCHED_BARRIER or SCHED_GROUP_BARRIER.
-static void resetEdges(SUnit &SU, ScheduleDAGInstrs *DAG) {
-  assert(SU.getInstr()->getOpcode() == AMDGPU::SCHED_BARRIER ||
-         SU.getInstr()->getOpcode() == AMDGPU::SCHED_GROUP_BARRIER ||
-         SU.getInstr()->getOpcode() == AMDGPU::IGLP_OPT);
-
-  while (!SU.Preds.empty())
-    for (auto &P : SU.Preds)
-      SU.removePred(P);
-
-  while (!SU.Succs.empty())
-    for (auto &S : SU.Succs)
-      for (auto &SP : S.getSUnit()->Preds)
-        if (SP.getSUnit() == &SU)
-          S.getSUnit()->removePred(SP);
-}
-
-typedef std::pair<SUnit *, SmallVector<int, 4>> SUToCandSGsPair;
-typedef SmallVector<SUToCandSGsPair, 4> SUsToCandSGsVec;
+using SUToCandSGsPair = std::pair<SUnit *, SmallVector<int, 4>>;
+using SUsToCandSGsVec = SmallVector<SUToCandSGsPair, 4>;
 
 // The PipelineSolver is used to assign SUnits to SchedGroups in a pipeline
 // in non-trivial cases. For example, if the requested pipeline is
@@ -311,7 +290,7 @@ class PipelineSolver {
   uint64_t BranchesExplored = 0;
 
   // The direction in which we process the candidate SchedGroups per SU
-  bool IsBottomUp = 1;
+  bool IsBottomUp = true;
 
   // Update indices to fit next conflicting instruction
   void advancePosition();
@@ -365,7 +344,7 @@ public:
 
   PipelineSolver(DenseMap<int, SmallVector<SchedGroup, 4>> &SyncedSchedGroups,
                  DenseMap<int, SUnitsToCandidateSGsMap> &SyncedInstrs,
-                 ScheduleDAGMI *DAG, bool IsBottomUp = 1)
+                 ScheduleDAGMI *DAG, bool IsBottomUp = true)
       : DAG(DAG), SyncedInstrs(SyncedInstrs),
         SyncedSchedGroups(SyncedSchedGroups), IsBottomUp(IsBottomUp) {
 
@@ -464,7 +443,6 @@ void PipelineSolver::makePipeline() {
       // Command line requested IGroupLP doesn't have SGBarr
       if (!SGBarr)
         continue;
-      resetEdges(*SGBarr, DAG);
       SG.link(*SGBarr, false);
     }
   }
@@ -858,7 +836,7 @@ public:
   virtual bool shouldApplyStrategy(ScheduleDAGInstrs *DAG,
                                    AMDGPU::SchedulingPhase Phase) = 0;
 
-  bool IsBottomUp = 1;
+  bool IsBottomUp = true;
 
   IGLPStrategy(ScheduleDAGInstrs *DAG, const SIInstrInfo *TII)
       : DAG(DAG), TII(TII) {}
@@ -881,7 +859,7 @@ public:
 
   MFMASmallGemmOpt(ScheduleDAGInstrs *DAG, const SIInstrInfo *TII)
       : IGLPStrategy(DAG, TII) {
-    IsBottomUp = 1;
+    IsBottomUp = true;
   }
 };
 
@@ -1350,7 +1328,7 @@ public:
 
   MFMAExpInterleaveOpt(ScheduleDAGInstrs *DAG, const SIInstrInfo *TII)
       : IGLPStrategy(DAG, TII) {
-    IsBottomUp = 0;
+    IsBottomUp = false;
   }
 };
 
@@ -1482,9 +1460,7 @@ bool MFMAExpInterleaveOpt::analyzeDAG(const SIInstrInfo *TII) {
 
   MFMAChains = 0;
   for (auto &MFMAPipeSU : MFMAPipeSUs) {
-    if (MFMAChainSeeds.size() &&
-        std::find(MFMAChainSeeds.begin(), MFMAChainSeeds.end(), MFMAPipeSU) !=
-            MFMAChainSeeds.end())
+    if (is_contained(MFMAChainSeeds, MFMAPipeSU))
       continue;
     if (!std::any_of(MFMAPipeSU->Preds.begin(), MFMAPipeSU->Preds.end(),
                      [&TII](SDep &Succ) {
@@ -2063,7 +2039,7 @@ public:
 
   MFMASmallGemmSingleWaveOpt(ScheduleDAGInstrs *DAG, const SIInstrInfo *TII)
       : IGLPStrategy(DAG, TII) {
-    IsBottomUp = 0;
+    IsBottomUp = false;
   }
 };
 
@@ -2373,7 +2349,7 @@ public:
   // created SchedGroup first, and will consider that as the ultimate
   // predecessor group when linking. TOP_DOWN instead links and processes the
   // first created SchedGroup first.
-  bool IsBottomUp = 1;
+  bool IsBottomUp = true;
 
   // The scheduling phase this application of IGLP corresponds with.
   AMDGPU::SchedulingPhase Phase = AMDGPU::SchedulingPhase::Initial;
@@ -2468,7 +2444,7 @@ int SchedGroup::link(SUnit &SU, bool MakePred,
     // the A->B edge impossible, otherwise it returns true;
     bool Added = tryAddEdge(A, B);
     if (Added)
-      AddedEdges.push_back(std::pair(A, B));
+      AddedEdges.emplace_back(A, B);
     else
       ++MissedEdges;
   }
@@ -2582,7 +2558,6 @@ void IGroupLPDAGMutation::apply(ScheduleDAGInstrs *DAGInstrs) {
       initSchedGroupBarrierPipelineStage(R);
       FoundSB = true;
     } else if (Opc == AMDGPU::IGLP_OPT) {
-      resetEdges(*R, DAG);
       if (!FoundSB && !FoundIGLP) {
         FoundIGLP = true;
         ShouldApplyIGLP = initIGLPOpt(*R);
@@ -2604,7 +2579,6 @@ void IGroupLPDAGMutation::addSchedBarrierEdges(SUnit &SchedBarrier) {
   assert(MI.getOpcode() == AMDGPU::SCHED_BARRIER);
   // Remove all existing edges from the SCHED_BARRIER that were added due to the
   // instruction having side effects.
-  resetEdges(SchedBarrier, DAG);
   LLVM_DEBUG(dbgs() << "Building SchedGroup for SchedBarrier with Mask: "
                     << MI.getOperand(0).getImm() << "\n");
   auto InvertedMask =
@@ -2662,7 +2636,6 @@ void IGroupLPDAGMutation::initSchedGroupBarrierPipelineStage(
     std::vector<SUnit>::reverse_iterator RIter) {
   // Remove all existing edges from the SCHED_GROUP_BARRIER that were added due
   // to the instruction having side effects.
-  resetEdges(*RIter, DAG);
   MachineInstr &SGB = *RIter->getInstr();
   assert(SGB.getOpcode() == AMDGPU::SCHED_GROUP_BARRIER);
   int32_t SGMask = SGB.getOperand(0).getImm();

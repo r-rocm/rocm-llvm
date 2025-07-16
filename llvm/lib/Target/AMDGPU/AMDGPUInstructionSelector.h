@@ -103,7 +103,6 @@ private:
   bool selectG_MERGE_VALUES(MachineInstr &I) const;
   bool selectG_UNMERGE_VALUES(MachineInstr &I) const;
   bool selectG_BUILD_VECTOR(MachineInstr &I) const;
-  bool selectG_PTR_ADD(MachineInstr &I) const;
   bool selectG_IMPLICIT_DEF(MachineInstr &I) const;
   bool selectG_INSERT(MachineInstr &I) const;
   bool selectG_SBFX_UBFX(MachineInstr &I) const;
@@ -113,13 +112,12 @@ private:
   bool selectDivScale(MachineInstr &MI) const;
   bool selectIntrinsicCmp(MachineInstr &MI) const;
   bool selectBallot(MachineInstr &I) const;
-  bool selectInverseBallot(MachineInstr &I) const;
   bool selectRelocConstant(MachineInstr &I) const;
   bool selectGroupStaticSize(MachineInstr &I) const;
   bool selectReturnAddress(MachineInstr &I) const;
   bool selectG_INTRINSIC(MachineInstr &I) const;
 
-  bool selectWaveReconvergeIntrinsic(MachineInstr &MI) const;
+  bool selectEndCfIntrinsic(MachineInstr &MI) const;
   bool selectDSOrderedIntrinsic(MachineInstr &MI, Intrinsic::ID IID) const;
   bool selectDSGWSIntrinsic(MachineInstr &MI, Intrinsic::ID IID) const;
   bool selectDSAppendConsume(MachineInstr &MI, bool IsAppend) const;
@@ -147,13 +145,15 @@ private:
   bool selectGlobalLoadLds(MachineInstr &MI) const;
   bool selectBVHIntrinsic(MachineInstr &I) const;
   bool selectSMFMACIntrin(MachineInstr &I) const;
+  bool selectPermlaneSwapIntrin(MachineInstr &I, Intrinsic::ID IntrID) const;
   bool selectWaveAddress(MachineInstr &I) const;
+  bool selectBITOP3(MachineInstr &I) const;
   bool selectStackRestore(MachineInstr &MI) const;
   bool selectNamedBarrierInst(MachineInstr &I, Intrinsic::ID IID) const;
   bool selectSBarrierSignalIsfirst(MachineInstr &I, Intrinsic::ID IID) const;
   bool selectSBarrierLeave(MachineInstr &I) const;
 
-  std::pair<Register, unsigned> selectVOP3ModsImpl(MachineOperand &Root,
+  std::pair<Register, unsigned> selectVOP3ModsImpl(Register Src,
                                                    bool IsCanonicalizing = true,
                                                    bool AllowAbs = true,
                                                    bool OpSel = false) const;
@@ -328,9 +328,40 @@ private:
 
   void renderTruncTImm(MachineInstrBuilder &MIB, const MachineInstr &MI,
                        int OpIdx) const;
+  void renderZextBoolTImm(MachineInstrBuilder &MIB, const MachineInstr &MI,
+                          int OpIdx) const;
 
   void renderOpSelTImm(MachineInstrBuilder &MIB, const MachineInstr &MI,
                        int OpIdx) const;
+
+  void renderSrcAndDstSelToOpSelXForm_0_0(MachineInstrBuilder &MIB,
+                                          const MachineInstr &MI,
+                                          int OpIdx) const;
+
+  void renderSrcAndDstSelToOpSelXForm_0_1(MachineInstrBuilder &MIB,
+                                          const MachineInstr &MI,
+                                          int OpIdx) const;
+
+  void renderSrcAndDstSelToOpSelXForm_1_0(MachineInstrBuilder &MIB,
+                                          const MachineInstr &MI,
+                                          int OpIdx) const;
+
+  void renderSrcAndDstSelToOpSelXForm_1_1(MachineInstrBuilder &MIB,
+                                          const MachineInstr &MI,
+                                          int OpIdx) const;
+
+  void renderDstSelToOpSelXForm(MachineInstrBuilder &MIB,
+                                const MachineInstr &MI, int OpIdx) const;
+
+  void renderSrcSelToOpSelXForm(MachineInstrBuilder &MIB,
+                                const MachineInstr &MI, int OpIdx) const;
+
+  void renderSrcAndDstSelToOpSelXForm_2_0(MachineInstrBuilder &MIB,
+                                          const MachineInstr &MI,
+                                          int OpIdx) const;
+
+  void renderDstSelToOpSel3XFormXForm(MachineInstrBuilder &MIB,
+                                const MachineInstr &MI, int OpIdx) const;
 
   void renderNegateImm(MachineInstrBuilder &MIB, const MachineInstr &MI,
                        int OpIdx) const;
@@ -353,9 +384,12 @@ private:
   void renderFPPow2ToExponent(MachineInstrBuilder &MIB, const MachineInstr &MI,
                               int OpIdx) const;
 
-  bool isInlineImmediate16(int64_t Imm) const;
-  bool isInlineImmediate32(int64_t Imm) const;
-  bool isInlineImmediate64(int64_t Imm) const;
+  void renderRoundMode(MachineInstrBuilder &MIB, const MachineInstr &MI,
+                       int OpIdx) const;
+  void renderScaledMAIIntrinsicOperand(MachineInstrBuilder &MIB,
+                                       const MachineInstr &MI, int OpIdx) const;
+
+  bool isInlineImmediate(const APInt &Imm) const;
   bool isInlineImmediate(const APFloat &Imm) const;
 
   // Returns true if TargetOpcode::G_AND MachineInstr `MI`'s masking of the

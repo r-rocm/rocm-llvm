@@ -1547,7 +1547,7 @@ define zeroext i8 @test_mm_test_epi32_mask(<2 x i64> %__A, <2 x i64> %__B) {
 ; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    vptestmd %xmm0, %xmm1, %k0
 ; CHECK-NEXT:    kmovw %k0, %eax
-; CHECK-NEXT:    movzbl %al, %eax
+; CHECK-NEXT:    # kill: def $al killed $al killed $eax
 ; CHECK-NEXT:    ret{{[l|q]}}
 entry:
   %and.i.i = and <2 x i64> %__B, %__A
@@ -1565,7 +1565,7 @@ define zeroext i8 @test_mm_mask_test_epi32_mask(i8 zeroext %__U, <2 x i64> %__A,
 ; X86-NEXT:    kmovw %eax, %k1
 ; X86-NEXT:    vptestmd %xmm0, %xmm1, %k0 {%k1}
 ; X86-NEXT:    kmovw %k0, %eax
-; X86-NEXT:    movzbl %al, %eax
+; X86-NEXT:    # kill: def $al killed $al killed $eax
 ; X86-NEXT:    retl
 ;
 ; X64-LABEL: test_mm_mask_test_epi32_mask:
@@ -1573,7 +1573,7 @@ define zeroext i8 @test_mm_mask_test_epi32_mask(i8 zeroext %__U, <2 x i64> %__A,
 ; X64-NEXT:    kmovw %edi, %k1
 ; X64-NEXT:    vptestmd %xmm0, %xmm1, %k0 {%k1}
 ; X64-NEXT:    kmovw %k0, %eax
-; X64-NEXT:    movzbl %al, %eax
+; X64-NEXT:    # kill: def $al killed $al killed $eax
 ; X64-NEXT:    retq
 entry:
   %and.i.i = and <2 x i64> %__B, %__A
@@ -1592,7 +1592,7 @@ define zeroext i8 @test_mm256_test_epi32_mask(<4 x i64> %__A, <4 x i64> %__B) {
 ; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    vptestmd %ymm0, %ymm1, %k0
 ; CHECK-NEXT:    kmovw %k0, %eax
-; CHECK-NEXT:    movzbl %al, %eax
+; CHECK-NEXT:    # kill: def $al killed $al killed $eax
 ; CHECK-NEXT:    vzeroupper
 ; CHECK-NEXT:    ret{{[l|q]}}
 entry:
@@ -1610,7 +1610,7 @@ define zeroext i8 @test_mm256_mask_test_epi32_mask(i8 zeroext %__U, <4 x i64> %_
 ; X86-NEXT:    kmovw %eax, %k1
 ; X86-NEXT:    vptestmd %ymm0, %ymm1, %k0 {%k1}
 ; X86-NEXT:    kmovw %k0, %eax
-; X86-NEXT:    movzbl %al, %eax
+; X86-NEXT:    # kill: def $al killed $al killed $eax
 ; X86-NEXT:    vzeroupper
 ; X86-NEXT:    retl
 ;
@@ -1619,7 +1619,7 @@ define zeroext i8 @test_mm256_mask_test_epi32_mask(i8 zeroext %__U, <4 x i64> %_
 ; X64-NEXT:    kmovw %edi, %k1
 ; X64-NEXT:    vptestmd %ymm0, %ymm1, %k0 {%k1}
 ; X64-NEXT:    kmovw %k0, %eax
-; X64-NEXT:    movzbl %al, %eax
+; X64-NEXT:    # kill: def $al killed $al killed $eax
 ; X64-NEXT:    vzeroupper
 ; X64-NEXT:    retq
 entry:
@@ -1637,7 +1637,7 @@ define zeroext i8 @test_mm_test_epi64_mask(<2 x i64> %__A, <2 x i64> %__B) {
 ; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    vptestmq %xmm0, %xmm1, %k0
 ; CHECK-NEXT:    kmovw %k0, %eax
-; CHECK-NEXT:    movzbl %al, %eax
+; CHECK-NEXT:    # kill: def $al killed $al killed $eax
 ; CHECK-NEXT:    ret{{[l|q]}}
 entry:
   %and.i.i = and <2 x i64> %__B, %__A
@@ -1654,7 +1654,7 @@ define zeroext i8 @test_mm_mask_test_epi64_mask(i8 zeroext %__U, <2 x i64> %__A,
 ; X86-NEXT:    kmovw %eax, %k1
 ; X86-NEXT:    vptestmq %xmm0, %xmm1, %k0 {%k1}
 ; X86-NEXT:    kmovw %k0, %eax
-; X86-NEXT:    movzbl %al, %eax
+; X86-NEXT:    # kill: def $al killed $al killed $eax
 ; X86-NEXT:    retl
 ;
 ; X64-LABEL: test_mm_mask_test_epi64_mask:
@@ -1662,7 +1662,7 @@ define zeroext i8 @test_mm_mask_test_epi64_mask(i8 zeroext %__U, <2 x i64> %__A,
 ; X64-NEXT:    kmovw %edi, %k1
 ; X64-NEXT:    vptestmq %xmm0, %xmm1, %k0 {%k1}
 ; X64-NEXT:    kmovw %k0, %eax
-; X64-NEXT:    movzbl %al, %eax
+; X64-NEXT:    # kill: def $al killed $al killed $eax
 ; X64-NEXT:    retq
 entry:
   %and.i.i = and <2 x i64> %__B, %__A
@@ -1680,7 +1680,7 @@ define zeroext i8 @test_mm256_test_epi64_mask(<4 x i64> %__A, <4 x i64> %__B) {
 ; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    vptestmq %ymm0, %ymm1, %k0
 ; CHECK-NEXT:    kmovw %k0, %eax
-; CHECK-NEXT:    movzbl %al, %eax
+; CHECK-NEXT:    # kill: def $al killed $al killed $eax
 ; CHECK-NEXT:    vzeroupper
 ; CHECK-NEXT:    ret{{[l|q]}}
 entry:
@@ -1698,7 +1698,7 @@ define zeroext i8 @test_mm256_mask_test_epi64_mask(i8 zeroext %__U, <4 x i64> %_
 ; X86-NEXT:    kmovw %eax, %k1
 ; X86-NEXT:    vptestmq %ymm0, %ymm1, %k0 {%k1}
 ; X86-NEXT:    kmovw %k0, %eax
-; X86-NEXT:    movzbl %al, %eax
+; X86-NEXT:    # kill: def $al killed $al killed $eax
 ; X86-NEXT:    vzeroupper
 ; X86-NEXT:    retl
 ;
@@ -1707,7 +1707,7 @@ define zeroext i8 @test_mm256_mask_test_epi64_mask(i8 zeroext %__U, <4 x i64> %_
 ; X64-NEXT:    kmovw %edi, %k1
 ; X64-NEXT:    vptestmq %ymm0, %ymm1, %k0 {%k1}
 ; X64-NEXT:    kmovw %k0, %eax
-; X64-NEXT:    movzbl %al, %eax
+; X64-NEXT:    # kill: def $al killed $al killed $eax
 ; X64-NEXT:    vzeroupper
 ; X64-NEXT:    retq
 entry:
@@ -1726,7 +1726,7 @@ define zeroext i8 @test_mm_testn_epi32_mask(<2 x i64> %__A, <2 x i64> %__B) {
 ; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    vptestnmd %xmm0, %xmm1, %k0
 ; CHECK-NEXT:    kmovw %k0, %eax
-; CHECK-NEXT:    movzbl %al, %eax
+; CHECK-NEXT:    # kill: def $al killed $al killed $eax
 ; CHECK-NEXT:    ret{{[l|q]}}
 entry:
   %and.i.i = and <2 x i64> %__B, %__A
@@ -1744,7 +1744,7 @@ define zeroext i8 @test_mm_mask_testn_epi32_mask(i8 zeroext %__U, <2 x i64> %__A
 ; X86-NEXT:    kmovw %eax, %k1
 ; X86-NEXT:    vptestnmd %xmm0, %xmm1, %k0 {%k1}
 ; X86-NEXT:    kmovw %k0, %eax
-; X86-NEXT:    movzbl %al, %eax
+; X86-NEXT:    # kill: def $al killed $al killed $eax
 ; X86-NEXT:    retl
 ;
 ; X64-LABEL: test_mm_mask_testn_epi32_mask:
@@ -1752,7 +1752,7 @@ define zeroext i8 @test_mm_mask_testn_epi32_mask(i8 zeroext %__U, <2 x i64> %__A
 ; X64-NEXT:    kmovw %edi, %k1
 ; X64-NEXT:    vptestnmd %xmm0, %xmm1, %k0 {%k1}
 ; X64-NEXT:    kmovw %k0, %eax
-; X64-NEXT:    movzbl %al, %eax
+; X64-NEXT:    # kill: def $al killed $al killed $eax
 ; X64-NEXT:    retq
 entry:
   %and.i.i = and <2 x i64> %__B, %__A
@@ -1771,7 +1771,7 @@ define zeroext i8 @test_mm256_testn_epi32_mask(<4 x i64> %__A, <4 x i64> %__B) {
 ; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    vptestnmd %ymm0, %ymm1, %k0
 ; CHECK-NEXT:    kmovw %k0, %eax
-; CHECK-NEXT:    movzbl %al, %eax
+; CHECK-NEXT:    # kill: def $al killed $al killed $eax
 ; CHECK-NEXT:    vzeroupper
 ; CHECK-NEXT:    ret{{[l|q]}}
 entry:
@@ -1789,7 +1789,7 @@ define zeroext i8 @test_mm256_mask_testn_epi32_mask(i8 zeroext %__U, <4 x i64> %
 ; X86-NEXT:    kmovw %eax, %k1
 ; X86-NEXT:    vptestnmd %ymm0, %ymm1, %k0 {%k1}
 ; X86-NEXT:    kmovw %k0, %eax
-; X86-NEXT:    movzbl %al, %eax
+; X86-NEXT:    # kill: def $al killed $al killed $eax
 ; X86-NEXT:    vzeroupper
 ; X86-NEXT:    retl
 ;
@@ -1798,7 +1798,7 @@ define zeroext i8 @test_mm256_mask_testn_epi32_mask(i8 zeroext %__U, <4 x i64> %
 ; X64-NEXT:    kmovw %edi, %k1
 ; X64-NEXT:    vptestnmd %ymm0, %ymm1, %k0 {%k1}
 ; X64-NEXT:    kmovw %k0, %eax
-; X64-NEXT:    movzbl %al, %eax
+; X64-NEXT:    # kill: def $al killed $al killed $eax
 ; X64-NEXT:    vzeroupper
 ; X64-NEXT:    retq
 entry:
@@ -1816,7 +1816,7 @@ define zeroext i8 @test_mm_testn_epi64_mask(<2 x i64> %__A, <2 x i64> %__B) {
 ; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    vptestnmq %xmm0, %xmm1, %k0
 ; CHECK-NEXT:    kmovw %k0, %eax
-; CHECK-NEXT:    movzbl %al, %eax
+; CHECK-NEXT:    # kill: def $al killed $al killed $eax
 ; CHECK-NEXT:    ret{{[l|q]}}
 entry:
   %and.i.i = and <2 x i64> %__B, %__A
@@ -1833,7 +1833,7 @@ define zeroext i8 @test_mm_mask_testn_epi64_mask(i8 zeroext %__U, <2 x i64> %__A
 ; X86-NEXT:    kmovw %eax, %k1
 ; X86-NEXT:    vptestnmq %xmm0, %xmm1, %k0 {%k1}
 ; X86-NEXT:    kmovw %k0, %eax
-; X86-NEXT:    movzbl %al, %eax
+; X86-NEXT:    # kill: def $al killed $al killed $eax
 ; X86-NEXT:    retl
 ;
 ; X64-LABEL: test_mm_mask_testn_epi64_mask:
@@ -1841,7 +1841,7 @@ define zeroext i8 @test_mm_mask_testn_epi64_mask(i8 zeroext %__U, <2 x i64> %__A
 ; X64-NEXT:    kmovw %edi, %k1
 ; X64-NEXT:    vptestnmq %xmm0, %xmm1, %k0 {%k1}
 ; X64-NEXT:    kmovw %k0, %eax
-; X64-NEXT:    movzbl %al, %eax
+; X64-NEXT:    # kill: def $al killed $al killed $eax
 ; X64-NEXT:    retq
 entry:
   %and.i.i = and <2 x i64> %__B, %__A
@@ -1859,7 +1859,7 @@ define zeroext i8 @test_mm256_testn_epi64_mask(<4 x i64> %__A, <4 x i64> %__B) {
 ; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    vptestnmq %ymm0, %ymm1, %k0
 ; CHECK-NEXT:    kmovw %k0, %eax
-; CHECK-NEXT:    movzbl %al, %eax
+; CHECK-NEXT:    # kill: def $al killed $al killed $eax
 ; CHECK-NEXT:    vzeroupper
 ; CHECK-NEXT:    ret{{[l|q]}}
 entry:
@@ -1877,7 +1877,7 @@ define zeroext i8 @test_mm256_mask_testn_epi64_mask(i8 zeroext %__U, <4 x i64> %
 ; X86-NEXT:    kmovw %eax, %k1
 ; X86-NEXT:    vptestnmq %ymm0, %ymm1, %k0 {%k1}
 ; X86-NEXT:    kmovw %k0, %eax
-; X86-NEXT:    movzbl %al, %eax
+; X86-NEXT:    # kill: def $al killed $al killed $eax
 ; X86-NEXT:    vzeroupper
 ; X86-NEXT:    retl
 ;
@@ -1886,7 +1886,7 @@ define zeroext i8 @test_mm256_mask_testn_epi64_mask(i8 zeroext %__U, <4 x i64> %
 ; X64-NEXT:    kmovw %edi, %k1
 ; X64-NEXT:    vptestnmq %ymm0, %ymm1, %k0 {%k1}
 ; X64-NEXT:    kmovw %k0, %eax
-; X64-NEXT:    movzbl %al, %eax
+; X64-NEXT:    # kill: def $al killed $al killed $eax
 ; X64-NEXT:    vzeroupper
 ; X64-NEXT:    retq
 entry:
@@ -1905,13 +1905,13 @@ define <2 x i64> @test_mm_mask_set1_epi32(<2 x i64> %__O, i8 zeroext %__M)  {
 ; X86:       # %bb.0: # %entry
 ; X86-NEXT:    movzbl {{[0-9]+}}(%esp), %eax
 ; X86-NEXT:    kmovw %eax, %k1
-; X86-NEXT:    vpbroadcastd {{\.?LCPI[0-9]+_[0-9]+}}, %xmm0 {%k1}
+; X86-NEXT:    vpbroadcastd {{.*#+}} xmm0 {%k1} = [5,5,5,5]
 ; X86-NEXT:    retl
 ;
 ; X64-LABEL: test_mm_mask_set1_epi32:
 ; X64:       # %bb.0: # %entry
 ; X64-NEXT:    kmovw %edi, %k1
-; X64-NEXT:    vpbroadcastd {{\.?LCPI[0-9]+_[0-9]+}}(%rip), %xmm0 {%k1}
+; X64-NEXT:    vpbroadcastd {{.*#+}} xmm0 {%k1} = [5,5,5,5]
 ; X64-NEXT:    retq
 entry:
   %0 = bitcast <2 x i64> %__O to <4 x i32>
@@ -1927,13 +1927,13 @@ define <2 x i64> @test_mm_maskz_set1_epi32(i8 zeroext %__M) {
 ; X86:       # %bb.0: # %entry
 ; X86-NEXT:    movzbl {{[0-9]+}}(%esp), %eax
 ; X86-NEXT:    kmovw %eax, %k1
-; X86-NEXT:    vpbroadcastd {{\.?LCPI[0-9]+_[0-9]+}}, %xmm0 {%k1} {z}
+; X86-NEXT:    vpbroadcastd {{.*#+}} xmm0 {%k1} {z} = [5,5,5,5]
 ; X86-NEXT:    retl
 ;
 ; X64-LABEL: test_mm_maskz_set1_epi32:
 ; X64:       # %bb.0: # %entry
 ; X64-NEXT:    kmovw %edi, %k1
-; X64-NEXT:    vpbroadcastd {{\.?LCPI[0-9]+_[0-9]+}}(%rip), %xmm0 {%k1} {z}
+; X64-NEXT:    vpbroadcastd {{.*#+}} xmm0 {%k1} {z} = [5,5,5,5]
 ; X64-NEXT:    retq
 entry:
   %0 = bitcast i8 %__M to <8 x i1>
@@ -1948,13 +1948,13 @@ define <4 x i64> @test_mm256_mask_set1_epi32(<4 x i64> %__O, i8 zeroext %__M)  {
 ; X86:       # %bb.0: # %entry
 ; X86-NEXT:    movzbl {{[0-9]+}}(%esp), %eax
 ; X86-NEXT:    kmovw %eax, %k1
-; X86-NEXT:    vpbroadcastd {{\.?LCPI[0-9]+_[0-9]+}}, %ymm0 {%k1}
+; X86-NEXT:    vpbroadcastd {{.*#+}} ymm0 {%k1} = [5,5,5,5,5,5,5,5]
 ; X86-NEXT:    retl
 ;
 ; X64-LABEL: test_mm256_mask_set1_epi32:
 ; X64:       # %bb.0: # %entry
 ; X64-NEXT:    kmovw %edi, %k1
-; X64-NEXT:    vpbroadcastd {{\.?LCPI[0-9]+_[0-9]+}}(%rip), %ymm0 {%k1}
+; X64-NEXT:    vpbroadcastd {{.*#+}} ymm0 {%k1} = [5,5,5,5,5,5,5,5]
 ; X64-NEXT:    retq
 entry:
   %0 = bitcast <4 x i64> %__O to <8 x i32>
@@ -1969,13 +1969,13 @@ define <4 x i64> @test_mm256_maskz_set1_epi32(i8 zeroext %__M)  {
 ; X86:       # %bb.0: # %entry
 ; X86-NEXT:    movzbl {{[0-9]+}}(%esp), %eax
 ; X86-NEXT:    kmovw %eax, %k1
-; X86-NEXT:    vpbroadcastd {{\.?LCPI[0-9]+_[0-9]+}}, %ymm0 {%k1} {z}
+; X86-NEXT:    vpbroadcastd {{.*#+}} ymm0 {%k1} {z} = [5,5,5,5,5,5,5,5]
 ; X86-NEXT:    retl
 ;
 ; X64-LABEL: test_mm256_maskz_set1_epi32:
 ; X64:       # %bb.0: # %entry
 ; X64-NEXT:    kmovw %edi, %k1
-; X64-NEXT:    vpbroadcastd {{\.?LCPI[0-9]+_[0-9]+}}(%rip), %ymm0 {%k1} {z}
+; X64-NEXT:    vpbroadcastd {{.*#+}} ymm0 {%k1} {z} = [5,5,5,5,5,5,5,5]
 ; X64-NEXT:    retq
 entry:
   %0 = bitcast i8 %__M to <8 x i1>
@@ -5993,7 +5993,7 @@ entry:
   ret <8 x float> %2
 }
 
-define <2 x double> @test_mm_mask_expandloadu_pd(<2 x double> %__W, i8 zeroext %__U, i8* readonly %__P) {
+define <2 x double> @test_mm_mask_expandloadu_pd(<2 x double> %__W, i8 zeroext %__U, ptr readonly %__P) {
 ; X86-LABEL: test_mm_mask_expandloadu_pd:
 ; X86:       # %bb.0: # %entry
 ; X86-NEXT:    movl {{[0-9]+}}(%esp), %eax
@@ -6008,14 +6008,13 @@ define <2 x double> @test_mm_mask_expandloadu_pd(<2 x double> %__W, i8 zeroext %
 ; X64-NEXT:    vexpandpd (%rsi), %xmm0 {%k1}
 ; X64-NEXT:    retq
 entry:
-  %0 = bitcast i8* %__P to double*
-  %1 = bitcast i8 %__U to <8 x i1>
-  %extract.i = shufflevector <8 x i1> %1, <8 x i1> undef, <2 x i32> <i32 0, i32 1>
-  %2 = tail call <2 x double> @llvm.masked.expandload.v2f64(double* %0, <2 x i1> %extract.i, <2 x double> %__W)
-  ret <2 x double> %2
+  %0 = bitcast i8 %__U to <8 x i1>
+  %extract.i = shufflevector <8 x i1> %0, <8 x i1> undef, <2 x i32> <i32 0, i32 1>
+  %1 = tail call <2 x double> @llvm.masked.expandload.v2f64(ptr %__P, <2 x i1> %extract.i, <2 x double> %__W)
+  ret <2 x double> %1
 }
 
-define <2 x double> @test_mm_maskz_expandloadu_pd(i8 zeroext %__U, i8* readonly %__P) {
+define <2 x double> @test_mm_maskz_expandloadu_pd(i8 zeroext %__U, ptr readonly %__P) {
 ; X86-LABEL: test_mm_maskz_expandloadu_pd:
 ; X86:       # %bb.0: # %entry
 ; X86-NEXT:    movl {{[0-9]+}}(%esp), %eax
@@ -6030,14 +6029,13 @@ define <2 x double> @test_mm_maskz_expandloadu_pd(i8 zeroext %__U, i8* readonly 
 ; X64-NEXT:    vexpandpd (%rsi), %xmm0 {%k1} {z}
 ; X64-NEXT:    retq
 entry:
-  %0 = bitcast i8* %__P to double*
-  %1 = bitcast i8 %__U to <8 x i1>
-  %extract.i = shufflevector <8 x i1> %1, <8 x i1> undef, <2 x i32> <i32 0, i32 1>
-  %2 = tail call <2 x double> @llvm.masked.expandload.v2f64(double* %0, <2 x i1> %extract.i, <2 x double> zeroinitializer)
-  ret <2 x double> %2
+  %0 = bitcast i8 %__U to <8 x i1>
+  %extract.i = shufflevector <8 x i1> %0, <8 x i1> undef, <2 x i32> <i32 0, i32 1>
+  %1 = tail call <2 x double> @llvm.masked.expandload.v2f64(ptr %__P, <2 x i1> %extract.i, <2 x double> zeroinitializer)
+  ret <2 x double> %1
 }
 
-define <4 x double> @test_mm256_mask_expandloadu_pd(<4 x double> %__W, i8 zeroext %__U, i8* readonly %__P) {
+define <4 x double> @test_mm256_mask_expandloadu_pd(<4 x double> %__W, i8 zeroext %__U, ptr readonly %__P) {
 ; X86-LABEL: test_mm256_mask_expandloadu_pd:
 ; X86:       # %bb.0: # %entry
 ; X86-NEXT:    movl {{[0-9]+}}(%esp), %eax
@@ -6052,14 +6050,13 @@ define <4 x double> @test_mm256_mask_expandloadu_pd(<4 x double> %__W, i8 zeroex
 ; X64-NEXT:    vexpandpd (%rsi), %ymm0 {%k1}
 ; X64-NEXT:    retq
 entry:
-  %0 = bitcast i8* %__P to double*
-  %1 = bitcast i8 %__U to <8 x i1>
-  %extract.i = shufflevector <8 x i1> %1, <8 x i1> undef, <4 x i32> <i32 0, i32 1, i32 2, i32 3>
-  %2 = tail call <4 x double> @llvm.masked.expandload.v4f64(double* %0, <4 x i1> %extract.i, <4 x double> %__W)
-  ret <4 x double> %2
+  %0 = bitcast i8 %__U to <8 x i1>
+  %extract.i = shufflevector <8 x i1> %0, <8 x i1> undef, <4 x i32> <i32 0, i32 1, i32 2, i32 3>
+  %1 = tail call <4 x double> @llvm.masked.expandload.v4f64(ptr %__P, <4 x i1> %extract.i, <4 x double> %__W)
+  ret <4 x double> %1
 }
 
-define <4 x double> @test_mm256_maskz_expandloadu_pd(i8 zeroext %__U, i8* readonly %__P) {
+define <4 x double> @test_mm256_maskz_expandloadu_pd(i8 zeroext %__U, ptr readonly %__P) {
 ; X86-LABEL: test_mm256_maskz_expandloadu_pd:
 ; X86:       # %bb.0: # %entry
 ; X86-NEXT:    movl {{[0-9]+}}(%esp), %eax
@@ -6074,14 +6071,13 @@ define <4 x double> @test_mm256_maskz_expandloadu_pd(i8 zeroext %__U, i8* readon
 ; X64-NEXT:    vexpandpd (%rsi), %ymm0 {%k1} {z}
 ; X64-NEXT:    retq
 entry:
-  %0 = bitcast i8* %__P to double*
-  %1 = bitcast i8 %__U to <8 x i1>
-  %extract.i = shufflevector <8 x i1> %1, <8 x i1> undef, <4 x i32> <i32 0, i32 1, i32 2, i32 3>
-  %2 = tail call <4 x double> @llvm.masked.expandload.v4f64(double* %0, <4 x i1> %extract.i, <4 x double> zeroinitializer)
-  ret <4 x double> %2
+  %0 = bitcast i8 %__U to <8 x i1>
+  %extract.i = shufflevector <8 x i1> %0, <8 x i1> undef, <4 x i32> <i32 0, i32 1, i32 2, i32 3>
+  %1 = tail call <4 x double> @llvm.masked.expandload.v4f64(ptr %__P, <4 x i1> %extract.i, <4 x double> zeroinitializer)
+  ret <4 x double> %1
 }
 
-define <2 x i64> @test_mm_mask_expandloadu_epi64(<2 x i64> %__W, i8 zeroext %__U, i8* readonly %__P) {
+define <2 x i64> @test_mm_mask_expandloadu_epi64(<2 x i64> %__W, i8 zeroext %__U, ptr readonly %__P) {
 ; X86-LABEL: test_mm_mask_expandloadu_epi64:
 ; X86:       # %bb.0: # %entry
 ; X86-NEXT:    movl {{[0-9]+}}(%esp), %eax
@@ -6096,14 +6092,13 @@ define <2 x i64> @test_mm_mask_expandloadu_epi64(<2 x i64> %__W, i8 zeroext %__U
 ; X64-NEXT:    vpexpandq (%rsi), %xmm0 {%k1}
 ; X64-NEXT:    retq
 entry:
-  %0 = bitcast i8* %__P to i64*
-  %1 = bitcast i8 %__U to <8 x i1>
-  %extract.i = shufflevector <8 x i1> %1, <8 x i1> undef, <2 x i32> <i32 0, i32 1>
-  %2 = tail call <2 x i64> @llvm.masked.expandload.v2i64(i64* %0, <2 x i1> %extract.i, <2 x i64> %__W) #10
-  ret <2 x i64> %2
+  %0 = bitcast i8 %__U to <8 x i1>
+  %extract.i = shufflevector <8 x i1> %0, <8 x i1> undef, <2 x i32> <i32 0, i32 1>
+  %1 = tail call <2 x i64> @llvm.masked.expandload.v2i64(ptr %__P, <2 x i1> %extract.i, <2 x i64> %__W) #10
+  ret <2 x i64> %1
 }
 
-define <2 x i64> @test_mm_maskz_expandloadu_epi64(i8 zeroext %__U, i8* readonly %__P) {
+define <2 x i64> @test_mm_maskz_expandloadu_epi64(i8 zeroext %__U, ptr readonly %__P) {
 ; X86-LABEL: test_mm_maskz_expandloadu_epi64:
 ; X86:       # %bb.0: # %entry
 ; X86-NEXT:    movl {{[0-9]+}}(%esp), %eax
@@ -6118,14 +6113,13 @@ define <2 x i64> @test_mm_maskz_expandloadu_epi64(i8 zeroext %__U, i8* readonly 
 ; X64-NEXT:    vpexpandq (%rsi), %xmm0 {%k1} {z}
 ; X64-NEXT:    retq
 entry:
-  %0 = bitcast i8* %__P to i64*
-  %1 = bitcast i8 %__U to <8 x i1>
-  %extract.i = shufflevector <8 x i1> %1, <8 x i1> undef, <2 x i32> <i32 0, i32 1>
-  %2 = tail call <2 x i64> @llvm.masked.expandload.v2i64(i64* %0, <2 x i1> %extract.i, <2 x i64> zeroinitializer)
-  ret <2 x i64> %2
+  %0 = bitcast i8 %__U to <8 x i1>
+  %extract.i = shufflevector <8 x i1> %0, <8 x i1> undef, <2 x i32> <i32 0, i32 1>
+  %1 = tail call <2 x i64> @llvm.masked.expandload.v2i64(ptr %__P, <2 x i1> %extract.i, <2 x i64> zeroinitializer)
+  ret <2 x i64> %1
 }
 
-define <4 x i64> @test_mm256_mask_expandloadu_epi64(<4 x i64> %__W, i8 zeroext %__U, i8* readonly %__P) {
+define <4 x i64> @test_mm256_mask_expandloadu_epi64(<4 x i64> %__W, i8 zeroext %__U, ptr readonly %__P) {
 ; X86-LABEL: test_mm256_mask_expandloadu_epi64:
 ; X86:       # %bb.0: # %entry
 ; X86-NEXT:    movl {{[0-9]+}}(%esp), %eax
@@ -6140,14 +6134,13 @@ define <4 x i64> @test_mm256_mask_expandloadu_epi64(<4 x i64> %__W, i8 zeroext %
 ; X64-NEXT:    vpexpandq (%rsi), %ymm0 {%k1}
 ; X64-NEXT:    retq
 entry:
-  %0 = bitcast i8* %__P to i64*
-  %1 = bitcast i8 %__U to <8 x i1>
-  %extract.i = shufflevector <8 x i1> %1, <8 x i1> undef, <4 x i32> <i32 0, i32 1, i32 2, i32 3>
-  %2 = tail call <4 x i64> @llvm.masked.expandload.v4i64(i64* %0, <4 x i1> %extract.i, <4 x i64> %__W) #10
-  ret <4 x i64> %2
+  %0 = bitcast i8 %__U to <8 x i1>
+  %extract.i = shufflevector <8 x i1> %0, <8 x i1> undef, <4 x i32> <i32 0, i32 1, i32 2, i32 3>
+  %1 = tail call <4 x i64> @llvm.masked.expandload.v4i64(ptr %__P, <4 x i1> %extract.i, <4 x i64> %__W) #10
+  ret <4 x i64> %1
 }
 
-define <4 x i64> @test_mm256_maskz_expandloadu_epi64(i8 zeroext %__U, i8* readonly %__P) {
+define <4 x i64> @test_mm256_maskz_expandloadu_epi64(i8 zeroext %__U, ptr readonly %__P) {
 ; X86-LABEL: test_mm256_maskz_expandloadu_epi64:
 ; X86:       # %bb.0: # %entry
 ; X86-NEXT:    movl {{[0-9]+}}(%esp), %eax
@@ -6162,14 +6155,13 @@ define <4 x i64> @test_mm256_maskz_expandloadu_epi64(i8 zeroext %__U, i8* readon
 ; X64-NEXT:    vpexpandq (%rsi), %ymm0 {%k1} {z}
 ; X64-NEXT:    retq
 entry:
-  %0 = bitcast i8* %__P to i64*
-  %1 = bitcast i8 %__U to <8 x i1>
-  %extract.i = shufflevector <8 x i1> %1, <8 x i1> undef, <4 x i32> <i32 0, i32 1, i32 2, i32 3>
-  %2 = tail call <4 x i64> @llvm.masked.expandload.v4i64(i64* %0, <4 x i1> %extract.i, <4 x i64> zeroinitializer)
-  ret <4 x i64> %2
+  %0 = bitcast i8 %__U to <8 x i1>
+  %extract.i = shufflevector <8 x i1> %0, <8 x i1> undef, <4 x i32> <i32 0, i32 1, i32 2, i32 3>
+  %1 = tail call <4 x i64> @llvm.masked.expandload.v4i64(ptr %__P, <4 x i1> %extract.i, <4 x i64> zeroinitializer)
+  ret <4 x i64> %1
 }
 
-define <4 x float> @test_mm_mask_expandloadu_ps(<4 x float> %__W, i8 zeroext %__U, i8* readonly %__P) {
+define <4 x float> @test_mm_mask_expandloadu_ps(<4 x float> %__W, i8 zeroext %__U, ptr readonly %__P) {
 ; X86-LABEL: test_mm_mask_expandloadu_ps:
 ; X86:       # %bb.0: # %entry
 ; X86-NEXT:    movl {{[0-9]+}}(%esp), %eax
@@ -6184,14 +6176,13 @@ define <4 x float> @test_mm_mask_expandloadu_ps(<4 x float> %__W, i8 zeroext %__
 ; X64-NEXT:    vexpandps (%rsi), %xmm0 {%k1}
 ; X64-NEXT:    retq
 entry:
-  %0 = bitcast i8* %__P to float*
-  %1 = bitcast i8 %__U to <8 x i1>
-  %extract.i = shufflevector <8 x i1> %1, <8 x i1> undef, <4 x i32> <i32 0, i32 1, i32 2, i32 3>
-  %2 = tail call <4 x float> @llvm.masked.expandload.v4f32(float* %0, <4 x i1> %extract.i, <4 x float> %__W)
-  ret <4 x float> %2
+  %0 = bitcast i8 %__U to <8 x i1>
+  %extract.i = shufflevector <8 x i1> %0, <8 x i1> undef, <4 x i32> <i32 0, i32 1, i32 2, i32 3>
+  %1 = tail call <4 x float> @llvm.masked.expandload.v4f32(ptr %__P, <4 x i1> %extract.i, <4 x float> %__W)
+  ret <4 x float> %1
 }
 
-define <4 x float> @test_mm_maskz_expandloadu_ps(i8 zeroext %__U, i8* readonly %__P) {
+define <4 x float> @test_mm_maskz_expandloadu_ps(i8 zeroext %__U, ptr readonly %__P) {
 ; X86-LABEL: test_mm_maskz_expandloadu_ps:
 ; X86:       # %bb.0: # %entry
 ; X86-NEXT:    movl {{[0-9]+}}(%esp), %eax
@@ -6206,14 +6197,13 @@ define <4 x float> @test_mm_maskz_expandloadu_ps(i8 zeroext %__U, i8* readonly %
 ; X64-NEXT:    vexpandps (%rsi), %xmm0 {%k1} {z}
 ; X64-NEXT:    retq
 entry:
-  %0 = bitcast i8* %__P to float*
-  %1 = bitcast i8 %__U to <8 x i1>
-  %extract.i = shufflevector <8 x i1> %1, <8 x i1> undef, <4 x i32> <i32 0, i32 1, i32 2, i32 3>
-  %2 = tail call <4 x float> @llvm.masked.expandload.v4f32(float* %0, <4 x i1> %extract.i, <4 x float> zeroinitializer)
-  ret <4 x float> %2
+  %0 = bitcast i8 %__U to <8 x i1>
+  %extract.i = shufflevector <8 x i1> %0, <8 x i1> undef, <4 x i32> <i32 0, i32 1, i32 2, i32 3>
+  %1 = tail call <4 x float> @llvm.masked.expandload.v4f32(ptr %__P, <4 x i1> %extract.i, <4 x float> zeroinitializer)
+  ret <4 x float> %1
 }
 
-define <8 x float> @test_mm256_mask_expandloadu_ps(<8 x float> %__W, i8 zeroext %__U, i8* readonly %__P) {
+define <8 x float> @test_mm256_mask_expandloadu_ps(<8 x float> %__W, i8 zeroext %__U, ptr readonly %__P) {
 ; X86-LABEL: test_mm256_mask_expandloadu_ps:
 ; X86:       # %bb.0: # %entry
 ; X86-NEXT:    movl {{[0-9]+}}(%esp), %eax
@@ -6228,13 +6218,12 @@ define <8 x float> @test_mm256_mask_expandloadu_ps(<8 x float> %__W, i8 zeroext 
 ; X64-NEXT:    vexpandps (%rsi), %ymm0 {%k1}
 ; X64-NEXT:    retq
 entry:
-  %0 = bitcast i8* %__P to float*
-  %1 = bitcast i8 %__U to <8 x i1>
-  %2 = tail call <8 x float> @llvm.masked.expandload.v8f32(float* %0, <8 x i1> %1, <8 x float> %__W)
-  ret <8 x float> %2
+  %0 = bitcast i8 %__U to <8 x i1>
+  %1 = tail call <8 x float> @llvm.masked.expandload.v8f32(ptr %__P, <8 x i1> %0, <8 x float> %__W)
+  ret <8 x float> %1
 }
 
-define <8 x float> @test_mm256_maskz_expandloadu_ps(i8 zeroext %__U, i8* readonly %__P) {
+define <8 x float> @test_mm256_maskz_expandloadu_ps(i8 zeroext %__U, ptr readonly %__P) {
 ; X86-LABEL: test_mm256_maskz_expandloadu_ps:
 ; X86:       # %bb.0: # %entry
 ; X86-NEXT:    movl {{[0-9]+}}(%esp), %eax
@@ -6249,13 +6238,12 @@ define <8 x float> @test_mm256_maskz_expandloadu_ps(i8 zeroext %__U, i8* readonl
 ; X64-NEXT:    vexpandps (%rsi), %ymm0 {%k1} {z}
 ; X64-NEXT:    retq
 entry:
-  %0 = bitcast i8* %__P to float*
-  %1 = bitcast i8 %__U to <8 x i1>
-  %2 = tail call <8 x float> @llvm.masked.expandload.v8f32(float* %0, <8 x i1> %1, <8 x float> zeroinitializer)
-  ret <8 x float> %2
+  %0 = bitcast i8 %__U to <8 x i1>
+  %1 = tail call <8 x float> @llvm.masked.expandload.v8f32(ptr %__P, <8 x i1> %0, <8 x float> zeroinitializer)
+  ret <8 x float> %1
 }
 
-define <2 x i64> @test_mm_mask_expandloadu_epi32(<2 x i64> %__W, i8 zeroext %__U, i8* readonly %__P) {
+define <2 x i64> @test_mm_mask_expandloadu_epi32(<2 x i64> %__W, i8 zeroext %__U, ptr readonly %__P) {
 ; X86-LABEL: test_mm_mask_expandloadu_epi32:
 ; X86:       # %bb.0: # %entry
 ; X86-NEXT:    movl {{[0-9]+}}(%esp), %eax
@@ -6271,15 +6259,14 @@ define <2 x i64> @test_mm_mask_expandloadu_epi32(<2 x i64> %__W, i8 zeroext %__U
 ; X64-NEXT:    retq
 entry:
   %0 = bitcast <2 x i64> %__W to <4 x i32>
-  %1 = bitcast i8* %__P to i32*
-  %2 = bitcast i8 %__U to <8 x i1>
-  %extract.i = shufflevector <8 x i1> %2, <8 x i1> undef, <4 x i32> <i32 0, i32 1, i32 2, i32 3>
-  %3 = tail call <4 x i32> @llvm.masked.expandload.v4i32(i32* %1, <4 x i1> %extract.i, <4 x i32> %0)
-  %4 = bitcast <4 x i32> %3 to <2 x i64>
-  ret <2 x i64> %4
+  %1 = bitcast i8 %__U to <8 x i1>
+  %extract.i = shufflevector <8 x i1> %1, <8 x i1> undef, <4 x i32> <i32 0, i32 1, i32 2, i32 3>
+  %2 = tail call <4 x i32> @llvm.masked.expandload.v4i32(ptr %__P, <4 x i1> %extract.i, <4 x i32> %0)
+  %3 = bitcast <4 x i32> %2 to <2 x i64>
+  ret <2 x i64> %3
 }
 
-define <2 x i64> @test_mm_maskz_expandloadu_epi32(i8 zeroext %__U, i8* readonly %__P) {
+define <2 x i64> @test_mm_maskz_expandloadu_epi32(i8 zeroext %__U, ptr readonly %__P) {
 ; X86-LABEL: test_mm_maskz_expandloadu_epi32:
 ; X86:       # %bb.0: # %entry
 ; X86-NEXT:    movl {{[0-9]+}}(%esp), %eax
@@ -6294,15 +6281,14 @@ define <2 x i64> @test_mm_maskz_expandloadu_epi32(i8 zeroext %__U, i8* readonly 
 ; X64-NEXT:    vpexpandd (%rsi), %xmm0 {%k1} {z}
 ; X64-NEXT:    retq
 entry:
-  %0 = bitcast i8* %__P to i32*
-  %1 = bitcast i8 %__U to <8 x i1>
-  %extract.i = shufflevector <8 x i1> %1, <8 x i1> undef, <4 x i32> <i32 0, i32 1, i32 2, i32 3>
-  %2 = tail call <4 x i32> @llvm.masked.expandload.v4i32(i32* %0, <4 x i1> %extract.i, <4 x i32> zeroinitializer)
-  %3 = bitcast <4 x i32> %2 to <2 x i64>
-  ret <2 x i64> %3
+  %0 = bitcast i8 %__U to <8 x i1>
+  %extract.i = shufflevector <8 x i1> %0, <8 x i1> undef, <4 x i32> <i32 0, i32 1, i32 2, i32 3>
+  %1 = tail call <4 x i32> @llvm.masked.expandload.v4i32(ptr %__P, <4 x i1> %extract.i, <4 x i32> zeroinitializer)
+  %2 = bitcast <4 x i32> %1 to <2 x i64>
+  ret <2 x i64> %2
 }
 
-define <4 x i64> @test_mm256_mask_expandloadu_epi32(<4 x i64> %__W, i8 zeroext %__U, i8* readonly %__P) {
+define <4 x i64> @test_mm256_mask_expandloadu_epi32(<4 x i64> %__W, i8 zeroext %__U, ptr readonly %__P) {
 ; X86-LABEL: test_mm256_mask_expandloadu_epi32:
 ; X86:       # %bb.0: # %entry
 ; X86-NEXT:    movl {{[0-9]+}}(%esp), %eax
@@ -6318,14 +6304,13 @@ define <4 x i64> @test_mm256_mask_expandloadu_epi32(<4 x i64> %__W, i8 zeroext %
 ; X64-NEXT:    retq
 entry:
   %0 = bitcast <4 x i64> %__W to <8 x i32>
-  %1 = bitcast i8* %__P to i32*
-  %2 = bitcast i8 %__U to <8 x i1>
-  %3 = tail call <8 x i32> @llvm.masked.expandload.v8i32(i32* %1, <8 x i1> %2, <8 x i32> %0)
-  %4 = bitcast <8 x i32> %3 to <4 x i64>
-  ret <4 x i64> %4
+  %1 = bitcast i8 %__U to <8 x i1>
+  %2 = tail call <8 x i32> @llvm.masked.expandload.v8i32(ptr %__P, <8 x i1> %1, <8 x i32> %0)
+  %3 = bitcast <8 x i32> %2 to <4 x i64>
+  ret <4 x i64> %3
 }
 
-define <4 x i64> @test_mm256_maskz_expandloadu_epi32(i8 zeroext %__U, i8* readonly %__P) {
+define <4 x i64> @test_mm256_maskz_expandloadu_epi32(i8 zeroext %__U, ptr readonly %__P) {
 ; X86-LABEL: test_mm256_maskz_expandloadu_epi32:
 ; X86:       # %bb.0: # %entry
 ; X86-NEXT:    movl {{[0-9]+}}(%esp), %eax
@@ -6340,14 +6325,13 @@ define <4 x i64> @test_mm256_maskz_expandloadu_epi32(i8 zeroext %__U, i8* readon
 ; X64-NEXT:    vpexpandd (%rsi), %ymm0 {%k1} {z}
 ; X64-NEXT:    retq
 entry:
-  %0 = bitcast i8* %__P to i32*
-  %1 = bitcast i8 %__U to <8 x i1>
-  %2 = tail call <8 x i32> @llvm.masked.expandload.v8i32(i32* %0, <8 x i1> %1, <8 x i32> zeroinitializer)
-  %3 = bitcast <8 x i32> %2 to <4 x i64>
-  ret <4 x i64> %3
+  %0 = bitcast i8 %__U to <8 x i1>
+  %1 = tail call <8 x i32> @llvm.masked.expandload.v8i32(ptr %__P, <8 x i1> %0, <8 x i32> zeroinitializer)
+  %2 = bitcast <8 x i32> %1 to <4 x i64>
+  ret <4 x i64> %2
 }
 
-define void @test_mm_mask_compressstoreu_pd(i8* %__P, i8 zeroext %__U, <2 x double> %__A) {
+define void @test_mm_mask_compressstoreu_pd(ptr %__P, i8 zeroext %__U, <2 x double> %__A) {
 ; X86-LABEL: test_mm_mask_compressstoreu_pd:
 ; X86:       # %bb.0: # %entry
 ; X86-NEXT:    movzbl {{[0-9]+}}(%esp), %eax
@@ -6362,14 +6346,13 @@ define void @test_mm_mask_compressstoreu_pd(i8* %__P, i8 zeroext %__U, <2 x doub
 ; X64-NEXT:    vcompresspd %xmm0, (%rdi) {%k1}
 ; X64-NEXT:    retq
 entry:
-  %0 = bitcast i8* %__P to double*
-  %1 = bitcast i8 %__U to <8 x i1>
-  %extract.i = shufflevector <8 x i1> %1, <8 x i1> undef, <2 x i32> <i32 0, i32 1>
-  tail call void @llvm.masked.compressstore.v2f64(<2 x double> %__A, double* %0, <2 x i1> %extract.i)
+  %0 = bitcast i8 %__U to <8 x i1>
+  %extract.i = shufflevector <8 x i1> %0, <8 x i1> undef, <2 x i32> <i32 0, i32 1>
+  tail call void @llvm.masked.compressstore.v2f64(<2 x double> %__A, ptr %__P, <2 x i1> %extract.i)
   ret void
 }
 
-define void @test_mm256_mask_compressstoreu_pd(i8* %__P, i8 zeroext %__U, <4 x double> %__A) {
+define void @test_mm256_mask_compressstoreu_pd(ptr %__P, i8 zeroext %__U, <4 x double> %__A) {
 ; X86-LABEL: test_mm256_mask_compressstoreu_pd:
 ; X86:       # %bb.0: # %entry
 ; X86-NEXT:    movzbl {{[0-9]+}}(%esp), %eax
@@ -6386,14 +6369,13 @@ define void @test_mm256_mask_compressstoreu_pd(i8* %__P, i8 zeroext %__U, <4 x d
 ; X64-NEXT:    vzeroupper
 ; X64-NEXT:    retq
 entry:
-  %0 = bitcast i8* %__P to double*
-  %1 = bitcast i8 %__U to <8 x i1>
-  %extract.i = shufflevector <8 x i1> %1, <8 x i1> undef, <4 x i32> <i32 0, i32 1, i32 2, i32 3>
-  tail call void @llvm.masked.compressstore.v4f64(<4 x double> %__A, double* %0, <4 x i1> %extract.i)
+  %0 = bitcast i8 %__U to <8 x i1>
+  %extract.i = shufflevector <8 x i1> %0, <8 x i1> undef, <4 x i32> <i32 0, i32 1, i32 2, i32 3>
+  tail call void @llvm.masked.compressstore.v4f64(<4 x double> %__A, ptr %__P, <4 x i1> %extract.i)
   ret void
 }
 
-define void @test_mm_mask_compressstoreu_epi64(i8* %__P, i8 zeroext %__U, <2 x i64> %__A) {
+define void @test_mm_mask_compressstoreu_epi64(ptr %__P, i8 zeroext %__U, <2 x i64> %__A) {
 ; X86-LABEL: test_mm_mask_compressstoreu_epi64:
 ; X86:       # %bb.0: # %entry
 ; X86-NEXT:    movzbl {{[0-9]+}}(%esp), %eax
@@ -6408,14 +6390,13 @@ define void @test_mm_mask_compressstoreu_epi64(i8* %__P, i8 zeroext %__U, <2 x i
 ; X64-NEXT:    vpcompressq %xmm0, (%rdi) {%k1}
 ; X64-NEXT:    retq
 entry:
-  %0 = bitcast i8* %__P to i64*
-  %1 = bitcast i8 %__U to <8 x i1>
-  %extract.i = shufflevector <8 x i1> %1, <8 x i1> undef, <2 x i32> <i32 0, i32 1>
-  tail call void @llvm.masked.compressstore.v2i64(<2 x i64> %__A, i64* %0, <2 x i1> %extract.i)
+  %0 = bitcast i8 %__U to <8 x i1>
+  %extract.i = shufflevector <8 x i1> %0, <8 x i1> undef, <2 x i32> <i32 0, i32 1>
+  tail call void @llvm.masked.compressstore.v2i64(<2 x i64> %__A, ptr %__P, <2 x i1> %extract.i)
   ret void
 }
 
-define void @test_mm256_mask_compressstoreu_epi64(i8* %__P, i8 zeroext %__U, <4 x i64> %__A) {
+define void @test_mm256_mask_compressstoreu_epi64(ptr %__P, i8 zeroext %__U, <4 x i64> %__A) {
 ; X86-LABEL: test_mm256_mask_compressstoreu_epi64:
 ; X86:       # %bb.0: # %entry
 ; X86-NEXT:    movzbl {{[0-9]+}}(%esp), %eax
@@ -6432,14 +6413,13 @@ define void @test_mm256_mask_compressstoreu_epi64(i8* %__P, i8 zeroext %__U, <4 
 ; X64-NEXT:    vzeroupper
 ; X64-NEXT:    retq
 entry:
-  %0 = bitcast i8* %__P to i64*
-  %1 = bitcast i8 %__U to <8 x i1>
-  %extract.i = shufflevector <8 x i1> %1, <8 x i1> undef, <4 x i32> <i32 0, i32 1, i32 2, i32 3>
-  tail call void @llvm.masked.compressstore.v4i64(<4 x i64> %__A, i64* %0, <4 x i1> %extract.i)
+  %0 = bitcast i8 %__U to <8 x i1>
+  %extract.i = shufflevector <8 x i1> %0, <8 x i1> undef, <4 x i32> <i32 0, i32 1, i32 2, i32 3>
+  tail call void @llvm.masked.compressstore.v4i64(<4 x i64> %__A, ptr %__P, <4 x i1> %extract.i)
   ret void
 }
 
-define void @test_mm_mask_compressstoreu_ps(i8* %__P, i8 zeroext %__U, <4 x float> %__A) {
+define void @test_mm_mask_compressstoreu_ps(ptr %__P, i8 zeroext %__U, <4 x float> %__A) {
 ; X86-LABEL: test_mm_mask_compressstoreu_ps:
 ; X86:       # %bb.0: # %entry
 ; X86-NEXT:    movzbl {{[0-9]+}}(%esp), %eax
@@ -6454,14 +6434,13 @@ define void @test_mm_mask_compressstoreu_ps(i8* %__P, i8 zeroext %__U, <4 x floa
 ; X64-NEXT:    vcompressps %xmm0, (%rdi) {%k1}
 ; X64-NEXT:    retq
 entry:
-  %0 = bitcast i8* %__P to float*
-  %1 = bitcast i8 %__U to <8 x i1>
-  %extract.i = shufflevector <8 x i1> %1, <8 x i1> undef, <4 x i32> <i32 0, i32 1, i32 2, i32 3>
-  tail call void @llvm.masked.compressstore.v4f32(<4 x float> %__A, float* %0, <4 x i1> %extract.i)
+  %0 = bitcast i8 %__U to <8 x i1>
+  %extract.i = shufflevector <8 x i1> %0, <8 x i1> undef, <4 x i32> <i32 0, i32 1, i32 2, i32 3>
+  tail call void @llvm.masked.compressstore.v4f32(<4 x float> %__A, ptr %__P, <4 x i1> %extract.i)
   ret void
 }
 
-define void @test_mm256_mask_compressstoreu_ps(i8* %__P, i8 zeroext %__U, <8 x float> %__A) {
+define void @test_mm256_mask_compressstoreu_ps(ptr %__P, i8 zeroext %__U, <8 x float> %__A) {
 ; X86-LABEL: test_mm256_mask_compressstoreu_ps:
 ; X86:       # %bb.0: # %entry
 ; X86-NEXT:    movzbl {{[0-9]+}}(%esp), %eax
@@ -6478,13 +6457,12 @@ define void @test_mm256_mask_compressstoreu_ps(i8* %__P, i8 zeroext %__U, <8 x f
 ; X64-NEXT:    vzeroupper
 ; X64-NEXT:    retq
 entry:
-  %0 = bitcast i8* %__P to float*
-  %1 = bitcast i8 %__U to <8 x i1>
-  tail call void @llvm.masked.compressstore.v8f32(<8 x float> %__A, float* %0, <8 x i1> %1)
+  %0 = bitcast i8 %__U to <8 x i1>
+  tail call void @llvm.masked.compressstore.v8f32(<8 x float> %__A, ptr %__P, <8 x i1> %0)
   ret void
 }
 
-define void @test_mm_mask_compressstoreu_epi32(i8* %__P, i8 zeroext %__U, <2 x i64> %__A) {
+define void @test_mm_mask_compressstoreu_epi32(ptr %__P, i8 zeroext %__U, <2 x i64> %__A) {
 ; X86-LABEL: test_mm_mask_compressstoreu_epi32:
 ; X86:       # %bb.0: # %entry
 ; X86-NEXT:    movzbl {{[0-9]+}}(%esp), %eax
@@ -6500,14 +6478,13 @@ define void @test_mm_mask_compressstoreu_epi32(i8* %__P, i8 zeroext %__U, <2 x i
 ; X64-NEXT:    retq
 entry:
   %0 = bitcast <2 x i64> %__A to <4 x i32>
-  %1 = bitcast i8* %__P to i32*
-  %2 = bitcast i8 %__U to <8 x i1>
-  %extract.i = shufflevector <8 x i1> %2, <8 x i1> undef, <4 x i32> <i32 0, i32 1, i32 2, i32 3>
-  tail call void @llvm.masked.compressstore.v4i32(<4 x i32> %0, i32* %1, <4 x i1> %extract.i)
+  %1 = bitcast i8 %__U to <8 x i1>
+  %extract.i = shufflevector <8 x i1> %1, <8 x i1> undef, <4 x i32> <i32 0, i32 1, i32 2, i32 3>
+  tail call void @llvm.masked.compressstore.v4i32(<4 x i32> %0, ptr %__P, <4 x i1> %extract.i)
   ret void
 }
 
-define void @test_mm256_mask_compressstoreu_epi32(i8* %__P, i8 zeroext %__U, <4 x i64> %__A) {
+define void @test_mm256_mask_compressstoreu_epi32(ptr %__P, i8 zeroext %__U, <4 x i64> %__A) {
 ; X86-LABEL: test_mm256_mask_compressstoreu_epi32:
 ; X86:       # %bb.0: # %entry
 ; X86-NEXT:    movzbl {{[0-9]+}}(%esp), %eax
@@ -6525,9 +6502,8 @@ define void @test_mm256_mask_compressstoreu_epi32(i8* %__P, i8 zeroext %__U, <4 
 ; X64-NEXT:    retq
 entry:
   %0 = bitcast <4 x i64> %__A to <8 x i32>
-  %1 = bitcast i8* %__P to i32*
-  %2 = bitcast i8 %__U to <8 x i1>
-  tail call void @llvm.masked.compressstore.v8i32(<8 x i32> %0, i32* %1, <8 x i1> %2) #10
+  %1 = bitcast i8 %__U to <8 x i1>
+  tail call void @llvm.masked.compressstore.v8i32(<8 x i32> %0, ptr %__P, <8 x i1> %1) #10
   ret void
 }
 
@@ -7632,22 +7608,22 @@ declare <4 x float> @llvm.x86.avx512.vpermi2var.ps.128(<4 x float>, <4 x i32>, <
 declare <8 x float> @llvm.x86.avx512.vpermi2var.ps.256(<8 x float>, <8 x i32>, <8 x float>)
 declare <2 x i64> @llvm.x86.avx512.vpermi2var.q.128(<2 x i64>, <2 x i64>, <2 x i64>)
 declare <4 x i64> @llvm.x86.avx512.vpermi2var.q.256(<4 x i64>, <4 x i64>, <4 x i64>)
-declare <2 x double> @llvm.masked.expandload.v2f64(double*, <2 x i1>, <2 x double>)
-declare <4 x double> @llvm.masked.expandload.v4f64(double*, <4 x i1>, <4 x double>)
-declare <2 x i64> @llvm.masked.expandload.v2i64(i64*, <2 x i1>, <2 x i64>)
-declare <4 x i64> @llvm.masked.expandload.v4i64(i64*, <4 x i1>, <4 x i64>)
-declare <4 x float> @llvm.masked.expandload.v4f32(float*, <4 x i1>, <4 x float>)
-declare <8 x float> @llvm.masked.expandload.v8f32(float*, <8 x i1>, <8 x float>)
-declare <4 x i32> @llvm.masked.expandload.v4i32(i32*, <4 x i1>, <4 x i32>)
-declare <8 x i32> @llvm.masked.expandload.v8i32(i32*, <8 x i1>, <8 x i32>)
-declare void @llvm.masked.compressstore.v2f64(<2 x double>, double*, <2 x i1>)
-declare void @llvm.masked.compressstore.v4f64(<4 x double>, double*, <4 x i1>)
-declare void @llvm.masked.compressstore.v2i64(<2 x i64>, i64*, <2 x i1>)
-declare void @llvm.masked.compressstore.v4i64(<4 x i64>, i64*, <4 x i1>)
-declare void @llvm.masked.compressstore.v4f32(<4 x float>, float*, <4 x i1>)
-declare void @llvm.masked.compressstore.v8f32(<8 x float>, float*, <8 x i1>)
-declare void @llvm.masked.compressstore.v4i32(<4 x i32>, i32*, <4 x i1>)
-declare void @llvm.masked.compressstore.v8i32(<8 x i32>, i32*, <8 x i1>)
+declare <2 x double> @llvm.masked.expandload.v2f64(ptr, <2 x i1>, <2 x double>)
+declare <4 x double> @llvm.masked.expandload.v4f64(ptr, <4 x i1>, <4 x double>)
+declare <2 x i64> @llvm.masked.expandload.v2i64(ptr, <2 x i1>, <2 x i64>)
+declare <4 x i64> @llvm.masked.expandload.v4i64(ptr, <4 x i1>, <4 x i64>)
+declare <4 x float> @llvm.masked.expandload.v4f32(ptr, <4 x i1>, <4 x float>)
+declare <8 x float> @llvm.masked.expandload.v8f32(ptr, <8 x i1>, <8 x float>)
+declare <4 x i32> @llvm.masked.expandload.v4i32(ptr, <4 x i1>, <4 x i32>)
+declare <8 x i32> @llvm.masked.expandload.v8i32(ptr, <8 x i1>, <8 x i32>)
+declare void @llvm.masked.compressstore.v2f64(<2 x double>, ptr, <2 x i1>)
+declare void @llvm.masked.compressstore.v4f64(<4 x double>, ptr, <4 x i1>)
+declare void @llvm.masked.compressstore.v2i64(<2 x i64>, ptr, <2 x i1>)
+declare void @llvm.masked.compressstore.v4i64(<4 x i64>, ptr, <4 x i1>)
+declare void @llvm.masked.compressstore.v4f32(<4 x float>, ptr, <4 x i1>)
+declare void @llvm.masked.compressstore.v8f32(<8 x float>, ptr, <8 x i1>)
+declare void @llvm.masked.compressstore.v4i32(<4 x i32>, ptr, <4 x i1>)
+declare void @llvm.masked.compressstore.v8i32(<8 x i32>, ptr, <8 x i1>)
 declare <4 x i32> @llvm.fshl.v4i32(<4 x i32>, <4 x i32>, <4 x i32>)
 declare <8 x i32> @llvm.fshl.v8i32(<8 x i32>, <8 x i32>, <8 x i32>)
 declare <2 x i64> @llvm.fshl.v2i64(<2 x i64>, <2 x i64>, <2 x i64>)

@@ -419,6 +419,18 @@ define ptr @ptrmask_to_preserves_inbounds(ptr align 16 %p) {
   ret ptr %pm
 }
 
+define ptr @ptrmask_of_gep_requires_i8(ptr align 8 %p) {
+; CHECK-LABEL: define ptr @ptrmask_of_gep_requires_i8
+; CHECK-SAME: (ptr align 8 [[P:%.*]]) {
+; CHECK-NEXT:    [[GEP1:%.*]] = getelementptr i8, ptr [[P]], i64 8
+; CHECK-NEXT:    [[PM:%.*]] = call align 16 ptr @llvm.ptrmask.p0.i64(ptr [[GEP1]], i64 -16)
+; CHECK-NEXT:    ret ptr [[PM]]
+;
+  %gep = getelementptr i16, ptr %p, i32 5
+  %pm = call ptr @llvm.ptrmask.p0.i64(ptr %gep, i64 -16)
+  ret ptr %pm
+}
+
 define <2 x ptr> @ptrmask_of_gep_vector_type_unimplemented(<2 x ptr> align 8 %p) {
 ; CHECK-LABEL: define <2 x ptr> @ptrmask_of_gep_vector_type_unimplemented
 ; CHECK-SAME: (<2 x ptr> align 8 [[P:%.*]]) {

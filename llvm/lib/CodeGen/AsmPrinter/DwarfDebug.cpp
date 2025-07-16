@@ -195,6 +195,10 @@ void DebugLocDwarfExpression::emitBaseTypeRef(uint64_t Idx) {
   getActiveStreamer().emitULEB128(Idx, Twine(Idx), ULEB128PadSize);
 }
 
+void DebugLocDwarfExpression::emitOpAddress(const GlobalVariable *GV) {
+  llvm_unreachable("cannot have loc_list for global");
+}
+
 bool DebugLocDwarfExpression::isFrameRegister(const TargetRegisterInfo &TRI,
                                               llvm::Register MachineReg) {
   // This information is not available while emitting .debug_loc entries.
@@ -282,7 +286,7 @@ bool llvm::operator<(const EntryValueInfo &LHS, const EntryValueInfo &RHS) {
 Loc::Single::Single(DbgValueLoc ValueLoc)
     : ValueLoc(std::make_unique<DbgValueLoc>(ValueLoc)),
       Expr(ValueLoc.getExpression()) {
-  if (!Expr->getNumElements())
+  if (Expr->holdsOldElements() && !Expr->getNumElements())
     Expr = nullptr;
 }
 
@@ -298,7 +302,8 @@ void Loc::MMI::addFrameIndexExpr(const DIExpression *Expr, int FI) {
   assert((FrameIndexExprs.size() == 1 ||
           llvm::all_of(FrameIndexExprs,
                        [](const FrameIndexExpr &FIE) {
-                         return FIE.Expr && FIE.Expr->isFragment();
+                         return FIE.Expr && (FIE.Expr->isFragment() ||
+                                             FIE.Expr->isPoisoned());
                        })) &&
          "conflicting locations for variable");
 }
@@ -800,10 +805,10 @@ static void collectCallSiteParameters(const MachineInstr *CallMI,
                                       ParamSet &Params) {
   const MachineFunction *MF = CallMI->getMF();
   const auto &CalleesMap = MF->getCallSitesInfo();
-  auto CallFwdRegsInfo = CalleesMap.find(CallMI);
+  auto CSInfo = CalleesMap.find(CallMI);
 
   // There is no information for the call instruction.
-  if (CallFwdRegsInfo == CalleesMap.end())
+  if (CSInfo == CalleesMap.end())
     return;
 
   const MachineBasicBlock *MBB = CallMI->getParent();
@@ -817,7 +822,7 @@ static void collectCallSiteParameters(const MachineInstr *CallMI,
       DIExpression::get(MF->getFunction().getContext(), {});
 
   // Add all the forwarding registers into the ForwardedRegWorklist.
-  for (const auto &ArgReg : CallFwdRegsInfo->second) {
+  for (const auto &ArgReg : CSInfo->second.ArgRegPairs) {
     bool InsertedReg =
         ForwardedRegWorklist.insert({ArgReg.Reg, {{ArgReg.Reg, EmptyExpr}}})
             .second;
@@ -1132,11 +1137,11 @@ sortGlobalExprs(SmallVectorImpl<DwarfCompileUnit::GlobalExpr> &GVEs) {
           return !!FragmentB;
         return FragmentA->OffsetInBits < FragmentB->OffsetInBits;
       });
-  GVEs.erase(std::unique(GVEs.begin(), GVEs.end(),
-                         [](DwarfCompileUnit::GlobalExpr A,
-                            DwarfCompileUnit::GlobalExpr B) {
-                           return A.Expr == B.Expr;
-                         }),
+  GVEs.erase(llvm::unique(GVEs,
+                          [](DwarfCompileUnit::GlobalExpr A,
+                             DwarfCompileUnit::GlobalExpr B) {
+                            return A.Expr == B.Expr;
+                          }),
              GVEs.end());
   return GVEs;
 }
@@ -1759,7 +1764,7 @@ bool DwarfDebug::buildLocationList(SmallVectorImpl<DebugLocEntry> &DebugLoc,
     const MCSymbol *EndLabel;
     if (std::next(EI) == Entries.end()) {
       const MachineBasicBlock &EndMBB = Asm->MF->back();
-      EndLabel = Asm->MBBSectionRanges[EndMBB.getSectionIDNum()].EndLabel;
+      EndLabel = Asm->MBBSectionRanges[EndMBB.getSectionID()].EndLabel;
       if (EI->isClobber())
         EndMI = EI->getInstr();
     }
@@ -2216,7 +2221,7 @@ void DwarfDebug::beginInstruction(const MachineInstr *MI) {
 
   bool PrevInstInSameSection =
       (!PrevInstBB ||
-       PrevInstBB->getSectionIDNum() == MI->getParent()->getSectionIDNum());
+       PrevInstBB->getSectionID() == MI->getParent()->getSectionID());
   if (DL == PrevInstLoc && PrevInstInSameSection) {
     // If we have an ongoing unspecified location, nothing to do here.
     if (!DL)
@@ -2635,6 +2640,7 @@ static dwarf::PubIndexEntryDescriptor computeIndexValue(DwarfUnit *CU,
   case dwarf::DW_TAG_typedef:
   case dwarf::DW_TAG_base_type:
   case dwarf::DW_TAG_subrange_type:
+  case dwarf::DW_TAG_template_alias:
     return dwarf::PubIndexEntryDescriptor(dwarf::GIEK_TYPE, dwarf::GIEL_STATIC);
   case dwarf::DW_TAG_namespace:
     return dwarf::GIEK_TYPE;
@@ -2787,8 +2793,17 @@ void DwarfDebug::emitDebugLocValue(const AsmPrinter &AP, const DIBasicType *BT,
                                    const DbgValueLoc &Value,
                                    DwarfExpression &DwarfExpr) {
   auto *DIExpr = Value.getExpression();
-  DIExpressionCursor ExprCursor(DIExpr);
   DwarfExpr.addFragmentOffset(DIExpr);
+
+  if (DIExpr) {
+    if (auto NewElementsRef = DIExpr->getNewElementsRef()) {
+      DwarfExpr.addExpression(*NewElementsRef, Value.getLocEntries(),
+                              AP.MF->getSubtarget().getRegisterInfo());
+      return;
+    }
+  }
+
+  DIExpressionCursor ExprCursor(DIExpr);
 
   // If the DIExpr is an Entry Value, we want to follow the same code path
   // regardless of whether the DBG_VALUE is variadic or not.
@@ -2887,7 +2902,7 @@ void DebugLocEntry::finalize(const AsmPrinter &AP,
   assert(Begin != End && "unexpected location list entry with empty range");
   DebugLocStream::EntryBuilder Entry(List, Begin, End);
   BufferByteStreamer Streamer = Entry.getStreamer();
-  DebugLocDwarfExpression DwarfExpr(AP.getDwarfVersion(), Streamer, TheCU);
+  DebugLocDwarfExpression DwarfExpr(AP, Streamer, TheCU);
   const DbgValueLoc &Value = Values[0];
   if (Value.isFragment()) {
     // Emit all fragments that belong to the same variable and range.
@@ -3146,6 +3161,9 @@ struct ArangeSpan {
 // Emit a debug aranges section, containing a CU lookup for any
 // address we can tie back to a CU.
 void DwarfDebug::emitDebugARanges() {
+  if (ArangeLabels.empty())
+    return;
+
   // Provides a unique id per text section.
   MapVector<MCSection *, SmallVector<SymbolCU, 8>> SectionMap;
 
@@ -3154,8 +3172,7 @@ void DwarfDebug::emitDebugARanges() {
     if (SCU.Sym->isInSection()) {
       // Make a note of this symbol and it's section.
       MCSection *Section = &SCU.Sym->getSection();
-      if (!Section->getKind().isMetadata())
-        SectionMap[Section].push_back(SCU);
+      SectionMap[Section].push_back(SCU);
     } else {
       // Some symbols (e.g. common/bss on mach-o) can have no section but still
       // appear in the output. This sucks as we rely on sections to build
@@ -3169,8 +3186,7 @@ void DwarfDebug::emitDebugARanges() {
   for (auto &I : SectionMap) {
     MCSection *Section = I.first;
     SmallVector<SymbolCU, 8> &List = I.second;
-    if (List.size() < 1)
-      continue;
+    assert(!List.empty());
 
     // If we have no section (e.g. common), just write out
     // individual spans for each symbol.
@@ -3184,20 +3200,6 @@ void DwarfDebug::emitDebugARanges() {
       }
       continue;
     }
-
-    // Sort the symbols by offset within the section.
-    llvm::stable_sort(List, [&](const SymbolCU &A, const SymbolCU &B) {
-      unsigned IA = A.Sym ? Asm->OutStreamer->getSymbolOrder(A.Sym) : 0;
-      unsigned IB = B.Sym ? Asm->OutStreamer->getSymbolOrder(B.Sym) : 0;
-
-      // Symbols with no order assigned should be placed at the end.
-      // (e.g. section end labels)
-      if (IA == 0)
-        return false;
-      if (IB == 0)
-        return true;
-      return IA < IB;
-    });
 
     // Insert a final terminator.
     List.push_back(SymbolCU(nullptr, Asm->OutStreamer->endSection(Section)));
@@ -3720,7 +3722,8 @@ void DwarfDebug::addAccelNameImpl(
     const DwarfUnit &Unit,
     const DICompileUnit::DebugNameTableKind NameTableKind,
     AccelTable<DataT> &AppleAccel, StringRef Name, const DIE &Die) {
-  if (getAccelTableKind() == AccelTableKind::None || Name.empty())
+  if (getAccelTableKind() == AccelTableKind::None ||
+      Unit.getUnitDie().getTag() == dwarf::DW_TAG_skeleton_unit || Name.empty())
     return;
 
   if (getAccelTableKind() != AccelTableKind::Apple &&
@@ -3747,7 +3750,8 @@ void DwarfDebug::addAccelNameImpl(
                "Kind is TU but CU is being processed.");
     // The type unit can be discarded, so need to add references to final
     // acceleration table once we know it's complete and we emit it.
-    Current.addName(Ref, Die, Unit.getUniqueID());
+    Current.addName(Ref, Die, Unit.getUniqueID(),
+                    Unit.getUnitDie().getTag() == dwarf::DW_TAG_type_unit);
     break;
   }
   case AccelTableKind::Default:

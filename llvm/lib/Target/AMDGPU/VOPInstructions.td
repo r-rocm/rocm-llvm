@@ -16,8 +16,9 @@ class LetDummies {
   bit isMoveImm;
   bit isReMaterializable;
   bit isAsCheapAsAMove;
-  bit VOPAsmPrefer32Bit;
   bit FPDPRounding;
+  bit IsInvalidSingleUseConsumer;
+  bit IsInvalidSingleUseProducer;
   Predicate SubtargetPredicate;
   string Constraints;
   string DisableEncoding;
@@ -28,22 +29,6 @@ class LetDummies {
   Predicate AssemblerPredicate;
   string DecoderNamespace;
 }
-
-//===----------------------------------------------------------------------===//
-// VOP Subtarget info
-//===----------------------------------------------------------------------===//
-
-class GFXGen<Predicate pred, string dn, string suffix, int sub> {
-  Predicate AssemblerPredicate = pred;
-  string DecoderNamespace = dn;
-  string Suffix = suffix;
-  int Subtarget = sub;
-}
-
-def GFX12Gen : GFXGen<isGFX12Only, "GFX12", "_gfx12", SIEncodingFamily.GFX12>;
-def GFX11Gen : GFXGen<isGFX11Only, "GFX11", "_gfx11", SIEncodingFamily.GFX11>;
-
-//===----------------------------------------------------------------------===//
 
 class VOP <string opName> {
   string OpName = opName;
@@ -82,6 +67,8 @@ class VOP_Pseudo <string opName, string suffix, VOPProfile P, dag outs, dag ins,
   string Mnemonic = opName;
   Instruction Opcode = !cast<Instruction>(NAME);
   bit IsTrue16 = P.IsTrue16;
+  bit IsInvalidSingleUseConsumer = P.IsInvalidSingleUseConsumer;
+  bit IsInvalidSingleUseProducer = P.IsInvalidSingleUseProducer;
   VOPProfile Pfl = P;
 
   string AsmOperands;
@@ -126,6 +113,8 @@ class VOP3_Pseudo <string opName, VOPProfile P, list<dag> pattern = [],
   let IsWMMA = P.IsWMMA;
   let IsSWMMAC = P.IsSWMMAC;
 
+  bit HasFP8DstByteSel = P.HasFP8DstByteSel;
+
   let AsmOperands = !if(isVop3OpSel,
                         P.AsmVOP3OpSel,
                         !if(!and(isVOP3P, P.IsPacked), P.AsmVOP3P, P.Asm64));
@@ -162,7 +151,7 @@ class VOP3_Pseudo <string opName, VOPProfile P, list<dag> pattern = [],
   let AsmMatchConverter =
     !if(isVOP3P,
         "cvtVOP3P",
-        !if(!or(P.HasModifiers, P.HasOMod, P.HasIntClamp),
+        !if(!or(P.HasModifiers, P.HasOMod, P.HasClamp),
             "cvtVOP3",
             ""));
 }
@@ -176,6 +165,8 @@ class VOP3P_Pseudo <string opName, VOPProfile P, list<dag> pattern = []> :
 class VOP_Real<VOP_Pseudo ps> {
   Instruction Opcode = !cast<Instruction>(NAME);
   bit IsSingle = ps.Pfl.IsSingle;
+  bit IsInvalidSingleUseConsumer = ps.Pfl.IsInvalidSingleUseConsumer;
+  bit IsInvalidSingleUseProducer = ps.Pfl.IsInvalidSingleUseProducer;
 }
 
 class VOP3_Real <VOP_Pseudo ps, int EncodingFamily, string asm_name = ps.Mnemonic> :
@@ -191,6 +182,7 @@ class VOP3_Real <VOP_Pseudo ps, int EncodingFamily, string asm_name = ps.Mnemoni
 
   // copy relevant pseudo op flags
   let SubtargetPredicate = ps.SubtargetPredicate;
+  let WaveSizePredicate  = ps.WaveSizePredicate;
   let OtherPredicates    = ps.OtherPredicates;
   let AsmMatchConverter  = ps.AsmMatchConverter;
   let AsmVariantName     = ps.AsmVariantName;
@@ -211,7 +203,7 @@ class VOP3_Real <VOP_Pseudo ps, int EncodingFamily, string asm_name = ps.Mnemoni
 class VOP3_Real_Gen <VOP_Pseudo ps, GFXGen Gen, string asm_name = ps.Mnemonic> :
   VOP3_Real <ps, Gen.Subtarget, asm_name> {
   let AssemblerPredicate = Gen.AssemblerPredicate;
-  let OtherPredicates = !if(ps.Pfl.IsRealTrue16, [UseRealTrue16Insts], []);
+  let True16Predicate = !if(ps.Pfl.IsRealTrue16, UseRealTrue16Insts, NoTrue16Predicate);
   let DecoderNamespace = Gen.DecoderNamespace#
                          !if(ps.Pfl.IsRealTrue16, "", "_FAKE16");
 }
@@ -297,6 +289,18 @@ class VOP3OpSel_gfx9 <bits<10> op, VOPProfile P> : VOP3e_vi <op, P> {
   let Inst{14} = !if(P.HasDst,  src0_modifiers{3}, 0);
 }
 
+// Special case for v_permlane16_swap_b32/v_permlane32_swap_b32
+// op_sel[0]/op_sel[1] are treated as bound_ctrl and fi dpp operands.
+class VOP3OpSelIsDPP_gfx9 <bits<10> op, VOPProfile P> : VOP3e_vi <op, P> {
+  bits<1> fi;
+  bits<1> bound_ctrl;
+
+  // OPSEL[0] specifies FI
+  let Inst{11} = fi;
+  // OPSEL[1] specifies BOUND_CTRL
+  let Inst{12} = bound_ctrl;
+}
+
 class VOP3OpSel_gfx10<bits<10> op, VOPProfile p> : VOP3e_gfx10<op, p> {
   let Inst{11} = !if(p.HasSrc0, src0_modifiers{2}, 0);
   let Inst{12} = !if(p.HasSrc1, src1_modifiers{2}, 0);
@@ -306,10 +310,19 @@ class VOP3OpSel_gfx10<bits<10> op, VOPProfile p> : VOP3e_gfx10<op, p> {
 
 class VOP3OpSel_gfx11_gfx12<bits<10> op, VOPProfile p> : VOP3OpSel_gfx10<op, p>;
 
-class VOP3FP8OpSel_gfx11_gfx12<bits<10> op, VOPProfile p> : VOP3e_gfx10<op, p> {
-  let Inst{11} = !if(p.HasSrc0, src0_modifiers{2}, 0);
-  let Inst{12} = !if(p.HasSrc0, src0_modifiers{3}, 0);
+class VOP3FP8OpSel_src_bytesel_gfx11_gfx12<bits<10> op, VOPProfile p> : VOP3e_gfx10<op, p> {
+  bits<2> byte_sel;
+  let Inst{11-12} = byte_sel; // NB: bit order is intentionally reversed!
+  let Inst{14-13} = 0;  // op_sel2/3
 }
+
+ class VOP3FP8OpSel_dst_bytesel_gfx11_gfx12<bits<10> op, VOPProfile p> : VOP3e_gfx10<op, p> {
+   bits<2> byte_sel;
+
+   let Inst{11} = 0; // op_sel0
+   let Inst{12} = 0; // op_sel1
+   let Inst{14-13} = byte_sel;  // op_sel2/3
+ }
 
 class VOP3DotOpSel_gfx11_gfx12<bits<10> op, VOPProfile p> : VOP3OpSel_gfx11_gfx12<op, p>{
   let Inst{11} = ?;
@@ -387,7 +400,7 @@ class VOP3Pe <bits<7> op, VOPProfile P> : Enc64 {
   bits<2> index_key_8bit;
   bits<1> index_key_16bit;
 
-  let Inst{7-0} = vdst;
+  let Inst{7-0} = !if(P.HasDst, vdst, 0);
   let Inst{8} = !if(P.HasSrc0Mods, src0_modifiers{1}, 0); // neg_hi src0
   let Inst{9} = !if(P.HasSrc1Mods, src1_modifiers{1}, 0); // neg_hi src1
   let Inst{10} = !if(P.HasSrc2Mods, src2_modifiers{1}, 0); // neg_hi src2
@@ -412,7 +425,7 @@ class VOP3Pe <bits<7> op, VOPProfile P> : Enc64 {
   let Inst{63}    = !if(P.HasSrc2Mods, src2_modifiers{0}, 0); // neg (lo)
 }
 
-class VOP3Pe_MAI <bits<7> op, VOPProfile P, bit acc_cd = 0> : Enc64 {
+class VOP3Pe_MAI_Base {
   bits<8> vdst;
   bits<10> src0;
   bits<10> src1;
@@ -420,11 +433,13 @@ class VOP3Pe_MAI <bits<7> op, VOPProfile P, bit acc_cd = 0> : Enc64 {
   bits<3> blgp;
   bits<3> cbsz;
   bits<4> abid;
+}
 
+class VOP3Pe_MAI <bits<7> op, VOPProfile P, bit acc_cd = 0> : Enc64, VOP3Pe_MAI_Base {
   let Inst{7-0} = vdst;
 
   let Inst{10-8}  = !if(P.HasSrc1, cbsz, 0);
-  let Inst{14-11} = !if(P.HasSrc1, abid, 0);
+  let Inst{14-11} = !if(P.HasAbid, abid, 0);
 
   let Inst{15} = acc_cd;
 
@@ -468,6 +483,59 @@ class VOP3Pe_SMFMAC <bits<7> op> : Enc64 {
   let Inst{60}    = src1{9}; // acc(1)
 
   let Inst{63-61} = blgp;
+}
+
+class VOP3PXe <bits<7> op, VOPProfile MFMAPfl, bit acc_cd = 0> : Enc128, VOP3Pe_MAI_Base {
+  bits<9> scale_src0;
+  bits<9> scale_src1;
+
+  bits<2> scale_src0_opsel;
+  bits<2> scale_src1_opsel;
+
+  // Inst{7-0} = unused
+  // Inst{10-8} = neg_hi;
+  // Inst{13-11} = op_sel
+  let Inst{11} = scale_src0_opsel{0};
+  let Inst{12} = scale_src1_opsel{0};
+  // Inst{13} = unused op_sel
+  // Inst{14} = unused op_sel_hi2
+
+  let Inst{31-16} = 0b1101001110101100;
+  let Inst{40-32} = scale_src0;
+  let Inst{49-41} = scale_src1;
+  // Inst{50-58} = unused
+  // Inst{60-59} = op_sel_hi;
+  let Inst{59} = scale_src0_opsel{1};
+  let Inst{60} = scale_src1_opsel{1};
+  // Inst{63-61} = neg;
+
+  // The high half of the encoding is the unscaled mfma op.
+  //
+  // FIXME: Defining the encoding in terms of the base instruction
+  // seems to not work, results in all 0 encoding, so replicate all
+  // the fields from VOP3Pe_MAI, shifted up by 64
+  //
+  // defvar Hi = VOP3Pe_MAI<op, MFMAPfl, acc_cd>;
+  // let Inst{127-64} = Hi.Inst;
+
+  let Inst{71-64} = vdst;
+  let Inst{74-72} = !if(MFMAPfl.HasSrc1, cbsz, 0);
+
+  // abid must be 1 to use a scale.
+  let Inst{78-75} = 0b0001; // abid
+
+  let Inst{79} = acc_cd;
+
+  let Inst{86-80} = op;
+  let Inst{95-87} = 0x1a7; //encoding
+  let Inst{104-96} = !if(MFMAPfl.HasSrc0, src0{8-0}, 0);
+  let Inst{113-105} = !if(MFMAPfl.HasSrc1, src1{8-0}, 0);
+  let Inst{122-114} = !if(MFMAPfl.HasSrc2, src2, 0);
+
+  let Inst{123}    = !if(MFMAPfl.HasSrc0, src0{9}, 0); // acc(0)
+  let Inst{124}    = !if(MFMAPfl.HasSrc1, src1{9}, 0); // acc(1)
+
+  let Inst{127-125} = !if(MFMAPfl.HasSrc1, blgp, 0);
 }
 
 class VOP3Pe_gfx10 <bits<7> op, VOPProfile P> : VOP3Pe<op, P> {
@@ -614,15 +682,14 @@ class VOP_SDWA_Pseudo <string opName, VOPProfile P, list<dag> pattern=[]> :
   let Uses = !if(ReadsModeReg, [MODE, EXEC], [EXEC]);
 
   let SubtargetPredicate = HasSDWA;
-  let AssemblerPredicate = HasSDWA;
   let AsmVariantName = !if(P.HasExtSDWA, AMDGPUAsmVariants.SDWA,
                                          AMDGPUAsmVariants.Disable);
-  let DecoderNamespace = "SDWA";
+  let DecoderNamespace = "GFX8";
 
   VOPProfile Pfl = P;
 }
 
-class VOP_SDWA_Real <VOP_SDWA_Pseudo ps> :
+class VOP_SDWA8_Real <VOP_SDWA_Pseudo ps> :
   InstSI <ps.OutOperandList, ps.InOperandList, ps.Mnemonic # ps.AsmOperands, []>,
   SIMCInstr <ps.PseudoInstr, SIEncodingFamily.SDWA> {
 
@@ -640,7 +707,7 @@ class VOP_SDWA_Real <VOP_SDWA_Pseudo ps> :
 
   // Copy relevant pseudo op flags
   let SubtargetPredicate   = ps.SubtargetPredicate;
-  let AssemblerPredicate   = ps.AssemblerPredicate;
+  let AssemblerPredicate   = HasSDWA8;
   let AsmMatchConverter    = ps.AsmMatchConverter;
   let AsmVariantName       = ps.AsmVariantName;
   let UseNamedOperandTable = ps.UseNamedOperandTable;
@@ -648,6 +715,8 @@ class VOP_SDWA_Real <VOP_SDWA_Pseudo ps> :
   let Constraints          = ps.Constraints;
   let DisableEncoding      = ps.DisableEncoding;
   let TSFlags              = ps.TSFlags;
+  let Uses                 = ps.Uses;
+  let Defs                 = ps.Defs;
   let SchedRW              = ps.SchedRW;
   let mayLoad              = ps.mayLoad;
   let mayStore             = ps.mayStore;
@@ -669,11 +738,12 @@ class Base_VOP_SDWA9_Real <VOP_SDWA_Pseudo ps> :
   let Constraints     = ps.Constraints;
   let DisableEncoding = ps.DisableEncoding;
 
-  let SubtargetPredicate = HasSDWA9;
+  let SubtargetPredicate = ps.SubtargetPredicate;
   let AssemblerPredicate = HasSDWA9;
+  let OtherPredicates    = ps.OtherPredicates;
   let AsmVariantName = !if(ps.Pfl.HasExtSDWA9, AMDGPUAsmVariants.SDWA9,
                                                AMDGPUAsmVariants.Disable);
-  let DecoderNamespace = "SDWA9";
+  let DecoderNamespace = "GFX9";
 
   // Copy relevant pseudo op flags
   let AsmMatchConverter    = ps.AsmMatchConverter;
@@ -681,6 +751,8 @@ class Base_VOP_SDWA9_Real <VOP_SDWA_Pseudo ps> :
   let Constraints          = ps.Constraints;
   let DisableEncoding      = ps.DisableEncoding;
   let TSFlags              = ps.TSFlags;
+  let Uses                 = ps.Uses;
+  let Defs                 = ps.Defs;
   let SchedRW              = ps.SchedRW;
   let mayLoad              = ps.mayLoad;
   let mayStore             = ps.mayStore;
@@ -692,9 +764,9 @@ class VOP_SDWA9_Real <VOP_SDWA_Pseudo ps> :
   SIMCInstr <ps.PseudoInstr, SIEncodingFamily.SDWA9>;
 
 class Base_VOP_SDWA10_Real<VOP_SDWA_Pseudo ps> : Base_VOP_SDWA9_Real<ps> {
-  let SubtargetPredicate = HasSDWA10;
+  let SubtargetPredicate = ps.SubtargetPredicate;
   let AssemblerPredicate = HasSDWA10;
-  let DecoderNamespace = "SDWA10";
+  let DecoderNamespace = "GFX10";
 }
 
 class VOP_SDWA10_Real<VOP_SDWA_Pseudo ps> :
@@ -740,15 +812,20 @@ class VOP3_DPPe_Common_Base<bits<10> op, VOPProfile P> : Enc96 {
   bits<3> src2_modifiers;
   bits<1> clamp;
   bits<2> omod;
+  bits<2> byte_sel;
 
   let Inst{8}     = !if(P.HasSrc0Mods, src0_modifiers{1}, 0);
   let Inst{9}     = !if(P.HasSrc1Mods, src1_modifiers{1}, 0);
   let Inst{10}    = !if(P.HasSrc2Mods, src2_modifiers{1}, 0);
   // OPSEL must be set such that the low result only uses low inputs, and the high result only uses high inputs.
-  let Inst{11} = !if(P.HasOpSel,!if(P.HasSrc0Mods, src0_modifiers{2}, 0),?);
-  let Inst{12} = !if(P.HasOpSel,!if(P.HasSrc1Mods, src1_modifiers{2}, !if((P.IsFP8), src0_modifiers{3}, 0)), ?);
-  let Inst{13} = !if(P.HasOpSel,!if(P.HasSrc2Mods, src2_modifiers{2}, 0),?);
-  let Inst{14} = !if(P.HasOpSel,!if(P.HasSrc0Mods, src0_modifiers{3}, 0),?);
+  let Inst{11} = !if(P.HasOpSel, !if(P.HasSrc0Mods, src0_modifiers{2}, 0),
+                                 !if(P.IsFP8SrcByteSel, byte_sel{1}, ?));
+  let Inst{12} = !if(P.HasOpSel, !if(P.HasSrc1Mods, src1_modifiers{2}, 0),
+                                 !if(P.IsFP8SrcByteSel, byte_sel{0}, ?));
+  let Inst{13} = !if(P.HasOpSel, !if(P.HasSrc2Mods, src2_modifiers{2}, 0),
+                                 !if(P.IsFP8DstByteSel, byte_sel{0}, ?));
+  let Inst{14} = !if(P.HasOpSel, !if(P.HasSrc0Mods, src0_modifiers{3}, 0),
+                                 !if(P.IsFP8DstByteSel, byte_sel{1}, ?));
   let Inst{15}    = !if(P.HasClamp, clamp, 0);
   let Inst{25-16} = op;
   let Inst{31-26} = 0x35;
@@ -804,21 +881,16 @@ class VOP3P_DPPe_Common<bits<7> op, VOPProfile P> : VOP3P_DPPe_Common_Base<op, P
 
 class VOP_DPP_Pseudo <string OpName, VOPProfile P, list<dag> pattern=[],
   dag Ins = P.InsDPP, string asmOps = P.AsmDPP> :
-  InstSI <P.OutsDPP, Ins, OpName#asmOps, pattern>,
-  VOP <OpName>,
-  SIMCInstr <OpName#"_dpp", SIEncodingFamily.NONE> {
-
-  let isPseudo = 1;
-  let isCodeGenOnly = 1;
+  VOP_Pseudo<OpName, "_dpp", P, P.OutsDPP, Ins, asmOps, pattern> {
 
   let mayLoad = 0;
   let mayStore = 0;
   let hasSideEffects = 0;
-  let UseNamedOperandTable = 1;
 
   let VALU = 1;
   let DPP = 1;
   let Size = 8;
+  let IsPacked = P.IsPacked;
 
   let ReadsModeReg = !or(P.DstVT.isFP, P.Src0VT.isFP);
 
@@ -826,19 +898,18 @@ class VOP_DPP_Pseudo <string OpName, VOPProfile P, list<dag> pattern=[],
   let Uses = !if(ReadsModeReg, [MODE, EXEC], [EXEC]);
   let isConvergent = 1;
 
-  string Mnemonic = OpName;
   string AsmOperands = asmOps;
 
   let AsmMatchConverter = !if(P.HasModifiers, "cvtDPP", "");
-  let SubtargetPredicate = !if(P.HasExt64BitDPP, HasDPALU_DPP, HasDPP);
   let AssemblerPredicate = !if(P.HasExt64BitDPP, HasDPALU_DPP, HasDPP);
   let AsmVariantName = !if(P.HasExtDPP, AMDGPUAsmVariants.DPP,
                                         AMDGPUAsmVariants.Disable);
   let Constraints = !if(P.NumSrcArgs, P.TieRegDPP # " = $vdst", "");
   let DisableEncoding = !if(P.NumSrcArgs, P.TieRegDPP, "");
-  let DecoderNamespace = "DPP";
+  let DecoderNamespace = "GFX8";
 
-  VOPProfile Pfl = P;
+  let IsInvalidSingleUseConsumer = !not(VINTERP);
+  let IsInvalidSingleUseProducer = !not(VINTERP);
 }
 
 class VOP3_DPP_Pseudo <string OpName, VOPProfile P> :
@@ -880,6 +951,8 @@ class VOP_DPP_Real <VOP_DPP_Pseudo ps, int EncodingFamily> :
   let Constraints          = ps.Constraints;
   let DisableEncoding      = ps.DisableEncoding;
   let TSFlags              = ps.TSFlags;
+  let Uses                 = ps.Uses;
+  let Defs                 = ps.Defs;
   let SchedRW              = ps.SchedRW;
   let mayLoad              = ps.mayLoad;
   let mayStore             = ps.mayStore;
@@ -901,13 +974,12 @@ class VOP_DPP_Base <string OpName, VOPProfile P,
   let Size = 8;
 
   let AsmMatchConverter = !if(P.HasModifiers, "cvtDPP", "");
-  let SubtargetPredicate = !if(P.HasExt64BitDPP, HasDPALU_DPP, HasDPP);
   let AssemblerPredicate = !if(P.HasExt64BitDPP, HasDPALU_DPP, HasDPP);
   let AsmVariantName = !if(P.HasExtDPP, AMDGPUAsmVariants.DPP,
                                         AMDGPUAsmVariants.Disable);
   let Constraints = !if(P.NumSrcArgs, P.TieRegDPP # " = $vdst", "");
   let DisableEncoding = !if(P.NumSrcArgs, P.TieRegDPP, "");
-  let DecoderNamespace = "DPP";
+  let DecoderNamespace = "GFX8";
 }
 
 class VOP_DPP <string OpName, VOPProfile P, bit IsDPP16,
@@ -991,7 +1063,6 @@ class VOP_DPP8_Base<string OpName, VOPProfile P, dag InsDPP8 = P.InsDPP8, string
   let Size = 8;
 
   let AsmMatchConverter = "cvtDPP8";
-  let SubtargetPredicate = HasDPP8;
   let AssemblerPredicate = HasDPP8;
   let AsmVariantName = AMDGPUAsmVariants.DPP;
   let Constraints = !if(P.NumSrcArgs, P.TieRegDPP # " = $vdst", "");
@@ -1234,13 +1305,37 @@ class getVOP3ClampPat<VOPProfile P, SDPatternOperator node> {
 }
 
 class getVOP3MAIPat<VOPProfile P, SDPatternOperator node> {
-  list<dag> ret = !if(!eq(P.Src0VT, P.Src1VT),
+  list<dag> mfma_with_abid = [(set P.DstVT:$vdst, (node P.Src0VT:$src0, P.Src1VT:$src1, P.Src2VT:$src2,
+                                   timm:$cbsz, timm:$abid, timm:$blgp))];
+  list<dag> mfma_no_abid = [(set P.DstVT:$vdst, (node P.Src0VT:$src0, P.Src1VT:$src1, P.Src2VT:$src2,
+                            timm:$cbsz, timm:$blgp))];
+
+  list<dag> ret = !if(!not(P.IsSMFMAC),
                       // mfma
-                      [(set P.DstVT:$vdst, (node P.Src0VT:$src0, P.Src1VT:$src1, P.Src2VT:$src2,
-                                            timm:$cbsz, timm:$abid, timm:$blgp))],
+                      !if(P.HasAbid, mfma_with_abid, mfma_no_abid),
+
                       // smfmac
                       [(set P.DstVT:$vdst, (node P.Src0VT:$src0, P.Src1VT:$src1, P.Src2VT:$src2, i32:$idx,
                                             timm:$cbsz, timm:$abid))]);
+}
+
+class getVOP3MAIScaledPat<VOPProfile P, SDPatternOperator node> {
+  list<dag> ret = !if(!not(P.IsSMFMAC),
+                      // mfma
+                      [(set P.DstVT:$vdst, (node P.Src0VT:$src0, P.Src1VT:$src1, P.Src2VT:$src2,
+                                            timm:$cbsz, timm:$blgp,
+                                            MFMALdScaleModifierOp:$scale_src0_opsel,
+                                            i32:$scale_src0,
+                                            MFMALdScaleModifierOp:$scale_src1_opsel,
+                                            i32:$scale_src1
+                                            ))],
+                      // smfmac
+                      [(set P.DstVT:$vdst, (node P.Src0VT:$src0, P.Src1VT:$src1, P.Src2VT:$src2, i32:$idx,
+                                            timm:$cbsz, timm:$abid,
+                                            MFMALdScaleModifierOp:$scale_src0_opsel,
+                                            i32:$scale_src0,
+                                            MFMALdScaleModifierOp:$scale_src1_opsel,
+                                            i32:$scale_src1))]);
 }
 
 class VOP3Features<bit Clamp, bit OpSel, bit Packed, bit MAI> {
@@ -1255,6 +1350,11 @@ def VOP3_CLAMP   : VOP3Features<1, 0, 0, 0>;
 def VOP3_OPSEL   : VOP3Features<1, 1, 0, 0>;
 def VOP3_PACKED  : VOP3Features<1, 1, 1, 0>;
 def VOP3_MAI     : VOP3Features<0, 0, 0, 1>;
+def VOP3_OPSEL_ONLY : VOP3Features<0, 1, 0, 0>;
+
+// Packed is misleading, but it enables the appropriate op_sel
+// modifiers.
+def VOP3P_LD_SCALE : VOP3Features<0, 1, 1, 0>;
 
 class VOP3_Profile_Base<VOPProfile P, VOP3Features Features = VOP3_REGULAR> : VOPProfile<P.ArgVT> {
 
@@ -1278,7 +1378,7 @@ multiclass VOP3Inst_Pseudo_Wrapper<string opName, VOPProfile P, list<dag> patter
     def _e64 : VOP3_Pseudo<opName, P, pattern, VOP3Only>;
 }
 
-class VOP3InstBase<string OpName, VOPProfile P, SDPatternOperator node = null_frag, bit IsVOP2 = 0> :
+class VOP3InstBase<string OpName, VOPProfile P, SDPatternOperator node = null_frag, bit IsVOP2 = 0, bit MAIScaled = false> :
   VOP3_Pseudo<OpName, P,
     !if(P.HasOpSel,
         !if(P.HasModifiers,
@@ -1291,7 +1391,7 @@ class VOP3InstBase<string OpName, VOPProfile P, SDPatternOperator node = null_fr
               !if(P.HasIntClamp,
                   getVOP3ClampPat<P, node>.ret,
                   !if (P.IsMAI,
-                      getVOP3MAIPat<P, node>.ret,
+                      !if(MAIScaled, getVOP3MAIScaledPat<P, node>.ret, getVOP3MAIPat<P, node>.ret),
                       getVOP3Pat<P, node>.ret))))),
     0, P.HasOpSel> {
 
@@ -1338,7 +1438,7 @@ class Base_VOP3_DPP16<bits<10> op, VOP_DPP_Pseudo ps, string opName = ps.OpName>
   let SchedRW = ps.SchedRW;
   let Uses = ps.Uses;
   let AssemblerPredicate = HasDPP16;
-  let SubtargetPredicate = HasDPP16;
+  let SubtargetPredicate = ps.SubtargetPredicate;
   let OtherPredicates = ps.OtherPredicates;
 }
 
@@ -1350,8 +1450,8 @@ class VOP3_DPP16_Gen<bits<10> op, VOP_DPP_Pseudo ps, GFXGen Gen,
                      string opName = ps.OpName> :
   VOP3_DPP16 <op, ps, Gen.Subtarget, opName> {
   let AssemblerPredicate = Gen.AssemblerPredicate;
-  let OtherPredicates = !if(ps.Pfl.IsRealTrue16, [UseRealTrue16Insts], []);
-  let DecoderNamespace = "DPP"#Gen.DecoderNamespace#
+  let True16Predicate = !if(ps.Pfl.IsRealTrue16, UseRealTrue16Insts, NoTrue16Predicate);
+  let DecoderNamespace = Gen.DecoderNamespace#
                          !if(ps.Pfl.IsRealTrue16, "", "_FAKE16");
 }
 
@@ -1364,6 +1464,7 @@ class Base_VOP3_DPP8<bits<10> op, VOP_Pseudo ps, string opName = ps.OpName>
   let SchedRW = ps.SchedRW;
   let Uses = ps.Uses;
 
+  let SubtargetPredicate = ps.SubtargetPredicate;
   let OtherPredicates = ps.OtherPredicates;
 }
 
@@ -1388,14 +1489,23 @@ multiclass VOP3_Real_Base<GFXGen Gen, bits<10> op, string opName = NAME,
                           bit isSingle = 0> {
   defvar ps = !cast<VOP_Pseudo>(opName#"_e64");
   let IsSingle = !or(isSingle, ps.Pfl.IsSingle) in {
-  if ps.Pfl.HasOpSel then
-    def _e64#Gen.Suffix :
-      VOP3_Real_Gen<ps, Gen>,
-      VOP3OpSel_gfx11_gfx12<op, ps.Pfl>;
-  if !not(ps.Pfl.HasOpSel) then
-    def _e64#Gen.Suffix :
-      VOP3_Real_Gen<ps, Gen>,
-      VOP3e_gfx11_gfx12<op, ps.Pfl>;
+    if ps.Pfl.IsFP8SrcByteSel then {
+      def _e64#Gen.Suffix :
+        VOP3_Real_Gen<ps, Gen>,
+        VOP3FP8OpSel_src_bytesel_gfx11_gfx12<op, ps.Pfl>;
+    } else if ps.Pfl.IsFP8DstByteSel then {
+      def _e64#Gen.Suffix :
+        VOP3_Real_Gen<ps, Gen>,
+        VOP3FP8OpSel_dst_bytesel_gfx11_gfx12<op, ps.Pfl>;
+    } else if ps.Pfl.HasOpSel then {
+      def _e64#Gen.Suffix :
+        VOP3_Real_Gen<ps, Gen>,
+        VOP3OpSel_gfx11_gfx12<op, ps.Pfl>;
+    } else {
+      def _e64#Gen.Suffix :
+        VOP3_Real_Gen<ps, Gen>,
+        VOP3e_gfx11_gfx12<op, ps.Pfl>;
+    }
   }
 }
 
@@ -1414,22 +1524,27 @@ multiclass VOP3_Real_with_name<GFXGen Gen, bits<10> op, string opName,
   defvar ps = !cast<VOP_Pseudo>(opName#"_e64");
   let AsmString = asmName # ps.AsmOperands,
       IsSingle = !or(isSingle, ps.Pfl.IsSingle) in {
-    if ps.Pfl.IsFP8 then {
+    if ps.Pfl.IsFP8SrcByteSel then {
       def _e64#Gen.Suffix :
         VOP3_Real_Gen<ps, Gen>,
-        VOP3FP8OpSel_gfx11_gfx12<op, ps.Pfl>;
+        VOP3FP8OpSel_src_bytesel_gfx11_gfx12<op, ps.Pfl>;
+    } else if ps.Pfl.IsFP8DstByteSel then {
+      def _e64#Gen.Suffix :
+        VOP3_Real_Gen<ps, Gen>,
+        VOP3FP8OpSel_dst_bytesel_gfx11_gfx12<op, ps.Pfl>;
+    } else if ps.Pfl.HasOpSel then {
+      def _e64#Gen.Suffix :
+        VOP3_Real_Gen<ps, Gen>,
+        VOP3OpSel_gfx11_gfx12<op, ps.Pfl>;
     } else {
-      if ps.Pfl.HasOpSel then
-        def _e64#Gen.Suffix :
-          VOP3_Real_Gen<ps, Gen>,
-          VOP3OpSel_gfx11_gfx12<op, ps.Pfl>;
-      if !not(ps.Pfl.HasOpSel) then
-        def _e64#Gen.Suffix :
-          VOP3_Real_Gen<ps, Gen>,
-          VOP3e_gfx11_gfx12<op, ps.Pfl>;
+      def _e64#Gen.Suffix :
+        VOP3_Real_Gen<ps, Gen>,
+        VOP3e_gfx11_gfx12<op, ps.Pfl>;
     }
   }
-  def Gen.Suffix#"_VOP3_alias" : MnemonicAlias<ps.Mnemonic, asmName>, Requires<[Gen.AssemblerPredicate]>, LetDummies;
+  def Gen.Suffix#"_VOP3_alias" : LetDummies, AMDGPUMnemonicAlias<ps.Mnemonic, asmName> {
+    let AssemblerPredicate = Gen.AssemblerPredicate;
+  }
 }
 
 // for READLANE/WRITELANE
@@ -1464,7 +1579,7 @@ multiclass VOP3_Real_dpp_with_name<GFXGen Gen, bits<10> op, string opName,
 multiclass VOP3_Real_dpp8_Base<GFXGen Gen, bits<10> op, string opName = NAME> {
   defvar ps = !cast<VOP3_Pseudo>(opName#"_e64");
   def _e64_dpp8#Gen.Suffix : Base_VOP3_DPP8<op, ps> {
-    let DecoderNamespace = "DPP8"#Gen.DecoderNamespace;
+    let DecoderNamespace = Gen.DecoderNamespace;
     let AssemblerPredicate = Gen.AssemblerPredicate;
   }
 }
@@ -1474,7 +1589,7 @@ multiclass VOP3Dot_Real_dpp8_Base<GFXGen Gen, bits<10> op, string opName = NAME>
   def _e64_dpp8#Gen.Suffix : Base_VOP3_DPP8<op, ps> {
     let Inst{11} = ?;
     let Inst{12} = ?;
-    let DecoderNamespace = "DPP8"#Gen.DecoderNamespace;
+    let DecoderNamespace = Gen.DecoderNamespace;
     let AssemblerPredicate = Gen.AssemblerPredicate;
   }
 }
@@ -1483,10 +1598,10 @@ multiclass VOP3_Real_dpp8_with_name<GFXGen Gen, bits<10> op, string opName,
                                     string asmName> {
   defvar ps = !cast<VOP3_Pseudo>(opName#"_e64");
   let AsmString = asmName # ps.Pfl.AsmVOP3DPP8,
-      DecoderNamespace = "DPP8"#Gen.DecoderNamespace#
+      DecoderNamespace = Gen.DecoderNamespace#
                          !if(ps.Pfl.IsRealTrue16, "", "_FAKE16"),
-      OtherPredicates = !if(ps.Pfl.IsRealTrue16, [UseRealTrue16Insts],
-                            [TruePredicate]) in {
+      True16Predicate = !if(ps.Pfl.IsRealTrue16, UseRealTrue16Insts,
+                            NoTrue16Predicate) in {
     defm NAME : VOP3_Real_dpp8_Base<Gen, op, opName>;
   }
 }
@@ -1506,7 +1621,7 @@ multiclass VOP3be_Real_dpp<GFXGen Gen, bits<10> op, string opName,
   defvar dpp_ps = !cast<VOP_DPP_Pseudo>(opName #"_e64" #"_dpp");
   def _e64_dpp#Gen.Suffix : Base_VOP3b_DPP16<op, dpp_ps, asmName>,
                             SIMCInstr<dpp_ps.PseudoInstr, Gen.Subtarget> {
-    let DecoderNamespace = "DPP"#Gen.DecoderNamespace;
+    let DecoderNamespace = Gen.DecoderNamespace;
     let AssemblerPredicate = Gen.AssemblerPredicate;
   }
 }
@@ -1515,7 +1630,7 @@ multiclass VOP3be_Real_dpp8<GFXGen Gen, bits<10> op, string opName,
                             string asmName> {
   defvar ps = !cast<VOP3_Pseudo>(opName #"_e64");
   def _e64_dpp8#Gen.Suffix : VOP3b_DPP8_Base<op, ps, asmName> {
-    let DecoderNamespace = "DPP8"#Gen.DecoderNamespace;
+    let DecoderNamespace = Gen.DecoderNamespace;
     let AssemblerPredicate = Gen.AssemblerPredicate;
   }
 }
@@ -1602,8 +1717,10 @@ multiclass VOP3be_Real_with_name_gfx12<bits<10> op, string opName,
       IsSingle = !or(isSingle, ps.Pfl.IsSingle) in
     def _e64_gfx12 :
       VOP3_Real_Gen<ps, GFX12Gen, asmName>,
-      VOP3be_gfx11_gfx12<op, ps.Pfl>,
-      MnemonicAlias<ps.Mnemonic, asmName>, Requires<[isGFX12Only]>;
+      VOP3be_gfx11_gfx12<op, ps.Pfl>;
+  def : AMDGPUMnemonicAlias<ps.Mnemonic, asmName> {
+    let AssemblerPredicate = GFX12Gen.AssemblerPredicate;
+  }
 }
 
 multiclass VOP3_Realtriple_with_name_gfx12<bits<10> op, string opName,
@@ -1669,6 +1786,18 @@ class VOPC64Table <string Format> : GenericTable {
 def VOPC64DPPTable : VOPC64Table<"DPP">;
 def VOPC64DPP8Table : VOPC64Table<"DPP8">;
 
+class AsmOnlyInfoTable <string Format, string Class>: GenericTable {
+  let FilterClass = Class;
+  let FilterClassField = "isAsmParserOnly";
+  let CppTypeName = Format # "DPPAsmOnlyInfo";
+  let Fields = ["Opcode"];
+
+  let PrimaryKey = ["Opcode"];
+  let PrimaryKeyName = "is" # Format # "AsmOnlyOpcodeHelper";
+}
+
+def VOPCAsmOnlyInfoTable : AsmOnlyInfoTable <"VOPC", "VOPC_DPPe_Common">;
+
 def VOPTrue16Table : GenericTable {
   let FilterClass = "VOP_Pseudo";
   let CppTypeName = "VOPTrue16Info";
@@ -1676,4 +1805,13 @@ def VOPTrue16Table : GenericTable {
 
   let PrimaryKey = ["Opcode"];
   let PrimaryKeyName = "getTrue16OpcodeHelper";
+}
+
+def SingleUseExceptionTable : GenericTable {
+  let FilterClass = "VOP_Pseudo";
+  let CppTypeName = "SingleUseExceptionInfo";
+  let Fields = ["Opcode", "IsInvalidSingleUseConsumer", "IsInvalidSingleUseProducer"];
+
+  let PrimaryKey = ["Opcode"];
+  let PrimaryKeyName = "getSingleUseExceptionHelper";
 }

@@ -59,7 +59,8 @@ getLinkCommandArgs(Compilation &C, const llvm::opt::ArgList &Args,
                    llvm::opt::ArgStringList &LastLinkArgs, const ToolChain &TC,
                    const llvm::Triple &Triple, llvm::StringRef TargetID,
                    llvm::StringRef OutputFilePrefix, const char *InputFileName,
-                   const RocmInstallationDetector &RocmInstallation);
+                   const RocmInstallationDetector &RocmInstallation,
+                   llvm::opt::ArgStringList &EnvironmentLibraryPaths);
 
 const char *getOptCommandArgs(Compilation &C, const llvm::opt::ArgList &Args,
                               llvm::opt::ArgStringList &OptArgs,
@@ -172,6 +173,9 @@ protected:
   /// Get GPU arch from -mcpu without checking.
   StringRef getGPUArch(const llvm::opt::ArgList &DriverArgs) const;
 
+  /// Common warning options shared by AMDGPU HIP, OpenCL and OpenMP toolchains.
+  /// Language specific warning options should go to derived classes.
+  void addClangWarningOptions(llvm::opt::ArgStringList &CC1Args) const override;
 };
 
 class LLVM_LIBRARY_VISIBILITY ROCMToolChain : public AMDGPUToolChain {
@@ -188,6 +192,9 @@ public:
   getCommonDeviceLibNames(const llvm::opt::ArgList &DriverArgs,
                           const std::string &GPUArch,
                           bool isOpenMP = false) const;
+  SanitizerMask getSupportedSanitizers() const override {
+    return SanitizerKind::Address;
+  }
 };
 
 } // end namespace toolchains

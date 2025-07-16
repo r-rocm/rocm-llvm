@@ -17,6 +17,7 @@
 #include "llvm/Analysis/AssumptionCache.h"
 #include "llvm/Analysis/UniformityAnalysis.h"
 #include "llvm/Analysis/ValueTracking.h"
+#include "llvm/CodeGen/TargetPassConfig.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/InstVisitor.h"
 #include "llvm/InitializePasses.h"
@@ -61,8 +62,8 @@ public:
   }
 
   void getAnalysisUsage(AnalysisUsage &AU) const override {
-    AU.addRequired<AssumptionCacheTracker>();
     AU.addRequired<TargetPassConfig>();
+    AU.addRequired<AssumptionCacheTracker>();
     AU.addRequired<UniformityInfoWrapperPass>();
     AU.setPreservesAll();
   }
@@ -180,8 +181,7 @@ bool AMDGPULateCodeGenPrepare::runOnFunction(Function &F) {
   for (auto &BB : reverse(F))
     for (Instruction &I : make_early_inc_range(reverse(BB))) {
       Changed |= !HasScalarSubwordLoads && visit(I);
-      if (ST.shouldCoerceIllegalTypes())
-        Changed |= LRO.optimizeLiveType(&I, DeadInsts);
+      Changed |= LRO.optimizeLiveType(&I, DeadInsts);
     }
 
   RecursivelyDeleteTriviallyDeadInstructionsPermissive(DeadInsts);
@@ -347,7 +347,7 @@ bool LiveRegOptimizer::optimizeLiveType(
   for (PHINode *Phi : PhiNodes) {
     ValMap[Phi] = PHINode::Create(calculateConvertType(Phi->getType()),
                                   Phi->getNumIncomingValues(),
-                                  Phi->getName() + ".tc", Phi);
+                                  Phi->getName() + ".tc", Phi->getIterator());
   }
 
   // Connect all the PHI nodes with their new incoming values.
@@ -507,6 +507,7 @@ bool AMDGPULateCodeGenPrepare::visitLoadInst(LoadInst &LI) {
 
 INITIALIZE_PASS_BEGIN(AMDGPULateCodeGenPrepare, DEBUG_TYPE,
                       "AMDGPU IR late optimizations", false, false)
+INITIALIZE_PASS_DEPENDENCY(TargetPassConfig)
 INITIALIZE_PASS_DEPENDENCY(AssumptionCacheTracker)
 INITIALIZE_PASS_DEPENDENCY(UniformityInfoWrapperPass)
 INITIALIZE_PASS_END(AMDGPULateCodeGenPrepare, DEBUG_TYPE,

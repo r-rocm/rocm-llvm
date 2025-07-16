@@ -247,8 +247,8 @@ define zeroext i1 @PR38522(ptr %x, ptr %y) {
 ; AVX-NEXT:    sete %al
 ; AVX-NEXT:    retq
 start:
-  %0 = load <16 x i8>, <16 x i8>* %x, align 16
-  %1 = load <16 x i8>, <16 x i8>* %y, align 16
+  %0 = load <16 x i8>, ptr %x, align 16
+  %1 = load <16 x i8>, ptr %y, align 16
   %2 = icmp sle <16 x i8> %0, %1
   %3 = sext <16 x i1> %2 to <16 x i8>
   %4 = bitcast <16 x i8> %3 to <2 x i64>
@@ -395,6 +395,46 @@ define i1 @PR38788(<4 x i32> %0, <4 x i32> %1) {
   %6 = tail call i32 @llvm.x86.sse41.ptestc(<2 x i64> %5, <2 x i64> <i64 -1, i64 -1>)
   %7 = icmp eq i32 %6, 1
   ret i1 %7
+}
+
+define i32 @PR88958_1(ptr %0, <2 x i64> %1) {
+; SSE-LABEL: PR88958_1:
+; SSE:       # %bb.0:
+; SSE-NEXT:    xorl %eax, %eax
+; SSE-NEXT:    ptest (%rdi), %xmm0
+; SSE-NEXT:    sete %al
+; SSE-NEXT:    retq
+;
+; AVX-LABEL: PR88958_1:
+; AVX:       # %bb.0:
+; AVX-NEXT:    xorl %eax, %eax
+; AVX-NEXT:    vptest (%rdi), %xmm0
+; AVX-NEXT:    sete %al
+; AVX-NEXT:    retq
+  %3 = load <2 x i64>, ptr %0
+  %4 = tail call i32 @llvm.x86.sse41.ptestz(<2 x i64> %3, <2 x i64> %1)
+  ret i32 %4
+}
+
+define i32 @PR88958_2(ptr %0, <2 x i64> %1) {
+; SSE-LABEL: PR88958_2:
+; SSE:       # %bb.0:
+; SSE-NEXT:    movdqa (%rdi), %xmm1
+; SSE-NEXT:    xorl %eax, %eax
+; SSE-NEXT:    ptest %xmm0, %xmm1
+; SSE-NEXT:    setb %al
+; SSE-NEXT:    retq
+;
+; AVX-LABEL: PR88958_2:
+; AVX:       # %bb.0:
+; AVX-NEXT:    vmovdqa (%rdi), %xmm1
+; AVX-NEXT:    xorl %eax, %eax
+; AVX-NEXT:    vptest %xmm0, %xmm1
+; AVX-NEXT:    setb %al
+; AVX-NEXT:    retq
+  %3 = load <2 x i64>, ptr %0
+  %4 = tail call i32 @llvm.x86.sse41.ptestc(<2 x i64> %3, <2 x i64> %1)
+  ret i32 %4
 }
 
 declare i32 @llvm.x86.sse41.ptestz(<2 x i64>, <2 x i64>) nounwind readnone

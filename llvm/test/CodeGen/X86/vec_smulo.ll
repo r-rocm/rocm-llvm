@@ -27,7 +27,7 @@ declare {<4 x i24>, <4 x i1>} @llvm.smul.with.overflow.v4i24(<4 x i24>, <4 x i24
 declare {<4 x i1>, <4 x i1>} @llvm.smul.with.overflow.v4i1(<4 x i1>, <4 x i1>)
 declare {<2 x i128>, <2 x i1>} @llvm.smul.with.overflow.v2i128(<2 x i128>, <2 x i128>)
 
-define <1 x i32> @smulo_v1i32(<1 x i32> %a0, <1 x i32> %a1, <1 x i32>* %p2) nounwind {
+define <1 x i32> @smulo_v1i32(<1 x i32> %a0, <1 x i32> %a1, ptr %p2) nounwind {
 ; CHECK-LABEL: smulo_v1i32:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    xorl %eax, %eax
@@ -40,11 +40,11 @@ define <1 x i32> @smulo_v1i32(<1 x i32> %a0, <1 x i32> %a1, <1 x i32>* %p2) noun
   %val = extractvalue {<1 x i32>, <1 x i1>} %t, 0
   %obit = extractvalue {<1 x i32>, <1 x i1>} %t, 1
   %res = sext <1 x i1> %obit to <1 x i32>
-  store <1 x i32> %val, <1 x i32>* %p2
+  store <1 x i32> %val, ptr %p2
   ret <1 x i32> %res
 }
 
-define <2 x i32> @smulo_v2i32(<2 x i32> %a0, <2 x i32> %a1, <2 x i32>* %p2) nounwind {
+define <2 x i32> @smulo_v2i32(<2 x i32> %a0, <2 x i32> %a1, ptr %p2) nounwind {
 ; SSE2-LABEL: smulo_v2i32:
 ; SSE2:       # %bb.0:
 ; SSE2-NEXT:    pxor %xmm2, %xmm2
@@ -146,11 +146,11 @@ define <2 x i32> @smulo_v2i32(<2 x i32> %a0, <2 x i32> %a1, <2 x i32>* %p2) noun
   %val = extractvalue {<2 x i32>, <2 x i1>} %t, 0
   %obit = extractvalue {<2 x i32>, <2 x i1>} %t, 1
   %res = sext <2 x i1> %obit to <2 x i32>
-  store <2 x i32> %val, <2 x i32>* %p2
+  store <2 x i32> %val, ptr %p2
   ret <2 x i32> %res
 }
 
-define <3 x i32> @smulo_v3i32(<3 x i32> %a0, <3 x i32> %a1, <3 x i32>* %p2) nounwind {
+define <3 x i32> @smulo_v3i32(<3 x i32> %a0, <3 x i32> %a1, ptr %p2) nounwind {
 ; SSE2-LABEL: smulo_v3i32:
 ; SSE2:       # %bb.0:
 ; SSE2-NEXT:    pxor %xmm2, %xmm2
@@ -270,7 +270,7 @@ define <3 x i32> @smulo_v3i32(<3 x i32> %a0, <3 x i32> %a1, <3 x i32>* %p2) noun
 ; AVX512-NEXT:    vpshufd {{.*#+}} xmm3 = xmm1[1,1,3,3]
 ; AVX512-NEXT:    vpshufd {{.*#+}} xmm4 = xmm0[1,1,3,3]
 ; AVX512-NEXT:    vpmuldq %xmm3, %xmm4, %xmm3
-; AVX512-NEXT:    vmovdqa {{.*#+}} xmm4 = [1,5,3,7]
+; AVX512-NEXT:    vpmovsxbd {{.*#+}} xmm4 = [1,5,3,7]
 ; AVX512-NEXT:    vpermi2d %xmm3, %xmm2, %xmm4
 ; AVX512-NEXT:    vpmulld %xmm1, %xmm0, %xmm1
 ; AVX512-NEXT:    vpsrad $31, %xmm1, %xmm0
@@ -284,11 +284,11 @@ define <3 x i32> @smulo_v3i32(<3 x i32> %a0, <3 x i32> %a1, <3 x i32>* %p2) noun
   %val = extractvalue {<3 x i32>, <3 x i1>} %t, 0
   %obit = extractvalue {<3 x i32>, <3 x i1>} %t, 1
   %res = sext <3 x i1> %obit to <3 x i32>
-  store <3 x i32> %val, <3 x i32>* %p2
+  store <3 x i32> %val, ptr %p2
   ret <3 x i32> %res
 }
 
-define <4 x i32> @smulo_v4i32(<4 x i32> %a0, <4 x i32> %a1, <4 x i32>* %p2) nounwind {
+define <4 x i32> @smulo_v4i32(<4 x i32> %a0, <4 x i32> %a1, ptr %p2) nounwind {
 ; SSE2-LABEL: smulo_v4i32:
 ; SSE2:       # %bb.0:
 ; SSE2-NEXT:    pxor %xmm2, %xmm2
@@ -401,7 +401,7 @@ define <4 x i32> @smulo_v4i32(<4 x i32> %a0, <4 x i32> %a1, <4 x i32>* %p2) noun
 ; AVX512-NEXT:    vpshufd {{.*#+}} xmm3 = xmm1[1,1,3,3]
 ; AVX512-NEXT:    vpshufd {{.*#+}} xmm4 = xmm0[1,1,3,3]
 ; AVX512-NEXT:    vpmuldq %xmm3, %xmm4, %xmm3
-; AVX512-NEXT:    vmovdqa {{.*#+}} xmm4 = [1,5,3,7]
+; AVX512-NEXT:    vpmovsxbd {{.*#+}} xmm4 = [1,5,3,7]
 ; AVX512-NEXT:    vpermi2d %xmm3, %xmm2, %xmm4
 ; AVX512-NEXT:    vpmulld %xmm1, %xmm0, %xmm1
 ; AVX512-NEXT:    vpsrad $31, %xmm1, %xmm0
@@ -414,11 +414,11 @@ define <4 x i32> @smulo_v4i32(<4 x i32> %a0, <4 x i32> %a1, <4 x i32>* %p2) noun
   %val = extractvalue {<4 x i32>, <4 x i1>} %t, 0
   %obit = extractvalue {<4 x i32>, <4 x i1>} %t, 1
   %res = sext <4 x i1> %obit to <4 x i32>
-  store <4 x i32> %val, <4 x i32>* %p2
+  store <4 x i32> %val, ptr %p2
   ret <4 x i32> %res
 }
 
-define <6 x i32> @smulo_v6i32(<6 x i32> %a0, <6 x i32> %a1, <6 x i32>* %p2) nounwind {
+define <6 x i32> @smulo_v6i32(<6 x i32> %a0, <6 x i32> %a1, ptr %p2) nounwind {
 ; SSE2-LABEL: smulo_v6i32:
 ; SSE2:       # %bb.0:
 ; SSE2-NEXT:    movq %rdi, %rax
@@ -672,7 +672,7 @@ define <6 x i32> @smulo_v6i32(<6 x i32> %a0, <6 x i32> %a1, <6 x i32>* %p2) noun
 ; AVX512-NEXT:    vpshufd {{.*#+}} ymm3 = ymm1[1,1,3,3,5,5,7,7]
 ; AVX512-NEXT:    vpshufd {{.*#+}} ymm4 = ymm0[1,1,3,3,5,5,7,7]
 ; AVX512-NEXT:    vpmuldq %ymm3, %ymm4, %ymm3
-; AVX512-NEXT:    vmovdqa {{.*#+}} ymm4 = [1,9,3,11,5,13,7,15]
+; AVX512-NEXT:    vpmovsxbd {{.*#+}} ymm4 = [1,9,3,11,5,13,7,15]
 ; AVX512-NEXT:    vpermi2d %ymm3, %ymm2, %ymm4
 ; AVX512-NEXT:    vpmulld %ymm1, %ymm0, %ymm1
 ; AVX512-NEXT:    vpsrad $31, %ymm1, %ymm0
@@ -687,11 +687,11 @@ define <6 x i32> @smulo_v6i32(<6 x i32> %a0, <6 x i32> %a1, <6 x i32>* %p2) noun
   %val = extractvalue {<6 x i32>, <6 x i1>} %t, 0
   %obit = extractvalue {<6 x i32>, <6 x i1>} %t, 1
   %res = sext <6 x i1> %obit to <6 x i32>
-  store <6 x i32> %val, <6 x i32>* %p2
+  store <6 x i32> %val, ptr %p2
   ret <6 x i32> %res
 }
 
-define <8 x i32> @smulo_v8i32(<8 x i32> %a0, <8 x i32> %a1, <8 x i32>* %p2) nounwind {
+define <8 x i32> @smulo_v8i32(<8 x i32> %a0, <8 x i32> %a1, ptr %p2) nounwind {
 ; SSE2-LABEL: smulo_v8i32:
 ; SSE2:       # %bb.0:
 ; SSE2-NEXT:    pxor %xmm4, %xmm4
@@ -871,7 +871,7 @@ define <8 x i32> @smulo_v8i32(<8 x i32> %a0, <8 x i32> %a1, <8 x i32>* %p2) noun
 ; AVX512-NEXT:    vpshufd {{.*#+}} ymm3 = ymm1[1,1,3,3,5,5,7,7]
 ; AVX512-NEXT:    vpshufd {{.*#+}} ymm4 = ymm0[1,1,3,3,5,5,7,7]
 ; AVX512-NEXT:    vpmuldq %ymm3, %ymm4, %ymm3
-; AVX512-NEXT:    vmovdqa {{.*#+}} ymm4 = [1,9,3,11,5,13,7,15]
+; AVX512-NEXT:    vpmovsxbd {{.*#+}} ymm4 = [1,9,3,11,5,13,7,15]
 ; AVX512-NEXT:    vpermi2d %ymm3, %ymm2, %ymm4
 ; AVX512-NEXT:    vpmulld %ymm1, %ymm0, %ymm1
 ; AVX512-NEXT:    vpsrad $31, %ymm1, %ymm0
@@ -884,11 +884,11 @@ define <8 x i32> @smulo_v8i32(<8 x i32> %a0, <8 x i32> %a1, <8 x i32>* %p2) noun
   %val = extractvalue {<8 x i32>, <8 x i1>} %t, 0
   %obit = extractvalue {<8 x i32>, <8 x i1>} %t, 1
   %res = sext <8 x i1> %obit to <8 x i32>
-  store <8 x i32> %val, <8 x i32>* %p2
+  store <8 x i32> %val, ptr %p2
   ret <8 x i32> %res
 }
 
-define <16 x i32> @smulo_v16i32(<16 x i32> %a0, <16 x i32> %a1, <16 x i32>* %p2) nounwind {
+define <16 x i32> @smulo_v16i32(<16 x i32> %a0, <16 x i32> %a1, ptr %p2) nounwind {
 ; SSE2-LABEL: smulo_v16i32:
 ; SSE2:       # %bb.0:
 ; SSE2-NEXT:    pxor %xmm8, %xmm8
@@ -1229,7 +1229,7 @@ define <16 x i32> @smulo_v16i32(<16 x i32> %a0, <16 x i32> %a1, <16 x i32>* %p2)
 ; AVX512-NEXT:    vpshufd {{.*#+}} zmm3 = zmm1[1,1,3,3,5,5,7,7,9,9,11,11,13,13,15,15]
 ; AVX512-NEXT:    vpshufd {{.*#+}} zmm4 = zmm0[1,1,3,3,5,5,7,7,9,9,11,11,13,13,15,15]
 ; AVX512-NEXT:    vpmuldq %zmm3, %zmm4, %zmm3
-; AVX512-NEXT:    vmovdqa64 {{.*#+}} zmm4 = [1,17,3,19,5,21,7,23,9,25,11,27,13,29,15,31]
+; AVX512-NEXT:    vpmovsxbd {{.*#+}} zmm4 = [1,17,3,19,5,21,7,23,9,25,11,27,13,29,15,31]
 ; AVX512-NEXT:    vpermi2d %zmm3, %zmm2, %zmm4
 ; AVX512-NEXT:    vpmulld %zmm1, %zmm0, %zmm1
 ; AVX512-NEXT:    vpsrad $31, %zmm1, %zmm0
@@ -1241,11 +1241,11 @@ define <16 x i32> @smulo_v16i32(<16 x i32> %a0, <16 x i32> %a1, <16 x i32>* %p2)
   %val = extractvalue {<16 x i32>, <16 x i1>} %t, 0
   %obit = extractvalue {<16 x i32>, <16 x i1>} %t, 1
   %res = sext <16 x i1> %obit to <16 x i32>
-  store <16 x i32> %val, <16 x i32>* %p2
+  store <16 x i32> %val, ptr %p2
   ret <16 x i32> %res
 }
 
-define <16 x i32> @smulo_v16i8(<16 x i8> %a0, <16 x i8> %a1, <16 x i8>* %p2) nounwind {
+define <16 x i32> @smulo_v16i8(<16 x i8> %a0, <16 x i8> %a1, ptr %p2) nounwind {
 ; SSE2-LABEL: smulo_v16i8:
 ; SSE2:       # %bb.0:
 ; SSE2-NEXT:    pxor %xmm2, %xmm2
@@ -1354,7 +1354,7 @@ define <16 x i32> @smulo_v16i8(<16 x i8> %a0, <16 x i8> %a1, <16 x i8>* %p2) nou
 ; SSE41-NEXT:    movdqa %xmm4, %xmm0
 ; SSE41-NEXT:    psrlw $8, %xmm0
 ; SSE41-NEXT:    packuswb %xmm3, %xmm0
-; SSE41-NEXT:    movdqa {{.*#+}} xmm1 = [255,255,255,255,255,255,255,255]
+; SSE41-NEXT:    pmovzxbw {{.*#+}} xmm1 = [255,255,255,255,255,255,255,255]
 ; SSE41-NEXT:    pand %xmm1, %xmm5
 ; SSE41-NEXT:    pand %xmm1, %xmm4
 ; SSE41-NEXT:    packuswb %xmm5, %xmm4
@@ -1464,11 +1464,11 @@ define <16 x i32> @smulo_v16i8(<16 x i8> %a0, <16 x i8> %a1, <16 x i8>* %p2) nou
   %val = extractvalue {<16 x i8>, <16 x i1>} %t, 0
   %obit = extractvalue {<16 x i8>, <16 x i1>} %t, 1
   %res = sext <16 x i1> %obit to <16 x i32>
-  store <16 x i8> %val, <16 x i8>* %p2
+  store <16 x i8> %val, ptr %p2
   ret <16 x i32> %res
 }
 
-define <32 x i32> @smulo_v32i8(<32 x i8> %a0, <32 x i8> %a1, <32 x i8>* %p2) nounwind {
+define <32 x i32> @smulo_v32i8(<32 x i8> %a0, <32 x i8> %a1, ptr %p2) nounwind {
 ; SSE2-LABEL: smulo_v32i8:
 ; SSE2:       # %bb.0:
 ; SSE2-NEXT:    movq %rdi, %rax
@@ -1674,7 +1674,7 @@ define <32 x i32> @smulo_v32i8(<32 x i8> %a0, <32 x i8> %a1, <32 x i8>* %p2) nou
 ; SSE41-NEXT:    movdqa %xmm3, %xmm7
 ; SSE41-NEXT:    psrlw $8, %xmm7
 ; SSE41-NEXT:    packuswb %xmm5, %xmm7
-; SSE41-NEXT:    movdqa {{.*#+}} xmm5 = [255,255,255,255,255,255,255,255]
+; SSE41-NEXT:    pmovzxbw {{.*#+}} xmm5 = [255,255,255,255,255,255,255,255]
 ; SSE41-NEXT:    pand %xmm5, %xmm6
 ; SSE41-NEXT:    pand %xmm5, %xmm3
 ; SSE41-NEXT:    packuswb %xmm6, %xmm3
@@ -1879,11 +1879,11 @@ define <32 x i32> @smulo_v32i8(<32 x i8> %a0, <32 x i8> %a1, <32 x i8>* %p2) nou
   %val = extractvalue {<32 x i8>, <32 x i1>} %t, 0
   %obit = extractvalue {<32 x i8>, <32 x i1>} %t, 1
   %res = sext <32 x i1> %obit to <32 x i32>
-  store <32 x i8> %val, <32 x i8>* %p2
+  store <32 x i8> %val, ptr %p2
   ret <32 x i32> %res
 }
 
-define <64 x i32> @smulo_v64i8(<64 x i8> %a0, <64 x i8> %a1, <64 x i8>* %p2) nounwind {
+define <64 x i32> @smulo_v64i8(<64 x i8> %a0, <64 x i8> %a1, ptr %p2) nounwind {
 ; SSE2-LABEL: smulo_v64i8:
 ; SSE2:       # %bb.0:
 ; SSE2-NEXT:    movq %rdi, %rax
@@ -2260,7 +2260,7 @@ define <64 x i32> @smulo_v64i8(<64 x i8> %a0, <64 x i8> %a1, <64 x i8>* %p2) nou
 ; SSE41-NEXT:    movdqa %xmm7, %xmm10
 ; SSE41-NEXT:    psrlw $8, %xmm10
 ; SSE41-NEXT:    packuswb %xmm8, %xmm10
-; SSE41-NEXT:    movdqa {{.*#+}} xmm8 = [255,255,255,255,255,255,255,255]
+; SSE41-NEXT:    pmovzxbw {{.*#+}} xmm8 = [255,255,255,255,255,255,255,255]
 ; SSE41-NEXT:    pand %xmm8, %xmm9
 ; SSE41-NEXT:    pand %xmm8, %xmm7
 ; SSE41-NEXT:    packuswb %xmm9, %xmm7
@@ -2683,11 +2683,11 @@ define <64 x i32> @smulo_v64i8(<64 x i8> %a0, <64 x i8> %a1, <64 x i8>* %p2) nou
   %val = extractvalue {<64 x i8>, <64 x i1>} %t, 0
   %obit = extractvalue {<64 x i8>, <64 x i1>} %t, 1
   %res = sext <64 x i1> %obit to <64 x i32>
-  store <64 x i8> %val, <64 x i8>* %p2
+  store <64 x i8> %val, ptr %p2
   ret <64 x i32> %res
 }
 
-define <8 x i32> @smulo_v8i16(<8 x i16> %a0, <8 x i16> %a1, <8 x i16>* %p2) nounwind {
+define <8 x i32> @smulo_v8i16(<8 x i16> %a0, <8 x i16> %a1, ptr %p2) nounwind {
 ; SSE2-LABEL: smulo_v8i16:
 ; SSE2:       # %bb.0:
 ; SSE2-NEXT:    movdqa %xmm0, %xmm2
@@ -2792,11 +2792,11 @@ define <8 x i32> @smulo_v8i16(<8 x i16> %a0, <8 x i16> %a1, <8 x i16>* %p2) noun
   %val = extractvalue {<8 x i16>, <8 x i1>} %t, 0
   %obit = extractvalue {<8 x i16>, <8 x i1>} %t, 1
   %res = sext <8 x i1> %obit to <8 x i32>
-  store <8 x i16> %val, <8 x i16>* %p2
+  store <8 x i16> %val, ptr %p2
   ret <8 x i32> %res
 }
 
-define <2 x i32> @smulo_v2i64(<2 x i64> %a0, <2 x i64> %a1, <2 x i64>* %p2) nounwind {
+define <2 x i32> @smulo_v2i64(<2 x i64> %a0, <2 x i64> %a1, ptr %p2) nounwind {
 ; SSE2-LABEL: smulo_v2i64:
 ; SSE2:       # %bb.0:
 ; SSE2-NEXT:    pshufd {{.*#+}} xmm2 = xmm1[2,3,2,3]
@@ -2944,11 +2944,11 @@ define <2 x i32> @smulo_v2i64(<2 x i64> %a0, <2 x i64> %a1, <2 x i64>* %p2) noun
   %val = extractvalue {<2 x i64>, <2 x i1>} %t, 0
   %obit = extractvalue {<2 x i64>, <2 x i1>} %t, 1
   %res = sext <2 x i1> %obit to <2 x i32>
-  store <2 x i64> %val, <2 x i64>* %p2
+  store <2 x i64> %val, ptr %p2
   ret <2 x i32> %res
 }
 
-define <4 x i32> @smulo_v4i24(<4 x i24> %a0, <4 x i24> %a1, <4 x i24>* %p2) nounwind {
+define <4 x i32> @smulo_v4i24(<4 x i24> %a0, <4 x i24> %a1, ptr %p2) nounwind {
 ; SSE2-LABEL: smulo_v4i24:
 ; SSE2:       # %bb.0:
 ; SSE2-NEXT:    pslld $8, %xmm0
@@ -3191,7 +3191,7 @@ define <4 x i32> @smulo_v4i24(<4 x i24> %a0, <4 x i24> %a1, <4 x i24>* %p2) noun
 ; AVX512-NEXT:    vpshufd {{.*#+}} xmm3 = xmm1[1,1,3,3]
 ; AVX512-NEXT:    vpshufd {{.*#+}} xmm4 = xmm0[1,1,3,3]
 ; AVX512-NEXT:    vpmuldq %xmm3, %xmm4, %xmm3
-; AVX512-NEXT:    vmovdqa {{.*#+}} xmm4 = [1,5,3,7]
+; AVX512-NEXT:    vpmovsxbd {{.*#+}} xmm4 = [1,5,3,7]
 ; AVX512-NEXT:    vpermi2d %xmm3, %xmm2, %xmm4
 ; AVX512-NEXT:    vpmulld %xmm1, %xmm0, %xmm1
 ; AVX512-NEXT:    vpsrad $31, %xmm1, %xmm0
@@ -3223,11 +3223,11 @@ define <4 x i32> @smulo_v4i24(<4 x i24> %a0, <4 x i24> %a1, <4 x i24>* %p2) noun
   %val = extractvalue {<4 x i24>, <4 x i1>} %t, 0
   %obit = extractvalue {<4 x i24>, <4 x i1>} %t, 1
   %res = sext <4 x i1> %obit to <4 x i32>
-  store <4 x i24> %val, <4 x i24>* %p2
+  store <4 x i24> %val, ptr %p2
   ret <4 x i32> %res
 }
 
-define <4 x i32> @smulo_v4i1(<4 x i1> %a0, <4 x i1> %a1, <4 x i1>* %p2) nounwind {
+define <4 x i32> @smulo_v4i1(<4 x i1> %a0, <4 x i1> %a1, ptr %p2) nounwind {
 ; SSE2-LABEL: smulo_v4i1:
 ; SSE2:       # %bb.0:
 ; SSE2-NEXT:    pand %xmm1, %xmm0
@@ -3287,11 +3287,11 @@ define <4 x i32> @smulo_v4i1(<4 x i1> %a0, <4 x i1> %a1, <4 x i1>* %p2) nounwind
   %val = extractvalue {<4 x i1>, <4 x i1>} %t, 0
   %obit = extractvalue {<4 x i1>, <4 x i1>} %t, 1
   %res = sext <4 x i1> %obit to <4 x i32>
-  store <4 x i1> %val, <4 x i1>* %p2
+  store <4 x i1> %val, ptr %p2
   ret <4 x i32> %res
 }
 
-define <2 x i32> @smulo_v2i128(<2 x i128> %a0, <2 x i128> %a1, <2 x i128>* %p2) nounwind {
+define <2 x i32> @smulo_v2i128(<2 x i128> %a0, <2 x i128> %a1, ptr %p2) nounwind {
 ; SSE2-LABEL: smulo_v2i128:
 ; SSE2:       # %bb.0:
 ; SSE2-NEXT:    pushq %rbp
@@ -4095,6 +4095,6 @@ define <2 x i32> @smulo_v2i128(<2 x i128> %a0, <2 x i128> %a1, <2 x i128>* %p2) 
   %val = extractvalue {<2 x i128>, <2 x i1>} %t, 0
   %obit = extractvalue {<2 x i128>, <2 x i1>} %t, 1
   %res = sext <2 x i1> %obit to <2 x i32>
-  store <2 x i128> %val, <2 x i128>* %p2
+  store <2 x i128> %val, ptr %p2
   ret <2 x i32> %res
 }

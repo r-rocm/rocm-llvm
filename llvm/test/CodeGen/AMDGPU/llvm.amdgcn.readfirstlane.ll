@@ -367,7 +367,7 @@ define amdgpu_kernel void @test_readfirstlane_fi(ptr addrspace(1) %out) #1 {
 ; CHECK-SDAG:       ; %bb.0:
 ; CHECK-SDAG-NEXT:    s_add_u32 s0, s0, s9
 ; CHECK-SDAG-NEXT:    s_addc_u32 s1, s1, 0
-; CHECK-SDAG-NEXT:    s_mov_b32 s4, 4
+; CHECK-SDAG-NEXT:    s_mov_b32 s4, 0
 ; CHECK-SDAG-NEXT:    ;;#ASMSTART
 ; CHECK-SDAG-NEXT:    ; use s4
 ; CHECK-SDAG-NEXT:    ;;#ASMEND
@@ -377,7 +377,7 @@ define amdgpu_kernel void @test_readfirstlane_fi(ptr addrspace(1) %out) #1 {
 ; CHECK-GISEL:       ; %bb.0:
 ; CHECK-GISEL-NEXT:    s_add_u32 s0, s0, s9
 ; CHECK-GISEL-NEXT:    s_addc_u32 s1, s1, 0
-; CHECK-GISEL-NEXT:    s_mov_b32 s4, 4
+; CHECK-GISEL-NEXT:    s_mov_b32 s4, 0
 ; CHECK-GISEL-NEXT:    ;;#ASMSTART
 ; CHECK-GISEL-NEXT:    ; use s4
 ; CHECK-GISEL-NEXT:    ;;#ASMEND

@@ -116,7 +116,7 @@ bool AMDGPUAtomicOptimizer::runOnFunction(Function &F) {
 
   const UniformityInfo *UA =
       &getAnalysis<UniformityInfoWrapperPass>().getUniformityInfo();
-  const DataLayout *DL = &F.getParent()->getDataLayout();
+  const DataLayout *DL = &F.getDataLayout();
 
   DominatorTreeWrapperPass *const DTW =
       getAnalysisIfAvailable<DominatorTreeWrapperPass>();
@@ -137,7 +137,7 @@ PreservedAnalyses AMDGPUAtomicOptimizerPass::run(Function &F,
                                                  FunctionAnalysisManager &AM) {
 
   const auto *UA = &AM.getResult<UniformityInfoAnalysis>(F);
-  const DataLayout *DL = &F.getParent()->getDataLayout();
+  const DataLayout *DL = &F.getDataLayout();
 
   DomTreeUpdater DTU(&AM.getResult<DominatorTreeAnalysis>(F),
                      DomTreeUpdater::UpdateStrategy::Lazy);
@@ -238,7 +238,7 @@ void AMDGPUAtomicOptimizerImpl::visitAtomicRMWInst(AtomicRMWInst &I) {
     return;
   }
 
-  const bool ValDivergent = UA->isDivergentUse(I.getOperandUse(ValIdx));
+  bool ValDivergent = UA->isDivergentUse(I.getOperandUse(ValIdx));
 
   // If the value operand is divergent, each lane is contributing a different
   // value to the atomic calculation. We can only optimize divergent values if
@@ -654,9 +654,12 @@ static Constant *getIdentityValueForAtomicOp(Type *const Ty,
   case AtomicRMWInst::FSub:
     return ConstantFP::get(C, APFloat::getZero(Ty->getFltSemantics(), false));
   case AtomicRMWInst::FMin:
-    return ConstantFP::get(C, APFloat::getInf(Ty->getFltSemantics(), false));
   case AtomicRMWInst::FMax:
-    return ConstantFP::get(C, APFloat::getInf(Ty->getFltSemantics(), true));
+    // FIXME: atomicrmw fmax/fmin behave like llvm.maxnum/minnum so NaN is the
+    // closest thing they have to an identity, but it still does not preserve
+    // the difference between quiet and signaling NaNs or NaNs with different
+    // payloads.
+    return ConstantFP::get(C, APFloat::getNaN(Ty->getFltSemantics()));
   }
 }
 
@@ -704,7 +707,7 @@ void AMDGPUAtomicOptimizerImpl::optimizeAtomic(Instruction &I,
   Type *const Ty = I.getType();
   Type *Int32Ty = B.getInt32Ty();
   bool isAtomicFloatingPointTy = Ty->isFloatingPointTy();
-  const unsigned TyBitWidth = DL->getTypeSizeInBits(Ty);
+  [[maybe_unused]] const unsigned TyBitWidth = DL->getTypeSizeInBits(Ty);
 
   // This is the value in the atomic operation we need to combine in order to
   // reduce the number of atomic operations.
@@ -960,7 +963,20 @@ void AMDGPUAtomicOptimizerImpl::optimizeAtomic(Instruction &I,
       }
       }
     }
-    Value *const Result = buildNonAtomicBinOp(B, Op, BroadcastI, LaneOffset);
+    Value *Result = buildNonAtomicBinOp(B, Op, BroadcastI, LaneOffset);
+    if (isAtomicFloatingPointTy) {
+      // For fadd/fsub the first active lane of LaneOffset should be the
+      // identity (-0.0 for fadd or +0.0 for fsub) but the value we calculated
+      // is V * +0.0 which might have the wrong sign or might be nan (if V is
+      // inf or nan).
+      //
+      // For all floating point ops if the in-memory value was a nan then the
+      // binop we just built might have quieted it or changed its payload.
+      //
+      // Correct all these problems by using BroadcastI as the result in the
+      // first active lane.
+      Result = B.CreateSelect(Cond, BroadcastI, Result);
+    }
 
     if (IsPixelShader) {
       // Need a final PHI to reconverge to above the helper lane branch mask.
