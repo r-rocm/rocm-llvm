@@ -1,7 +1,9 @@
-From: CHEN Xuan <chenxuan@iscas.ac.cn>
-Date: Thu, 19 Dec 2024 11:19:36 +0800
-Subject: Not for upstream RISCV use fence rw rw insteadof fen
+From: Sakura286 <sakura286@outlook.com>
+Date: Wed, 16 Jul 2025 19:21:55 +0800
+Subject: Use fence rw,rw instead of fence.tso
 
+    * This is a patch from revyos new llvm-19
+    * https://fast-mirror.isrc.ac.cn/revyos/trixie/revyos-addons/pool/main/l/llvm-toolchain-19/
 ---
  llvm/lib/Target/RISCV/GISel/RISCVInstructionSelector.cpp | 5 +----
  llvm/lib/Target/RISCV/RISCVInstrInfo.td                  | 9 ++-------
@@ -13,10 +15,10 @@ Subject: Not for upstream RISCV use fence rw rw insteadof fen
  7 files changed, 6 insertions(+), 22 deletions(-)
 
 diff --git a/llvm/lib/Target/RISCV/GISel/RISCVInstructionSelector.cpp b/llvm/lib/Target/RISCV/GISel/RISCVInstructionSelector.cpp
-index 65a0a3e..94884af 100644
+index fdb1eba..395948a 100644
 --- a/llvm/lib/Target/RISCV/GISel/RISCVInstructionSelector.cpp
 +++ b/llvm/lib/Target/RISCV/GISel/RISCVInstructionSelector.cpp
-@@ -1299,10 +1299,6 @@ void RISCVInstructionSelector::emitFence(AtomicOrdering FenceOrdering,
+@@ -1304,10 +1304,6 @@ void RISCVInstructionSelector::emitFence(AtomicOrdering FenceOrdering,
    switch (FenceOrdering) {
    default:
      llvm_unreachable("Unexpected ordering");
@@ -27,7 +29,7 @@ index 65a0a3e..94884af 100644
    case AtomicOrdering::Acquire:
      // fence acquire -> fence r, rw
      Pred = RISCVFenceField::R;
-@@ -1313,6 +1309,7 @@ void RISCVInstructionSelector::emitFence(AtomicOrdering FenceOrdering,
+@@ -1318,6 +1314,7 @@ void RISCVInstructionSelector::emitFence(AtomicOrdering FenceOrdering,
      Pred = RISCVFenceField::R | RISCVFenceField::W;
      Succ = RISCVFenceField::W;
      break;
@@ -36,10 +38,10 @@ index 65a0a3e..94884af 100644
      // fence seq_cst -> fence rw, rw
      Pred = RISCVFenceField::R | RISCVFenceField::W;
 diff --git a/llvm/lib/Target/RISCV/RISCVInstrInfo.td b/llvm/lib/Target/RISCV/RISCVInstrInfo.td
-index 792e0bb..3501db9 100644
+index 04054d2..61cadfa 100644
 --- a/llvm/lib/Target/RISCV/RISCVInstrInfo.td
 +++ b/llvm/lib/Target/RISCV/RISCVInstrInfo.td
-@@ -694,12 +694,6 @@ def FENCE : RVInstI<0b000, OPC_MISC_MEM, (outs),
+@@ -700,12 +700,6 @@ def FENCE : RVInstI<0b000, OPC_MISC_MEM, (outs),
    let imm12 = {0b0000,pred,succ};
  }
  
@@ -52,7 +54,7 @@ index 792e0bb..3501db9 100644
  def FENCE_I : RVInstI<0b001, OPC_MISC_MEM, (outs), (ins), "fence.i", "">, Sched<[]> {
    let rs1 = 0;
    let rd = 0;
-@@ -1797,7 +1791,8 @@ def : Pat<(atomic_fence (XLenVT 4), (timm)), (FENCE 0b10, 0b11)>;
+@@ -1727,7 +1721,8 @@ def : Pat<(atomic_fence (XLenVT 4), (timm)), (FENCE 0b10, 0b11)>;
  // fence release -> fence rw, w
  def : Pat<(atomic_fence (XLenVT 5), (timm)), (FENCE 0b11, 0b1)>;
  // fence acq_rel -> fence.tso
@@ -63,7 +65,7 @@ index 792e0bb..3501db9 100644
  def : Pat<(atomic_fence (XLenVT 7), (timm)), (FENCE 0b11, 0b11)>;
  
 diff --git a/llvm/test/CodeGen/RISCV/atomic-fence.ll b/llvm/test/CodeGen/RISCV/atomic-fence.ll
-index 07e0cd0..44be6b1 100644
+index 7103345..3b3111d 100644
 --- a/llvm/test/CodeGen/RISCV/atomic-fence.ll
 +++ b/llvm/test/CodeGen/RISCV/atomic-fence.ll
 @@ -43,7 +43,7 @@ define void @fence_release() nounwind {
@@ -76,7 +78,7 @@ index 07e0cd0..44be6b1 100644
  ;
  ; TSO-LABEL: fence_acq_rel:
 diff --git a/llvm/test/MC/RISCV/Ztso.s b/llvm/test/MC/RISCV/Ztso.s
-index fb4f08e..ed07930 100644
+index 06b1030..23d2ab8 100644
 --- a/llvm/test/MC/RISCV/Ztso.s
 +++ b/llvm/test/MC/RISCV/Ztso.s
 @@ -9,7 +9,7 @@
@@ -103,10 +105,10 @@ index ccb47f1..a32d726 100644
  fence.i
  
 diff --git a/llvm/test/MC/RISCV/rv32i-invalid.s b/llvm/test/MC/RISCV/rv32i-invalid.s
-index c5e0657..3498eef 100644
+index 80a59df..de9e1cc 100644
 --- a/llvm/test/MC/RISCV/rv32i-invalid.s
 +++ b/llvm/test/MC/RISCV/rv32i-invalid.s
-@@ -185,6 +185,3 @@ pause # CHECK: :[[@LINE]]:1: error: instruction requires the following: 'Zihintp
+@@ -186,6 +186,3 @@ pause # CHECK: :[[@LINE]]:1: error: instruction requires the following: 'Zihintp
  
  # Using floating point registers when integer registers are expected
  addi a2, ft0, 24 # CHECK: :[[@LINE]]:10: error: invalid operand for instruction

@@ -6,7 +6,7 @@ opt/rocm-@ROCM_VERSION@/bin/c-index-test
 opt/rocm-@ROCM_VERSION@/bin/clang*
 opt/rocm-@ROCM_VERSION@/bin/diagtool
 opt/rocm-@ROCM_VERSION@/bin/dsymutil
-opt/rocm-@ROCM_VERSION@/bin/f18-parse-demo
+opt/rocm-@ROCM_VERSION@/bin/f19-parse-demo
 opt/rocm-@ROCM_VERSION@/bin/fir-opt
 opt/rocm-@ROCM_VERSION@/bin/flang*
 opt/rocm-@ROCM_VERSION@/bin/git-clang-format
@@ -41,10 +41,10 @@ opt/rocm-@ROCM_VERSION@/include/mlir-c/
 
 opt/rocm-@ROCM_VERSION@/libexec/
 
-opt/rocm-@ROCM_VERSION@/lib/clang/18/bin/
-opt/rocm-@ROCM_VERSION@/lib/clang/18/include/
-opt/rocm-@ROCM_VERSION@/lib/clang/18/lib/linux/
-opt/rocm-@ROCM_VERSION@/lib/clang/18/share/
+opt/rocm-@ROCM_VERSION@/lib/clang/19/bin/
+opt/rocm-@ROCM_VERSION@/lib/clang/19/include/
+opt/rocm-@ROCM_VERSION@/lib/clang/19/lib/linux/
+opt/rocm-@ROCM_VERSION@/lib/clang/19/share/
 opt/rocm-@ROCM_VERSION@/lib/cmake/clang/
 opt/rocm-@ROCM_VERSION@/lib/cmake/flang/
 opt/rocm-@ROCM_VERSION@/lib/cmake/lld/

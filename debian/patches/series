@@ -1,4 +1,2 @@
-0001-Not-for-upstream-RISCV-use-fence-rw-rw-insteadof-fen.patch
-0002-RISC-V-THead-Fix-36990897.patch
-0003-patch-from-loong.patch
-0004-Fix-LTO-plugin-uses-wrong-ABI-for-LTO-objects-on-ris.patch
+0001-Use-fence-rw-rw-instead-of-fence.tso.patch
+0002-Add-patch-from-loong.patch
