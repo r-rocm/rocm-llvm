@@ -1,2 +1,3 @@
 0001-Use-fence-rw-rw-instead-of-fence.tso.patch
 0002-Add-patch-from-loong.patch
+0003-skip-check-of-opencl_c.h.patch
