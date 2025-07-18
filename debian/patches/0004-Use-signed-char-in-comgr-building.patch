@@ -1,0 +1,23 @@
+From: Sakura286 <sakura286@outlook.com>
+Date: Fri, 18 Jul 2025 10:23:41 +0800
+Subject: Use signed char in comgr building
+
+---
+ amd/comgr/CMakeLists.txt | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/amd/comgr/CMakeLists.txt b/amd/comgr/CMakeLists.txt
+index ed01d21..65ef956 100644
+--- a/amd/comgr/CMakeLists.txt
++++ b/amd/comgr/CMakeLists.txt
+@@ -168,6 +168,10 @@ if (ADDRESS_SANITIZER)
+     "${CMAKE_SHARED_LINKER_FLAGS} ${ASAN_LINKER_FLAGS}")
+ endif()
+ 
++
++set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${ASAN_COMPILER_FLAGS} -fsigned-char")
++set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ASAN_COMPILER_FLAGS} -fsigned-char")
++
+ set(AMD_COMGR_PRIVATE_COMPILE_OPTIONS)
+ set(AMD_COMGR_PRIVATE_COMPILE_DEFINITIONS ${LLVM_DEFINITIONS})
+ set(AMD_COMGR_PUBLIC_LINKER_OPTIONS)
