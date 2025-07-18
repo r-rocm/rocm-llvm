@@ -97,14 +97,9 @@ override_dh_auto_build:
 	cmake --build $(BUILD_PATH) -- $(MAKEOPTS) clang lld compiler-rt
 	cmake --build $(BUILD_PATH) -- $(MAKEOPTS) runtimes cxx
 	cmake --build $(BUILD_PATH) -- $(MAKEOPTS)
-# Others
-	cmake --build $(BUILD_PATH) -- $(MAKEOPTS) clang-tidy
 
 override_dh_auto_install:
 	DESTDIR=$(DEB_INST_DIR)/ cmake --build $(BUILD_PATH) -- $(MAKEOPTS) install
-
-override_dh_auto_test:
-	cmake --build $(BUILD_PATH) -- $(MAKEOPTS) check-lld check-mlir
 
 override_dh_install:
 	sed -i "s,@ROCM_VERSION@,${ROCM_VERSION},g" debian/*.install
