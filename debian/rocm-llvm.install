@@ -1,4 +1,4 @@
-opt/rocm-@ROCM_VERSION@/bin/amdgpu*
+opt/rocm-@ROCM_VERSION@/bin/amdgpu-arch
 opt/rocm-@ROCM_VERSION@/bin/analyze-build
 opt/rocm-@ROCM_VERSION@/bin/bbc
 opt/rocm-@ROCM_VERSION@/bin/bugpoint
@@ -6,41 +6,45 @@ opt/rocm-@ROCM_VERSION@/bin/c-index-test
 opt/rocm-@ROCM_VERSION@/bin/clang*
 opt/rocm-@ROCM_VERSION@/bin/diagtool
 opt/rocm-@ROCM_VERSION@/bin/dsymutil
-opt/rocm-@ROCM_VERSION@/bin/f19-parse-demo
+opt/rocm-@ROCM_VERSION@/bin/f18-parse-demo
 opt/rocm-@ROCM_VERSION@/bin/fir-opt
 opt/rocm-@ROCM_VERSION@/bin/flang*
 opt/rocm-@ROCM_VERSION@/bin/git-clang-format
 opt/rocm-@ROCM_VERSION@/bin/hmaptool
 opt/rocm-@ROCM_VERSION@/bin/intercept-build
-opt/rocm-@ROCM_VERSION@/bin/ld*
 opt/rocm-@ROCM_VERSION@/bin/ll*
 opt/rocm-@ROCM_VERSION@/bin/mlir*
-opt/rocm-@ROCM_VERSION@/bin/nvidia-arch
 opt/rocm-@ROCM_VERSION@/bin/nvptx-arch
-opt/rocm-@ROCM_VERSION@/bin/tco
-opt/rocm-@ROCM_VERSION@/bin/offload-arch
 opt/rocm-@ROCM_VERSION@/bin/opt
+opt/rocm-@ROCM_VERSION@/bin/reduce-chunk-list
 opt/rocm-@ROCM_VERSION@/bin/sancov
 opt/rocm-@ROCM_VERSION@/bin/sanstats
-opt/rocm-@ROCM_VERSION@/bin/scan-build
-opt/rocm-@ROCM_VERSION@/bin/scan-build-py
-opt/rocm-@ROCM_VERSION@/bin/scan-view
-opt/rocm-@ROCM_VERSION@/bin/tblgen-lsp-server
-opt/rocm-@ROCM_VERSION@/bin/tblgen-to-irdl
+opt/rocm-@ROCM_VERSION@/bin/scan*
+opt/rocm-@ROCM_VERSION@/bin/tblgen*
+opt/rocm-@ROCM_VERSION@/bin/tco
 opt/rocm-@ROCM_VERSION@/bin/verify-uselistorder
-opt/rocm-@ROCM_VERSION@/bin/wasm-ld
 
+opt/rocm-@ROCM_VERSION@/include/__libunwind_config.h
+opt/rocm-@ROCM_VERSION@/include/libunwind.h
+opt/rocm-@ROCM_VERSION@/include/libunwind.modulemap
+opt/rocm-@ROCM_VERSION@/include/unwind_arm_ehabi.h
+opt/rocm-@ROCM_VERSION@/include/unwind_itanium.h
+opt/rocm-@ROCM_VERSION@/include/unwind.h
+
+opt/rocm-@ROCM_VERSION@/include/c++/
 opt/rocm-@ROCM_VERSION@/include/clang/
 opt/rocm-@ROCM_VERSION@/include/clang-c/
 opt/rocm-@ROCM_VERSION@/include/flang/
 opt/rocm-@ROCM_VERSION@/include/lld/
 opt/rocm-@ROCM_VERSION@/include/llvm/
 opt/rocm-@ROCM_VERSION@/include/llvm-c/
+opt/rocm-@ROCM_VERSION@/include/mach-o/
 opt/rocm-@ROCM_VERSION@/include/mlir/
 opt/rocm-@ROCM_VERSION@/include/mlir-c/
 
 opt/rocm-@ROCM_VERSION@/libexec/
 
+opt/rocm-@ROCM_VERSION@/lib/libc++.modules.json
 opt/rocm-@ROCM_VERSION@/lib/clang/19/bin/
 opt/rocm-@ROCM_VERSION@/lib/clang/19/include/
 opt/rocm-@ROCM_VERSION@/lib/clang/19/lib/linux/
@@ -54,6 +58,7 @@ opt/rocm-@ROCM_VERSION@/lib/libear/
 opt/rocm-@ROCM_VERSION@/lib/libscanbuild/
 opt/rocm-@ROCM_VERSION@/lib/objects-Release/
 opt/rocm-@ROCM_VERSION@/lib/libclang*
+opt/rocm-@ROCM_VERSION@/lib/libCUF*
 opt/rocm-@ROCM_VERSION@/lib/libFIR*
 opt/rocm-@ROCM_VERSION@/lib/libflangFrontend*
 opt/rocm-@ROCM_VERSION@/lib/libFortran*
@@ -61,9 +66,11 @@ opt/rocm-@ROCM_VERSION@/lib/libHLFIR*
 opt/rocm-@ROCM_VERSION@/lib/liblld*
 opt/rocm-@ROCM_VERSION@/lib/libLLVM*
 opt/rocm-@ROCM_VERSION@/lib/libLTO*
+opt/rocm-@ROCM_VERSION@/lib/libmlir*
 opt/rocm-@ROCM_VERSION@/lib/libMLIR*
 opt/rocm-@ROCM_VERSION@/lib/libmlir*
 opt/rocm-@ROCM_VERSION@/lib/libRemarks*
 opt/rocm-@ROCM_VERSION@/lib/libTableGen*
+opt/rocm-@ROCM_VERSION@/lib/libunwind*
 
-opt/rocm-@ROCM_VERSION@/share/
+opt/rocm-@ROCM_VERSION@/share

@@ -101,7 +101,16 @@ override_dh_auto_build:
 override_dh_auto_install:
 	DESTDIR=$(DEB_INST_DIR)/ cmake --build $(BUILD_PATH) -- $(MAKEOPTS) install
 
-override_dh_install:
+MaintFunc/RemoveOcaml:
+	rm -rf $(DEB_INST_DIR)/usr
+
+MaintFunc/InstallMissingLibs:
+	install $(BUILD_PATH)/lib/libMLIRPdllLspServerLib.so.19git $(DEB_INST_DIR)/$(ROCM_PATH)/lib/libMLIRPdllLspServerLib.so.19git
+	ln -s libMLIRPdllLspServerLib.so.19git $(DEB_INST_DIR)/$(ROCM_PATH)/lib/libMLIRPdllLspServerLib.so
+	install $(BUILD_PATH)/lib/libTableGenLspServerLib.so.19git $(DEB_INST_DIR)/$(ROCM_PATH)/lib/libTableGenLspServerLib.so.19git
+	ln -s libTableGenLspServerLib.so.19git $(DEB_INST_DIR)/$(ROCM_PATH)/lib/libTableGenLspServerLib.so
+
+override_dh_install: MaintFunc/RemoveOcaml MaintFunc/InstallMissingLibs
 	sed -i "s,@ROCM_VERSION@,${ROCM_VERSION},g" debian/*.install
 	dh_install
 
