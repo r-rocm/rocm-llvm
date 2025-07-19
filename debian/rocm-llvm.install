@@ -12,6 +12,9 @@ opt/rocm-@ROCM_VERSION@/bin/flang*
 opt/rocm-@ROCM_VERSION@/bin/git-clang-format
 opt/rocm-@ROCM_VERSION@/bin/hmaptool
 opt/rocm-@ROCM_VERSION@/bin/intercept-build
+opt/rocm-@ROCM_VERSION@/bin/ld.lld
+opt/rocm-@ROCM_VERSION@/bin/ld64.lld
+opt/rocm-@ROCM_VERSION@/bin/wasm-ld
 opt/rocm-@ROCM_VERSION@/bin/ll*
 opt/rocm-@ROCM_VERSION@/bin/mlir*
 opt/rocm-@ROCM_VERSION@/bin/nvptx-arch

@@ -105,10 +105,10 @@ MaintFunc/RemoveOcaml:
 	rm -rf $(DEB_INST_DIR)/usr
 
 MaintFunc/InstallMissingLibs:
-	install $(BUILD_PATH)/lib/libMLIRPdllLspServerLib.so.19git $(DEB_INST_DIR)/$(ROCM_PATH)/lib/libMLIRPdllLspServerLib.so.19git
-	ln -s libMLIRPdllLspServerLib.so.19git $(DEB_INST_DIR)/$(ROCM_PATH)/lib/libMLIRPdllLspServerLib.so
-	install $(BUILD_PATH)/lib/libTableGenLspServerLib.so.19git $(DEB_INST_DIR)/$(ROCM_PATH)/lib/libTableGenLspServerLib.so.19git
-	ln -s libTableGenLspServerLib.so.19git $(DEB_INST_DIR)/$(ROCM_PATH)/lib/libTableGenLspServerLib.so
+	install $(BUILD_PATH)/lib/libMLIRPdllLspServerLib.so.19.0git $(DEB_INST_DIR)/$(ROCM_PATH)/lib/libMLIRPdllLspServerLib.so.19.0git
+	ln -s libMLIRPdllLspServerLib.so.19.0git $(DEB_INST_DIR)/$(ROCM_PATH)/lib/libMLIRPdllLspServerLib.so
+	install $(BUILD_PATH)/lib/libTableGenLspServerLib.so.19.0git $(DEB_INST_DIR)/$(ROCM_PATH)/lib/libTableGenLspServerLib.so.19.0git
+	ln -s libTableGenLspServerLib.so.19.0git $(DEB_INST_DIR)/$(ROCM_PATH)/lib/libTableGenLspServerLib.so
 
 override_dh_install: MaintFunc/RemoveOcaml MaintFunc/InstallMissingLibs
 	sed -i "s,@ROCM_VERSION@,${ROCM_VERSION},g" debian/*.install
@@ -117,4 +117,5 @@ override_dh_install: MaintFunc/RemoveOcaml MaintFunc/InstallMissingLibs
 # Double up the limit of debug information entries:
 # https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=946255
 override_dh_dwz:
-	dh_dwz -- -L 500000000
+	:
+#	dh_dwz -- -L 500000000
