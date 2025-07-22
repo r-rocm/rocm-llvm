@@ -1,0 +1,4 @@
+0001-Use-fence-rw-rw-to-replace-fence.tso.patch
+0002-riscv64-support-patch-from-loongarch.patch
+0003-skip-check-of-opencl_c.h.patch
+0004-Use-signed-char-in-comgr-building.patch

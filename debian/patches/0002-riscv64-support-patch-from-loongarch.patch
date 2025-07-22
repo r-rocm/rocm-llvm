@@ -1,0 +1,89 @@
+From: Sakura286 <sakura286@outlook.com>
+Date: Tue, 22 Jul 2025 21:57:17 +0800
+Subject: riscv64 support - patch from loongarch
+
+    * https://github.com/loongarch-moe/rocm-loongarch/blob/master/stage1/2.rocm-llvm-core/loongarch.patch
+---
+ clang/lib/Driver/ToolChains/HIPUtility.cpp                       | 7 +++++++
+ clang/tools/clang-linker-wrapper/ClangLinkerWrapper.cpp          | 6 ++++++
+ mlir/include/mlir/Dialect/Affine/IR/ValueBoundsOpInterfaceImpl.h | 2 ++
+ mlir/include/mlir/Target/SPIRV/Deserialization.h                 | 2 ++
+ 4 files changed, 17 insertions(+)
+
+diff --git a/clang/lib/Driver/ToolChains/HIPUtility.cpp b/clang/lib/Driver/ToolChains/HIPUtility.cpp
+index 1a8a57f..bf384ba 100644
+--- a/clang/lib/Driver/ToolChains/HIPUtility.cpp
++++ b/clang/lib/Driver/ToolChains/HIPUtility.cpp
+@@ -292,7 +292,11 @@ void HIP::constructHIPFatbinCommand(Compilation &C, const JobAction &JA,
+ 
+   // ToDo: Remove the dummy host binary entry which is required by
+   // clang-offload-bundler.
++#if defined(__x86_64)
+   std::string BundlerTargetArg = "-targets=host-x86_64-unknown-linux-gnu";
++#elif defined(__riscv) && __riscv_xlen == 64
++  std::string BundlerTargetArg = "-targets=host-riscv64-unknown-linux-gnu";
++#endif
+   // AMDGCN:
+   // For code object version 2 and 3, the offload kind in bundle ID is 'hip'
+   // for backward compatibility. For code object version 4 and greater, the
+@@ -469,6 +473,9 @@ void HIP::constructGenerateObjFileFromHIPFatBinary(
+   Objf << ObjBuffer;
+ 
+   ArgStringList McArgs{"-triple", Args.MakeArgString(HostTriple.normalize()),
++#if defined(__riscv) && __riscv_xlen == 64
++ "-target-abi=lp64d","-mattr=+d",
++#endif
+                        "-o",      Output.getFilename(),
+                        McinFile,  "--filetype=obj"};
+   const char *Mc = Args.MakeArgString(TC.GetProgramPath("llvm-mc"));
+diff --git a/clang/tools/clang-linker-wrapper/ClangLinkerWrapper.cpp b/clang/tools/clang-linker-wrapper/ClangLinkerWrapper.cpp
+index 66d7569..4ad8951 100644
+--- a/clang/tools/clang-linker-wrapper/ClangLinkerWrapper.cpp
++++ b/clang/tools/clang-linker-wrapper/ClangLinkerWrapper.cpp
+@@ -461,7 +461,12 @@ fatbinary(ArrayRef<std::pair<StringRef, StringRef>> InputFiles,
+     CmdArgs.push_back(
+         Args.MakeArgString(Twine("-compression-level=") + Arg->getValue()));
+ 
++#if defined(__x86_64)
+   SmallVector<StringRef> Targets = {"-targets=host-x86_64-unknown-linux-gnu"};
++#elif defined(__riscv) && __riscv_xlen == 64
++  SmallVector<StringRef> Targets = {"-targets=host-riscv64-unknown-linux-gnu"};
++#else
++#endif
+   for (const auto &[File, Arch] : InputFiles)
+     Targets.push_back(Saver.save("hip-amdgcn-amd-amdhsa--" + Arch));
+   CmdArgs.push_back(Saver.save(llvm::join(Targets, ",")));
+@@ -612,6 +617,7 @@ Expected<StringRef> linkDevice(ArrayRef<StringRef> InputFiles,
+   case Triple::aarch64_be:
+   case Triple::ppc64:
+   case Triple::ppc64le:
++  case Triple::riscv64:
+   case Triple::systemz:
+     return generic::clang(InputFiles, Args);
+   default:
+diff --git a/mlir/include/mlir/Dialect/Affine/IR/ValueBoundsOpInterfaceImpl.h b/mlir/include/mlir/Dialect/Affine/IR/ValueBoundsOpInterfaceImpl.h
+index 451c466..0a77fa4 100644
+--- a/mlir/include/mlir/Dialect/Affine/IR/ValueBoundsOpInterfaceImpl.h
++++ b/mlir/include/mlir/Dialect/Affine/IR/ValueBoundsOpInterfaceImpl.h
+@@ -11,6 +11,8 @@
+ 
+ #include "mlir/Support/LLVM.h"
+ 
++#include <cstdint>
++
+ namespace mlir {
+ class DialectRegistry;
+ class Value;
+diff --git a/mlir/include/mlir/Target/SPIRV/Deserialization.h b/mlir/include/mlir/Target/SPIRV/Deserialization.h
+index e39258b..5b6b1ce 100644
+--- a/mlir/include/mlir/Target/SPIRV/Deserialization.h
++++ b/mlir/include/mlir/Target/SPIRV/Deserialization.h
+@@ -16,6 +16,8 @@
+ #include "mlir/IR/OwningOpRef.h"
+ #include "mlir/Support/LLVM.h"
+ 
++#include <cstdint>
++
+ namespace mlir {
+ class MLIRContext;
+ 
