@@ -1,0 +1,21 @@
+From: Sakura286 <sakura286@outlook.com>
+Date: Fri, 25 Jul 2025 00:50:38 +0800
+Subject: fix hip clang path
+
+---
+ amd/hipcc/src/hipBin_amd.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/amd/hipcc/src/hipBin_amd.h b/amd/hipcc/src/hipBin_amd.h
+index a37c078..cc8bbf4 100644
+--- a/amd/hipcc/src/hipBin_amd.h
++++ b/amd/hipcc/src/hipBin_amd.h
+@@ -209,7 +209,7 @@ void HipBinAmd::constructCompilerPath() {
+     } else {
+       compilerPath = getRoccmPath();
+       hipClangPath = compilerPath;
+-      hipClangPath /= "lib/llvm/bin";
++      hipClangPath /= "bin";
+     }
+ 
+     compilerPath = hipClangPath.string();

@@ -2,3 +2,4 @@
 0002-riscv64-support-patch-from-loongarch.patch
 0003-skip-check-of-opencl_c.h.patch
 0004-Use-signed-char-in-comgr-building.patch
+0005-fix-hip-clang-path.patch
