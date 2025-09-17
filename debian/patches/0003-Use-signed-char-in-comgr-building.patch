@@ -1,16 +1,8 @@
-From: Sakura286 <sakura286@outlook.com>
-Date: Tue, 22 Jul 2025 21:58:35 +0800
-Subject: Use signed char in comgr building
-
----
- amd/comgr/CMakeLists.txt | 4 ++++
- 1 file changed, 4 insertions(+)
-
 diff --git a/amd/comgr/CMakeLists.txt b/amd/comgr/CMakeLists.txt
-index ed01d21..65ef956 100644
+index cfa170f94..e03049224 100644
 --- a/amd/comgr/CMakeLists.txt
 +++ b/amd/comgr/CMakeLists.txt
-@@ -168,6 +168,10 @@ if (ADDRESS_SANITIZER)
+@@ -169,6 +169,10 @@ if (ADDRESS_SANITIZER)
      "${CMAKE_SHARED_LINKER_FLAGS} ${ASAN_LINKER_FLAGS}")
  endif()
  
