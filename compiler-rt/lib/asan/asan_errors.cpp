@@ -329,9 +329,6 @@ void ErrorBadParamsToAnnotateContiguousContainer::Print() {
       "      old_mid : %p\n"
       "      new_mid : %p\n",
       (void *)beg, (void *)end, (void *)old_mid, (void *)new_mid);
-  uptr granularity = ASAN_SHADOW_GRANULARITY;
-  if (!IsAligned(beg, granularity))
-    Report("ERROR: beg is not aligned by %zu\n", granularity);
   stack->Print();
   ReportErrorSummary(scariness.GetDescription(), stack);
 }
@@ -349,9 +346,20 @@ void ErrorBadParamsToAnnotateDoubleEndedContiguousContainer::Print() {
       (void *)storage_beg, (void *)storage_end, (void *)old_container_beg,
       (void *)old_container_end, (void *)new_container_beg,
       (void *)new_container_end);
-  uptr granularity = ASAN_SHADOW_GRANULARITY;
-  if (!IsAligned(storage_beg, granularity))
-    Report("ERROR: storage_beg is not aligned by %zu\n", granularity);
+  stack->Print();
+  ReportErrorSummary(scariness.GetDescription(), stack);
+}
+
+void ErrorBadParamsToCopyContiguousContainerAnnotations::Print() {
+  Report(
+      "ERROR: AddressSanitizer: bad parameters to "
+      "__sanitizer_copy_contiguous_container_annotations:\n"
+      "      src_storage_beg : %p\n"
+      "      src_storage_end : %p\n"
+      "      dst_storage_beg : %p\n"
+      "      new_storage_end : %p\n",
+      (void *)old_storage_beg, (void *)old_storage_end, (void *)new_storage_beg,
+      (void *)new_storage_end);
   stack->Print();
   ReportErrorSummary(scariness.GetDescription(), stack);
 }
@@ -685,14 +693,12 @@ void ErrorNonSelfAMDGPU::PrintStack() {
   InternalScopedString source_location;
   source_location.AppendF("  #0 %p", callstack[0]);
 #if SANITIZER_AMDGPU
-  if (cb_loc.fd != -1) {
-    source_location.Append(" in ");
-    __sanitizer::AMDGPUCodeObjectSymbolizer symbolizer;
-    symbolizer.Init(cb_loc.fd, cb_loc.offset, cb_loc.size);
-    symbolizer.SymbolizePC(callstack[0] - cb_loc.vma_adjust, source_location);
-    // release all allocated comgr objects.
-    symbolizer.Release();
-  }
+  source_location.Append(" in ");
+  __sanitizer::AMDGPUCodeObjectSymbolizer symbolizer;
+  symbolizer.Init(cb_loc.fd, cb_loc.offset, cb_loc.size);
+  symbolizer.SymbolizePC(callstack[0] - cb_loc.vma_adjust, source_location);
+  // release all allocated comgr objects.
+  symbolizer.Release();
 #endif
   Printf("%s", source_location.data());
 }
@@ -731,14 +737,14 @@ static uptr ScanForMagicUp(uptr start, uptr hi, uptr magic0, uptr magic1) {
 
 void ErrorNonSelfAMDGPU::PrintMallocStack() {
   // Facts about asan malloc on device
-  const uptr magic = 0xfedcba1ee1abcdefULL;
+  const uptr magic = static_cast<uptr>(0xfedcba1ee1abcdefULL);
   const uptr offset = 32;
   const uptr min_chunk_size = 96;
   const uptr min_alloc_size = 48;
 
   Decorator d;
   HeapAddressDescription addr_description;
-  
+
   if (GetHeapAddressInformation(device_address[0], access_size,
               &addr_description) &&
       addr_description.chunk_access.chunk_size >= min_chunk_size) {

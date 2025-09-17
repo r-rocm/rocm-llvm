@@ -255,7 +255,7 @@ amd_comgr_status_t CommandCache::execute(CachedCommandAdaptor &C,
   // called the "AddBuffer" lambda.
   AddStreamFn &AddStream = *AddStreamOrErr;
   if (!AddStream && readEntryFromCache(C, *CachedBuffer, LogS)) {
-    if(env::shouldEmitVerboseLogs())
+    if (env::shouldEmitVerboseLogs())
       LogS << "Comgr cache: entry " << *MaybeId << " found in cache.\n";
     return AMD_COMGR_STATUS_SUCCESS;
   }

@@ -59,6 +59,11 @@ if (CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     )
 endif()
 
+# function checks
+find_package(Backtrace)
+set(HAVE_BACKTRACE ${Backtrace_FOUND})
+set(BACKTRACE_HEADER ${Backtrace_HEADER})
+
 include(CheckCXXSymbolExists)
 include(CheckCXXSourceCompiles)
 check_cxx_symbol_exists(strerror_r string.h HAVE_STRERROR_R)
@@ -107,6 +112,7 @@ add_subdirectory(Float128Math)
 
 set(sources
   ISO_Fortran_binding.cpp
+  allocator-registry.cpp
   allocatable.cpp
   array-constructor.cpp
   assign.cpp
@@ -178,6 +184,7 @@ include(AddFlangOffloadRuntime)
 set(supported_files
   ISO_Fortran_binding.cpp
   allocatable.cpp
+  allocator-registry.cpp
   array-constructor.cpp
   assign.cpp
   buffer.cpp
@@ -249,6 +256,13 @@ if (NOT TARGET FortranFloat128Math)
       APPEND PROPERTY COMPILE_DEFINITIONS
       ${f128_defs}
       )
+    get_target_property(f128_include_dirs
+      FortranFloat128MathILib INTERFACE_INCLUDE_DIRECTORIES
+      )
+    set_property(SOURCE ${f128_sources}
+      APPEND PROPERTY INCLUDE_DIRECTORIES
+      ${f128_include_dirs}
+      )
     list(APPEND sources ${f128_sources})
   endif()
 endif()
@@ -307,3 +321,6 @@ if (TARGET flang-new AND TARGET module_files)
   add_dependencies(FortranRuntime flang-new module_files)
 endif()
 
+if (FLANG_CUF_RUNTIME)
+  add_subdirectory(CUDA)
+endif()

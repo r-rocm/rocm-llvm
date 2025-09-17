@@ -131,21 +131,21 @@ and eviction policy can be manipulated through specific environment variables.
 If an issue arises during cache initialization, the execution will proceed with
 the cache turned off.
 
-By default, the cache is turned off, set the environment variable
-`AMD_COMGR_CACHE=1` to enable it. This may change in a future release.
+By default, the cache is enabled.
 
-* `AMD_COMGR_CACHE`: When unset or set to 0, the cache is turned off.
-* `AMD_COMGR_CACHE_DIR`: When set to "", the cache is turned off. If assigned a
-  value, that value is used as the path for cache storage. By default, it is
-  directed to "$XDG_CACHE_HOME/comgr_cache" (which defaults to
-  "$USER/.cache/comgr_cache" on Linux, and "%LOCALAPPDATA%\cache\comgr_cache"
+* `AMD_COMGR_CACHE`: When unset or set to a value different than "0", the cache is enabled.
+  Disabled when set to "0".
+* `AMD_COMGR_CACHE_DIR`: If assigned a non-empty value, that value is used as
+  the path for cache storage. If the variable is unset or set to an empty string `""`,
+  it is directed to "$XDG_CACHE_HOME/comgr" (which defaults to
+  "$USER/.cache/comgr" on Linux, and "%LOCALAPPDATA%\cache\comgr"
   on Microsoft Windows).
 * `AMD_COMGR_CACHE_POLICY`: If assigned a value, the string is interpreted and
   applied to the cache pruning policy. The cache is pruned only upon program
   termination. The string format aligns with [Clang's ThinLTO cache pruning policy](https://clang.llvm.org/docs/ThinLTO.html#cache-pruning).
   The default policy is set as: "prune_interval=1h:prune_expiration=0h:cache_size=75%:cache_size_bytes=30g:cache_size_files=0".
 
-Comgr also supports some environment variables to aid in debugging. These
+Comgr supports some environment variables to aid in debugging. These
 include:
 
 * `AMD_COMGR_SAVE_TEMPS`: If this is set, and is not "0", Comgr does not delete
@@ -162,6 +162,20 @@ include:
   include additional Comgr-specific informational messages.
 * `AMD_COMGR_TIME_STATISTICS`: If this is set, and is not "0", logs will
   include additional Comgr-specific timing information for compilation actions.
+
+Comgr implements support for an in-memory, virtual filesystem (VFS) for storing
+temporaries generated during intermediate compilation steps. This is aimed at 
+improving performance by reducing on-disk file I/O. Currently, VFS is only supported 
+for the device library link step, but we aim to progressively add support for
+more actions.
+
+By default, VFS is turned on.
+
+* `AMD_COMGR_USE_VFS`: When set to "0", VFS support is turned off.
+* Users may use the API `amd_comgr_action_info_set_vfs` to disable VFS for individual actions
+  without having to modify system-wide environment variables.
+* If `AMD_COMGR_SAVE_TEMPS` is set and not "0", VFS support is turned off irrespective
+  of `AMD_COMGR_USE_VFS` or the use of `amd_comgr_action_info_set_vfs`.
 
 Versioning
 ----------

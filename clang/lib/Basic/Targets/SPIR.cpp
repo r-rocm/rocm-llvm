@@ -13,10 +13,23 @@
 #include "SPIR.h"
 #include "AMDGPU.h"
 #include "Targets.h"
+#include "clang/Basic/MacroBuilder.h"
+#include "clang/Basic/TargetBuiltins.h"
 #include "llvm/TargetParser/TargetParser.h"
 
 using namespace clang;
 using namespace clang::targets;
+
+static constexpr Builtin::Info BuiltinInfo[] = {
+#define BUILTIN(ID, TYPE, ATTRS)                                               \
+  {#ID, TYPE, ATTRS, nullptr, HeaderDesc::NO_HEADER, ALL_LANGUAGES},
+#include "clang/Basic/BuiltinsSPIRV.inc"
+};
+
+ArrayRef<Builtin::Info> SPIRVTargetInfo::getTargetBuiltins() const {
+  return llvm::ArrayRef(BuiltinInfo,
+                        clang::SPIRV::LastTSBuiltin - Builtin::FirstTSBuiltin);
+}
 
 void SPIRTargetInfo::getTargetDefines(const LangOptions &Opts,
                                       MacroBuilder &Builder) const {
@@ -128,4 +141,13 @@ void SPIRV64AMDGCNTargetInfo::setAuxTarget(const TargetInfo *Aux) {
     HasFloat128 = true;
     Float128Format = DoubleFormat;
   }
+}
+
+bool SPIRV64AMDGCNTargetInfo::isValidCPUName(StringRef CPU) const {
+  return AMDGPUTI.isValidCPUName(CPU);
+}
+
+void SPIRV64AMDGCNTargetInfo::fillValidCPUList(
+    SmallVectorImpl<StringRef> &Values) const {
+  return AMDGPUTI.fillValidCPUList(Values);
 }

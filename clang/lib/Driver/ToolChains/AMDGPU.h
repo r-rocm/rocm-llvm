@@ -82,6 +82,8 @@ const char *getLldCommandArgs(
     const std::optional<std::string> OutputFilePrefix = std::nullopt);
 } // end namespace dlr
 
+void addFullLTOPartitionOption(const Driver &D, const llvm::opt::ArgList &Args,
+                               llvm::opt::ArgStringList &CmdArgs);
 } // end namespace amdgpu
 } // end namespace tools
 
@@ -138,7 +140,7 @@ public:
   /// Needed for translating LTO options.
   const char *getDefaultLinker() const override { return "ld.lld"; }
 
-  /// Should skip Sanitize options
+  /// Should skip sanitize options.
   bool shouldSkipSanitizeOption(const ToolChain &TC,
                                 const llvm::opt::ArgList &DriverArgs,
                                 StringRef TargetID,

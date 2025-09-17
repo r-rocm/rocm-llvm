@@ -13,19 +13,19 @@
 #include "Allocator.h"
 #include "Configuration.h"
 #include "Debug.h"
+#include "DeviceTypes.h"
+#include "DeviceUtils.h"
 #include "Interface.h"
 #include "LibC.h"
 #include "Mapping.h"
 #include "State.h"
 #include "Synchronization.h"
-#include "Types.h"
-#include "Utils.h"
 
 using namespace ompx;
 
 #pragma omp begin declare target device_type(host)
-void *internal_malloc(uint64_t Size);
-void internal_free(void *Ptr);
+__attribute__((noinline)) void *internal_malloc(uint64_t Size);
+__attribute__((noinline)) void internal_free(void *Ptr);
 #pragma omp end declare target
 
 #pragma omp begin declare target device_type(nohost)
@@ -59,25 +59,42 @@ namespace {
 ///
 ///{
 
-// global_allocate uses ockl_dm_alloc to manage a global memory heap
+// global_allocate uses ockl_dm_alloc/asan_malloc_impl to manage a global memory
+// heap
 __attribute__((noinline)) extern "C" uint64_t __ockl_dm_alloc(uint64_t bufsz);
 __attribute__((noinline)) extern "C" void __ockl_dm_dealloc(uint64_t ptr);
-
+#if SANITIZER_AMDGPU
+__attribute__((noinline)) extern "C" uint64_t __asan_malloc_impl(uint64_t bufsz,
+                                                                 uint64_t pc);
+__attribute__((noinline)) extern "C" void __asan_free_impl(uint64_t ptr,
+                                                           uint64_t pc);
+#endif
 #pragma omp begin declare variant match(device = {arch(amdgcn)})
 extern "C" {
-void *internal_malloc(uint64_t Size) {
+__attribute__((noinline)) void *internal_malloc(uint64_t Size) {
+#if SANITIZER_AMDGPU
+  uint64_t ptr =
+      __asan_malloc_impl(Size, (uint64_t)__builtin_return_address(0));
+#else
   uint64_t ptr = __ockl_dm_alloc(Size);
+#endif
   return (void *)ptr;
 }
 
-void internal_free(void *Ptr) { __ockl_dm_dealloc((uint64_t)Ptr); }
+__attribute__((noinline)) void internal_free(void *Ptr) {
+#if SANITIZER_AMDGPU
+  __asan_free_impl((uint64_t)Ptr, (uint64_t)__builtin_return_address(0));
+#else
+  __ockl_dm_dealloc((uint64_t)Ptr);
+#endif
+}
 }
 #pragma omp end declare variant
 
 extern "C" {
 #ifdef __AMDGCN__
 #ifdef USE_BUMP_ALLOCATOR
-[[gnu::weak]] void *malloc(uint64_t Size) { return allocator::alloc(Size); }
+[[gnu::weak]] void *malloc(size_t Size) { return allocator::alloc(Size); }
 [[gnu::weak]] void free(void *Ptr) { allocator::free(Ptr); }
 #else
 void *malloc(uint64_t Size) { return internal_malloc(Size); }
@@ -85,7 +102,8 @@ void free(void *Ptr) { internal_free(Ptr); }
 #endif
 #else
 #ifdef USE_BUMP_ALLOCATOR
-[[gnu::weak, gnu::leaf]] void *malloc(uint64_t Size);
+
+[[gnu::weak, gnu::leaf]] void *malloc(size_t Size);
 [[gnu::weak, gnu::leaf]] void free(void *Ptr);
 #else
 __attribute__((leaf)) void *malloc(uint64_t Size);
@@ -126,14 +144,14 @@ struct SharedMemorySmartStackTy {
 
   /// Deallocate the last allocation made by the encountering thread and pointed
   /// to by \p Ptr from the stack. Each thread can call this function.
-  void pop(void *Ptr, uint32_t Bytes);
+  void pop(void *Ptr, uint64_t Bytes);
 
 private:
   /// Compute the size of the storage space reserved for a thread.
   uint32_t computeThreadStorageTotal() {
     uint32_t NumLanesInBlock = mapping::getNumberOfThreadsInBlock();
-    return utils::align_down((state::SharedScratchpadSize / NumLanesInBlock),
-                             allocator::ALIGNMENT);
+    return utils::alignDown((state::SharedScratchpadSize / NumLanesInBlock),
+                            allocator::ALIGNMENT);
   }
 
   /// Return the top address of the warp data stack, that is the first address
@@ -163,7 +181,7 @@ void *SharedMemorySmartStackTy::push(uint64_t Bytes) {
   // First align the number of requested bytes.
   /// FIXME: The stack shouldn't require worst-case padding. Alignment needs to
   /// be passed in as an argument and the stack rewritten to support it.
-  uint64_t AlignedBytes = utils::align_up(Bytes, allocator::ALIGNMENT);
+  uint64_t AlignedBytes = utils::alignPtr(Bytes, allocator::ALIGNMENT);
 
   uint32_t StorageTotal = computeThreadStorageTotal();
 
@@ -180,8 +198,8 @@ void *SharedMemorySmartStackTy::push(uint64_t Bytes) {
   }
 
   if (config::isDebugMode(DeviceDebugKind::CommonIssues))
-    PRINT("Shared memory stack full, fallback to dynamic allocation of global "
-          "memory will negatively impact performance.\n");
+    printf("Shared memory stack full, fallback to dynamic allocation of global "
+           "memory will negatively impact performance.\n");
   void *GlobalMemory = memory::allocGlobal(
       AlignedBytes, "Slow path shared memory allocation, insufficient "
                     "shared memory stack memory!");
@@ -190,8 +208,8 @@ void *SharedMemorySmartStackTy::push(uint64_t Bytes) {
   return GlobalMemory;
 }
 
-void SharedMemorySmartStackTy::pop(void *Ptr, uint32_t Bytes) {
-  uint64_t AlignedBytes = utils::align_up(Bytes, allocator::ALIGNMENT);
+void SharedMemorySmartStackTy::pop(void *Ptr, uint64_t Bytes) {
+  uint64_t AlignedBytes = utils::alignPtr(Bytes, allocator::ALIGNMENT);
   if (utils::isSharedMemPtr(Ptr)) {
     int TId = mapping::getThreadIdInBlock();
     Usage[TId] -= AlignedBytes;
@@ -215,7 +233,7 @@ void memory::freeShared(void *Ptr, uint64_t Bytes, const char *Reason) {
 void *memory::allocGlobal(uint64_t Bytes, const char *Reason) {
   void *Ptr = malloc(Bytes);
   if (config::isDebugMode(DeviceDebugKind::CommonIssues) && Ptr == nullptr)
-    PRINT("nullptr returned by malloc!\n");
+    printf("nullptr returned by malloc!\n");
   return Ptr;
 }
 
@@ -266,10 +284,7 @@ void state::TeamStateTy::assertEqual(TeamStateTy &Other) const {
 }
 
 state::TeamStateTy SHARED(ompx::state::TeamState);
-
-__attribute__((loader_uninitialized))
-state::ThreadStateTy *ompx::state::ThreadStates[mapping::MaxThreadsPerTeam];
-#pragma omp allocate(ompx::state::ThreadStates) allocator(omp_pteam_mem_alloc)
+state::ThreadStateTy **SHARED(ompx::state::ThreadStates);
 
 namespace {
 
@@ -293,11 +308,10 @@ void state::init(bool IsSPMD, KernelEnvironmentTy &KernelEnvironment,
   SharedMemorySmartStack.init(IsSPMD);
   if (mapping::isInitialThreadInLevel0(IsSPMD)) {
     TeamState.init(IsSPMD);
+    ThreadStates = nullptr;
     KernelEnvironmentPtr = &KernelEnvironment;
     KernelLaunchEnvironmentPtr = &KernelLaunchEnvironment;
   }
-
-  ThreadStates[mapping::getThreadIdInBlock()] = nullptr;
 }
 
 KernelEnvironmentTy &state::getKernelEnvironment() {
@@ -311,18 +325,19 @@ KernelLaunchEnvironmentTy &state::getKernelLaunchEnvironment() {
 void state::enterDataEnvironment(IdentTy *Ident) {
   ASSERT(config::mayUseThreadStates(),
          "Thread state modified while explicitly disabled!");
+  if (!config::mayUseThreadStates())
+    return;
 
   unsigned TId = mapping::getThreadIdInBlock();
   ThreadStateTy *NewThreadState = static_cast<ThreadStateTy *>(
       memory::allocGlobal(sizeof(ThreadStateTy), "ThreadStates alloc"));
-#ifdef FIXME // breaks snap_red nested_par3 nest_call_par2
   uintptr_t *ThreadStatesBitsPtr = reinterpret_cast<uintptr_t *>(&ThreadStates);
   if (!atomic::load(ThreadStatesBitsPtr, atomic::seq_cst)) {
     uint32_t Bytes =
         sizeof(ThreadStates[0]) * mapping::getNumberOfThreadsInBlock();
     void *ThreadStatesPtr =
         memory::allocGlobal(Bytes, "Thread state array allocation");
-    memset(ThreadStatesPtr, 0, Bytes);
+    __builtin_memset(ThreadStatesPtr, 0, Bytes);
     if (!atomic::cas(ThreadStatesBitsPtr, uintptr_t(0),
                      reinterpret_cast<uintptr_t>(ThreadStatesPtr),
                      atomic::seq_cst, atomic::seq_cst))
@@ -331,7 +346,6 @@ void state::enterDataEnvironment(IdentTy *Ident) {
     ASSERT(atomic::load(ThreadStatesBitsPtr, atomic::seq_cst),
            "Expected valid thread states bit!");
   }
- #endif
   NewThreadState->init(ThreadStates[TId]);
   TeamState.HasThreadState = true;
   ThreadStates[TId] = NewThreadState;
@@ -346,6 +360,9 @@ void state::exitDataEnvironment() {
 }
 
 void state::resetStateForThread(uint32_t TId) {
+  if (!config::mayUseThreadStates())
+    return;
+
   if (OMP_LIKELY(!TeamState.HasThreadState || !ThreadStates[TId]))
     return;
 

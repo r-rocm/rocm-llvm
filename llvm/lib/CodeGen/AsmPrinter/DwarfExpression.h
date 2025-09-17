@@ -46,17 +46,17 @@ class DwarfExpression {
 protected:
   /// Holds information about all subregisters comprising a register location.
   struct Register {
-    int DwarfRegNo;
+    int64_t DwarfRegNo;
     unsigned SubRegSize;
     const char *Comment;
 
     /// Create a full register, no extra DW_OP_piece operators necessary.
-    static Register createRegister(int RegNo, const char *Comment) {
+    static Register createRegister(int64_t RegNo, const char *Comment) {
       return {RegNo, 0, Comment};
     }
 
     /// Create a subregister that needs a DW_OP_piece operator with SizeInBits.
-    static Register createSubRegister(int RegNo, unsigned SizeInBits,
+    static Register createSubRegister(int64_t RegNo, unsigned SizeInBits,
                                       const char *Comment) {
       return {RegNo, SizeInBits, Comment};
     }
@@ -169,13 +169,13 @@ protected:
 
   /// Emit a DW_OP_reg operation. Note that this is only legal inside a DWARF
   /// register location description.
-  void addReg(int DwarfReg, const char *Comment = nullptr);
+  void addReg(int64_t DwarfReg, const char *Comment = nullptr);
 
   /// Emit a DW_OP_breg operation.
-  void addBReg(int DwarfReg, int Offset);
+  void addBReg(int64_t DwarfReg, int64_t Offset);
 
   /// Emit DW_OP_fbreg <Offset>.
-  void addFBReg(int Offset);
+  void addFBReg(int64_t Offset);
 
   /// Emit a partial DWARF register operation.
   ///
@@ -368,11 +368,6 @@ public:
   /// case, since we need to ensure that we don't add any registers or constants
   /// onto the stack. In the non-fragment case it's simply an optimization.
   bool IsPoisonedExpr = false;
-  bool PermitDivergentAddrSpaceResult = false;
-
-  /// Called if we're allowed to produce a stack entry whose address space
-  /// diverges from the IR type the DIExpression produces.
-  void permitDivergentAddrSpace() { PermitDivergentAddrSpaceResult = true; }
 
   void buildAST(DIExpression::NewElementsRef Elements);
 
@@ -389,9 +384,6 @@ public:
   struct OpResult {
     Type *Ty;
     ValueKind VK;
-    // The real address space of this result, if it diverges from Ty's address
-    // space.
-    std::optional<unsigned> DivergentAddrSpace = std::nullopt;
   };
 
   /// Optionally emit DWARF operations to convert the value at the top of the
@@ -404,10 +396,9 @@ public:
   using ChildrenT = ArrayRef<std::unique_ptr<Node>>;
 
   /// Dispatch to a specific traverse() function, and convert the result to
-  /// ReqVK if non-nullopt. If PermitDivergentAddrSpace, then this function may
-  /// return a pointer in a different address space than the type.
-  std::optional<OpResult> traverse(Node *OpNode, std::optional<ValueKind> ReqVK,
-                                   bool PermitDivergentAddrSpace = false);
+  /// ReqVK if non-nullopt.
+  std::optional<OpResult> traverse(Node *OpNode,
+                                   std::optional<ValueKind> ReqVK);
 
   std::optional<OpResult> traverse(DIOp::Arg Arg, ChildrenT Children);
   std::optional<OpResult> traverse(DIOp::Constant Constant, ChildrenT Children);
@@ -449,6 +440,18 @@ public:
   }
   std::optional<OpResult> traverse(DIOp::Sub Op, ChildrenT Children) {
     return traverseMathOp(dwarf::DW_OP_minus, Children);
+  }
+  std::optional<OpResult> traverse(DIOp::And Op, ChildrenT Children) {
+    return traverseMathOp(dwarf::DW_OP_and, Children);
+  }
+  std::optional<OpResult> traverse(DIOp::Or Op, ChildrenT Children) {
+    return traverseMathOp(dwarf::DW_OP_or, Children);
+  }
+  std::optional<OpResult> traverse(DIOp::Xor Op, ChildrenT Children) {
+    return traverseMathOp(dwarf::DW_OP_xor, Children);
+  }
+  std::optional<OpResult> traverse(DIOp::Mod Op, ChildrenT Children) {
+    return traverseMathOp(dwarf::DW_OP_mod, Children);
   }
 
   std::optional<OpResult> traverse(DIOp::BitOffset BitOffset,
@@ -678,6 +681,18 @@ public:
   }
   std::optional<OpResult> traverse(DIOp::Sub Op, ChildrenT Children) {
     return traverseMathOp(dwarf::DW_OP_minus, Children);
+  }
+  std::optional<OpResult> traverse(DIOp::And Op, ChildrenT Children) {
+    return traverseMathOp(dwarf::DW_OP_and, Children);
+  }
+  std::optional<OpResult> traverse(DIOp::Or Op, ChildrenT Children) {
+    return traverseMathOp(dwarf::DW_OP_or, Children);
+  }
+  std::optional<OpResult> traverse(DIOp::Xor Op, ChildrenT Children) {
+    return traverseMathOp(dwarf::DW_OP_xor, Children);
+  }
+  std::optional<OpResult> traverse(DIOp::Mod Op, ChildrenT Children) {
+    return traverseMathOp(dwarf::DW_OP_mod, Children);
   }
 
   std::optional<OpResult> traverse(DIOp::BitOffset BitOffset,

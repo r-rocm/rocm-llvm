@@ -5,14 +5,14 @@
 define amdgpu_kernel void @v3i8_liveout(ptr addrspace(1) %src1, ptr addrspace(1) %src2, ptr addrspace(1) nocapture %dst) {
 ; GFX906-LABEL: v3i8_liveout:
 ; GFX906:       ; %bb.0: ; %entry
-; GFX906-NEXT:    s_load_dwordx4 s[4:7], s[0:1], 0x24
-; GFX906-NEXT:    s_load_dwordx2 s[2:3], s[0:1], 0x34
+; GFX906-NEXT:    s_load_dwordx4 s[0:3], s[4:5], 0x24
+; GFX906-NEXT:    s_load_dwordx2 s[6:7], s[4:5], 0x34
 ; GFX906-NEXT:    v_lshlrev_b32_e32 v2, 2, v0
 ; GFX906-NEXT:    v_mov_b32_e32 v3, 8
-; GFX906-NEXT:    v_mov_b32_e32 v1, 0
-; GFX906-NEXT:    s_waitcnt lgkmcnt(0)
-; GFX906-NEXT:    global_load_dword v4, v2, s[4:5]
 ; GFX906-NEXT:    s_mov_b32 s4, 0xff0000
+; GFX906-NEXT:    s_waitcnt lgkmcnt(0)
+; GFX906-NEXT:    global_load_dword v4, v2, s[0:1]
+; GFX906-NEXT:    v_mov_b32_e32 v1, 0
 ; GFX906-NEXT:    v_cmp_gt_u32_e32 vcc, 15, v0
 ; GFX906-NEXT:    s_waitcnt vmcnt(0)
 ; GFX906-NEXT:    v_lshrrev_b32_sdwa v5, v3, v4 dst_sel:BYTE_1 dst_unused:UNUSED_PAD src0_sel:DWORD src1_sel:DWORD
@@ -22,7 +22,7 @@ define amdgpu_kernel void @v3i8_liveout(ptr addrspace(1) %src1, ptr addrspace(1)
 ; GFX906-NEXT:    s_and_saveexec_b64 s[0:1], vcc
 ; GFX906-NEXT:    s_cbranch_execz .LBB0_2
 ; GFX906-NEXT:  ; %bb.1: ; %bb.1
-; GFX906-NEXT:    global_load_dword v0, v2, s[6:7]
+; GFX906-NEXT:    global_load_dword v0, v2, s[2:3]
 ; GFX906-NEXT:    s_waitcnt vmcnt(0)
 ; GFX906-NEXT:    v_lshrrev_b32_sdwa v2, v3, v0 dst_sel:BYTE_1 dst_unused:UNUSED_PAD src0_sel:DWORD src1_sel:DWORD
 ; GFX906-NEXT:    v_or_b32_sdwa v2, v0, v2 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:BYTE_0 src1_sel:DWORD
@@ -30,19 +30,19 @@ define amdgpu_kernel void @v3i8_liveout(ptr addrspace(1) %src1, ptr addrspace(1)
 ; GFX906-NEXT:    v_and_or_b32 v4, v0, s4, v2
 ; GFX906-NEXT:  .LBB0_2: ; %bb.2
 ; GFX906-NEXT:    s_or_b64 exec, exec, s[0:1]
-; GFX906-NEXT:    global_store_byte_d16_hi v1, v4, s[2:3] offset:2
-; GFX906-NEXT:    global_store_short v1, v4, s[2:3]
+; GFX906-NEXT:    global_store_byte_d16_hi v1, v4, s[6:7] offset:2
+; GFX906-NEXT:    global_store_short v1, v4, s[6:7]
 ; GFX906-NEXT:    s_endpgm
 ; FEATURE-LABEL: v3i8_liveout:
 ; FEATURE:       ; %bb.0: ; %entry
-; FEATURE-NEXT:    s_load_dwordx4 s[4:7], s[0:1], 0x24
-; FEATURE-NEXT:    s_load_dwordx2 s[2:3], s[0:1], 0x34
+; FEATURE-NEXT:    s_load_dwordx4 s[0:3], s[4:5], 0x24
+; FEATURE-NEXT:    s_load_dwordx2 s[6:7], s[4:5], 0x34
 ; FEATURE-NEXT:    v_lshlrev_b32_e32 v2, 2, v0
 ; FEATURE-NEXT:    v_mov_b32_e32 v3, 8
-; FEATURE-NEXT:    v_mov_b32_e32 v1, 0
-; FEATURE-NEXT:    s_waitcnt lgkmcnt(0)
-; FEATURE-NEXT:    global_load_dword v4, v2, s[4:5]
 ; FEATURE-NEXT:    s_mov_b32 s4, 0xff0000
+; FEATURE-NEXT:    s_waitcnt lgkmcnt(0)
+; FEATURE-NEXT:    global_load_dword v4, v2, s[0:1]
+; FEATURE-NEXT:    v_mov_b32_e32 v1, 0
 ; FEATURE-NEXT:    v_cmp_gt_u32_e32 vcc, 15, v0
 ; FEATURE-NEXT:    s_waitcnt vmcnt(0)
 ; FEATURE-NEXT:    v_lshrrev_b32_sdwa v5, v3, v4 dst_sel:BYTE_1 dst_unused:UNUSED_PAD src0_sel:DWORD src1_sel:DWORD
@@ -52,7 +52,7 @@ define amdgpu_kernel void @v3i8_liveout(ptr addrspace(1) %src1, ptr addrspace(1)
 ; FEATURE-NEXT:    s_and_saveexec_b64 s[0:1], vcc
 ; FEATURE-NEXT:    s_cbranch_execz .LBB0_2
 ; FEATURE-NEXT:  ; %bb.1: ; %bb.1
-; FEATURE-NEXT:    global_load_dword v0, v2, s[6:7]
+; FEATURE-NEXT:    global_load_dword v0, v2, s[2:3]
 ; FEATURE-NEXT:    s_waitcnt vmcnt(0)
 ; FEATURE-NEXT:    v_lshrrev_b32_sdwa v2, v3, v0 dst_sel:BYTE_1 dst_unused:UNUSED_PAD src0_sel:DWORD src1_sel:DWORD
 ; FEATURE-NEXT:    v_or_b32_sdwa v2, v0, v2 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:BYTE_0 src1_sel:DWORD
@@ -60,20 +60,20 @@ define amdgpu_kernel void @v3i8_liveout(ptr addrspace(1) %src1, ptr addrspace(1)
 ; FEATURE-NEXT:    v_and_or_b32 v4, v0, s4, v2
 ; FEATURE-NEXT:  .LBB0_2: ; %bb.2
 ; FEATURE-NEXT:    s_or_b64 exec, exec, s[0:1]
-; FEATURE-NEXT:    global_store_byte_d16_hi v1, v4, s[2:3] offset:2
-; FEATURE-NEXT:    global_store_short v1, v4, s[2:3]
+; FEATURE-NEXT:    global_store_byte_d16_hi v1, v4, s[6:7] offset:2
+; FEATURE-NEXT:    global_store_short v1, v4, s[6:7]
 ; FEATURE-NEXT:    s_endpgm
 ;
 ; DEFAULT-LABEL: v3i8_liveout:
 ; DEFAULT:       ; %bb.0: ; %entry
-; DEFAULT-NEXT:    s_load_dwordx4 s[4:7], s[0:1], 0x24
-; DEFAULT-NEXT:    s_load_dwordx2 s[2:3], s[0:1], 0x34
+; DEFAULT-NEXT:    s_load_dwordx4 s[0:3], s[4:5], 0x24
+; DEFAULT-NEXT:    s_load_dwordx2 s[6:7], s[4:5], 0x34
 ; DEFAULT-NEXT:    v_lshlrev_b32_e32 v2, 2, v0
 ; DEFAULT-NEXT:    v_mov_b32_e32 v3, 8
-; DEFAULT-NEXT:    v_mov_b32_e32 v1, 0
-; DEFAULT-NEXT:    s_waitcnt lgkmcnt(0)
-; DEFAULT-NEXT:    global_load_dword v4, v2, s[4:5]
 ; DEFAULT-NEXT:    s_mov_b32 s4, 0xff0000
+; DEFAULT-NEXT:    s_waitcnt lgkmcnt(0)
+; DEFAULT-NEXT:    global_load_dword v4, v2, s[0:1]
+; DEFAULT-NEXT:    v_mov_b32_e32 v1, 0
 ; DEFAULT-NEXT:    v_cmp_gt_u32_e32 vcc, 15, v0
 ; DEFAULT-NEXT:    s_waitcnt vmcnt(0)
 ; DEFAULT-NEXT:    v_lshrrev_b32_sdwa v5, v3, v4 dst_sel:BYTE_1 dst_unused:UNUSED_PAD src0_sel:DWORD src1_sel:DWORD
@@ -83,7 +83,7 @@ define amdgpu_kernel void @v3i8_liveout(ptr addrspace(1) %src1, ptr addrspace(1)
 ; DEFAULT-NEXT:    s_and_saveexec_b64 s[0:1], vcc
 ; DEFAULT-NEXT:    s_cbranch_execz .LBB0_2
 ; DEFAULT-NEXT:  ; %bb.1: ; %bb.1
-; DEFAULT-NEXT:    global_load_dword v0, v2, s[6:7]
+; DEFAULT-NEXT:    global_load_dword v0, v2, s[2:3]
 ; DEFAULT-NEXT:    s_waitcnt vmcnt(0)
 ; DEFAULT-NEXT:    v_lshrrev_b32_sdwa v2, v3, v0 dst_sel:BYTE_1 dst_unused:UNUSED_PAD src0_sel:DWORD src1_sel:DWORD
 ; DEFAULT-NEXT:    v_or_b32_sdwa v2, v0, v2 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:BYTE_0 src1_sel:DWORD
@@ -91,8 +91,8 @@ define amdgpu_kernel void @v3i8_liveout(ptr addrspace(1) %src1, ptr addrspace(1)
 ; DEFAULT-NEXT:    v_and_or_b32 v4, v0, s4, v2
 ; DEFAULT-NEXT:  .LBB0_2: ; %bb.2
 ; DEFAULT-NEXT:    s_or_b64 exec, exec, s[0:1]
-; DEFAULT-NEXT:    global_store_byte_d16_hi v1, v4, s[2:3] offset:2
-; DEFAULT-NEXT:    global_store_short v1, v4, s[2:3]
+; DEFAULT-NEXT:    global_store_byte_d16_hi v1, v4, s[6:7] offset:2
+; DEFAULT-NEXT:    global_store_short v1, v4, s[6:7]
 ; DEFAULT-NEXT:    s_endpgm
 entry:
   %idx = call i32 @llvm.amdgcn.workitem.id.x()
@@ -114,58 +114,58 @@ bb.2:
 define amdgpu_kernel void @v4i8_liveout(ptr addrspace(1) %src1, ptr addrspace(1) %src2, ptr addrspace(1) nocapture %dst) {
 ; GFX906-LABEL: v4i8_liveout:
 ; GFX906:       ; %bb.0: ; %entry
-; GFX906-NEXT:    s_load_dwordx4 s[4:7], s[0:1], 0x24
-; GFX906-NEXT:    s_load_dwordx2 s[2:3], s[0:1], 0x34
+; GFX906-NEXT:    s_load_dwordx4 s[0:3], s[4:5], 0x24
+; GFX906-NEXT:    s_load_dwordx2 s[6:7], s[4:5], 0x34
 ; GFX906-NEXT:    v_lshlrev_b32_e32 v3, 2, v0
 ; GFX906-NEXT:    v_mov_b32_e32 v1, 0
 ; GFX906-NEXT:    v_cmp_gt_u32_e32 vcc, 15, v0
 ; GFX906-NEXT:    s_waitcnt lgkmcnt(0)
-; GFX906-NEXT:    global_load_dword v2, v3, s[4:5]
+; GFX906-NEXT:    global_load_dword v2, v3, s[0:1]
 ; GFX906-NEXT:    s_and_saveexec_b64 s[0:1], vcc
 ; GFX906-NEXT:    s_cbranch_execz .LBB1_2
 ; GFX906-NEXT:  ; %bb.1: ; %bb.1
-; GFX906-NEXT:    global_load_dword v2, v3, s[6:7]
+; GFX906-NEXT:    global_load_dword v2, v3, s[2:3]
 ; GFX906-NEXT:  .LBB1_2: ; %bb.2
 ; GFX906-NEXT:    s_or_b64 exec, exec, s[0:1]
 ; GFX906-NEXT:    s_waitcnt vmcnt(0)
-; GFX906-NEXT:    global_store_dword v1, v2, s[2:3]
+; GFX906-NEXT:    global_store_dword v1, v2, s[6:7]
 ; GFX906-NEXT:    s_endpgm
 ; FEATURE-LABEL: v4i8_liveout:
 ; FEATURE:       ; %bb.0: ; %entry
-; FEATURE-NEXT:    s_load_dwordx4 s[4:7], s[0:1], 0x24
-; FEATURE-NEXT:    s_load_dwordx2 s[2:3], s[0:1], 0x34
+; FEATURE-NEXT:    s_load_dwordx4 s[0:3], s[4:5], 0x24
+; FEATURE-NEXT:    s_load_dwordx2 s[6:7], s[4:5], 0x34
 ; FEATURE-NEXT:    v_lshlrev_b32_e32 v3, 2, v0
 ; FEATURE-NEXT:    v_mov_b32_e32 v1, 0
 ; FEATURE-NEXT:    v_cmp_gt_u32_e32 vcc, 15, v0
 ; FEATURE-NEXT:    s_waitcnt lgkmcnt(0)
-; FEATURE-NEXT:    global_load_dword v2, v3, s[4:5]
+; FEATURE-NEXT:    global_load_dword v2, v3, s[0:1]
 ; FEATURE-NEXT:    s_and_saveexec_b64 s[0:1], vcc
 ; FEATURE-NEXT:    s_cbranch_execz .LBB1_2
 ; FEATURE-NEXT:  ; %bb.1: ; %bb.1
-; FEATURE-NEXT:    global_load_dword v2, v3, s[6:7]
+; FEATURE-NEXT:    global_load_dword v2, v3, s[2:3]
 ; FEATURE-NEXT:  .LBB1_2: ; %bb.2
 ; FEATURE-NEXT:    s_or_b64 exec, exec, s[0:1]
 ; FEATURE-NEXT:    s_waitcnt vmcnt(0)
-; FEATURE-NEXT:    global_store_dword v1, v2, s[2:3]
+; FEATURE-NEXT:    global_store_dword v1, v2, s[6:7]
 ; FEATURE-NEXT:    s_endpgm
 ;
 ; DEFAULT-LABEL: v4i8_liveout:
 ; DEFAULT:       ; %bb.0: ; %entry
-; DEFAULT-NEXT:    s_load_dwordx4 s[4:7], s[0:1], 0x24
-; DEFAULT-NEXT:    s_load_dwordx2 s[2:3], s[0:1], 0x34
+; DEFAULT-NEXT:    s_load_dwordx4 s[0:3], s[4:5], 0x24
+; DEFAULT-NEXT:    s_load_dwordx2 s[6:7], s[4:5], 0x34
 ; DEFAULT-NEXT:    v_lshlrev_b32_e32 v3, 2, v0
 ; DEFAULT-NEXT:    v_mov_b32_e32 v1, 0
 ; DEFAULT-NEXT:    v_cmp_gt_u32_e32 vcc, 15, v0
 ; DEFAULT-NEXT:    s_waitcnt lgkmcnt(0)
-; DEFAULT-NEXT:    global_load_dword v2, v3, s[4:5]
+; DEFAULT-NEXT:    global_load_dword v2, v3, s[0:1]
 ; DEFAULT-NEXT:    s_and_saveexec_b64 s[0:1], vcc
 ; DEFAULT-NEXT:    s_cbranch_execz .LBB1_2
 ; DEFAULT-NEXT:  ; %bb.1: ; %bb.1
-; DEFAULT-NEXT:    global_load_dword v2, v3, s[6:7]
+; DEFAULT-NEXT:    global_load_dword v2, v3, s[2:3]
 ; DEFAULT-NEXT:  .LBB1_2: ; %bb.2
 ; DEFAULT-NEXT:    s_or_b64 exec, exec, s[0:1]
 ; DEFAULT-NEXT:    s_waitcnt vmcnt(0)
-; DEFAULT-NEXT:    global_store_dword v1, v2, s[2:3]
+; DEFAULT-NEXT:    global_store_dword v1, v2, s[6:7]
 ; DEFAULT-NEXT:    s_endpgm
 entry:
   %idx = call i32 @llvm.amdgcn.workitem.id.x()
@@ -187,70 +187,70 @@ bb.2:
 define amdgpu_kernel void @v5i8_liveout(ptr addrspace(1) %src1, ptr addrspace(1) %src2, ptr addrspace(1) nocapture %dst) {
 ; GFX906-LABEL: v5i8_liveout:
 ; GFX906:       ; %bb.0: ; %entry
-; GFX906-NEXT:    s_load_dwordx4 s[4:7], s[0:1], 0x24
-; GFX906-NEXT:    s_load_dwordx2 s[2:3], s[0:1], 0x34
+; GFX906-NEXT:    s_load_dwordx4 s[0:3], s[4:5], 0x24
+; GFX906-NEXT:    s_load_dwordx2 s[6:7], s[4:5], 0x34
 ; GFX906-NEXT:    v_lshlrev_b32_e32 v4, 3, v0
 ; GFX906-NEXT:    v_mov_b32_e32 v3, 0
 ; GFX906-NEXT:    v_cmp_gt_u32_e32 vcc, 15, v0
 ; GFX906-NEXT:    s_waitcnt lgkmcnt(0)
-; GFX906-NEXT:    global_load_dwordx2 v[1:2], v4, s[4:5]
+; GFX906-NEXT:    global_load_dwordx2 v[1:2], v4, s[0:1]
 ; GFX906-NEXT:    s_waitcnt vmcnt(0)
 ; GFX906-NEXT:    v_and_b32_e32 v2, 0xff, v2
 ; GFX906-NEXT:    s_and_saveexec_b64 s[0:1], vcc
 ; GFX906-NEXT:    s_cbranch_execz .LBB2_2
 ; GFX906-NEXT:  ; %bb.1: ; %bb.1
-; GFX906-NEXT:    global_load_dwordx2 v[1:2], v4, s[6:7]
+; GFX906-NEXT:    global_load_dwordx2 v[1:2], v4, s[2:3]
 ; GFX906-NEXT:    s_waitcnt vmcnt(0)
 ; GFX906-NEXT:    v_and_b32_e32 v2, 0xff, v2
 ; GFX906-NEXT:  .LBB2_2: ; %bb.2
 ; GFX906-NEXT:    s_or_b64 exec, exec, s[0:1]
-; GFX906-NEXT:    global_store_byte v3, v2, s[2:3] offset:4
-; GFX906-NEXT:    global_store_dword v3, v1, s[2:3]
+; GFX906-NEXT:    global_store_byte v3, v2, s[6:7] offset:4
+; GFX906-NEXT:    global_store_dword v3, v1, s[6:7]
 ; GFX906-NEXT:    s_endpgm
 ; FEATURE-LABEL: v5i8_liveout:
 ; FEATURE:       ; %bb.0: ; %entry
-; FEATURE-NEXT:    s_load_dwordx4 s[4:7], s[0:1], 0x24
-; FEATURE-NEXT:    s_load_dwordx2 s[2:3], s[0:1], 0x34
+; FEATURE-NEXT:    s_load_dwordx4 s[0:3], s[4:5], 0x24
+; FEATURE-NEXT:    s_load_dwordx2 s[6:7], s[4:5], 0x34
 ; FEATURE-NEXT:    v_lshlrev_b32_e32 v4, 3, v0
 ; FEATURE-NEXT:    v_mov_b32_e32 v3, 0
 ; FEATURE-NEXT:    v_cmp_gt_u32_e32 vcc, 15, v0
 ; FEATURE-NEXT:    s_waitcnt lgkmcnt(0)
-; FEATURE-NEXT:    global_load_dwordx2 v[1:2], v4, s[4:5]
+; FEATURE-NEXT:    global_load_dwordx2 v[1:2], v4, s[0:1]
 ; FEATURE-NEXT:    s_waitcnt vmcnt(0)
 ; FEATURE-NEXT:    v_and_b32_e32 v2, 0xff, v2
 ; FEATURE-NEXT:    s_and_saveexec_b64 s[0:1], vcc
 ; FEATURE-NEXT:    s_cbranch_execz .LBB2_2
 ; FEATURE-NEXT:  ; %bb.1: ; %bb.1
-; FEATURE-NEXT:    global_load_dwordx2 v[1:2], v4, s[6:7]
+; FEATURE-NEXT:    global_load_dwordx2 v[1:2], v4, s[2:3]
 ; FEATURE-NEXT:    s_waitcnt vmcnt(0)
 ; FEATURE-NEXT:    v_and_b32_e32 v2, 0xff, v2
 ; FEATURE-NEXT:  .LBB2_2: ; %bb.2
 ; FEATURE-NEXT:    s_or_b64 exec, exec, s[0:1]
-; FEATURE-NEXT:    global_store_byte v3, v2, s[2:3] offset:4
-; FEATURE-NEXT:    global_store_dword v3, v1, s[2:3]
+; FEATURE-NEXT:    global_store_byte v3, v2, s[6:7] offset:4
+; FEATURE-NEXT:    global_store_dword v3, v1, s[6:7]
 ; FEATURE-NEXT:    s_endpgm
 ;
 ; DEFAULT-LABEL: v5i8_liveout:
 ; DEFAULT:       ; %bb.0: ; %entry
-; DEFAULT-NEXT:    s_load_dwordx4 s[4:7], s[0:1], 0x24
-; DEFAULT-NEXT:    s_load_dwordx2 s[2:3], s[0:1], 0x34
+; DEFAULT-NEXT:    s_load_dwordx4 s[0:3], s[4:5], 0x24
+; DEFAULT-NEXT:    s_load_dwordx2 s[6:7], s[4:5], 0x34
 ; DEFAULT-NEXT:    v_lshlrev_b32_e32 v4, 3, v0
 ; DEFAULT-NEXT:    v_mov_b32_e32 v3, 0
 ; DEFAULT-NEXT:    v_cmp_gt_u32_e32 vcc, 15, v0
 ; DEFAULT-NEXT:    s_waitcnt lgkmcnt(0)
-; DEFAULT-NEXT:    global_load_dwordx2 v[1:2], v4, s[4:5]
+; DEFAULT-NEXT:    global_load_dwordx2 v[1:2], v4, s[0:1]
 ; DEFAULT-NEXT:    s_waitcnt vmcnt(0)
 ; DEFAULT-NEXT:    v_and_b32_e32 v2, 0xff, v2
 ; DEFAULT-NEXT:    s_and_saveexec_b64 s[0:1], vcc
 ; DEFAULT-NEXT:    s_cbranch_execz .LBB2_2
 ; DEFAULT-NEXT:  ; %bb.1: ; %bb.1
-; DEFAULT-NEXT:    global_load_dwordx2 v[1:2], v4, s[6:7]
+; DEFAULT-NEXT:    global_load_dwordx2 v[1:2], v4, s[2:3]
 ; DEFAULT-NEXT:    s_waitcnt vmcnt(0)
 ; DEFAULT-NEXT:    v_and_b32_e32 v2, 0xff, v2
 ; DEFAULT-NEXT:  .LBB2_2: ; %bb.2
 ; DEFAULT-NEXT:    s_or_b64 exec, exec, s[0:1]
-; DEFAULT-NEXT:    global_store_byte v3, v2, s[2:3] offset:4
-; DEFAULT-NEXT:    global_store_dword v3, v1, s[2:3]
+; DEFAULT-NEXT:    global_store_byte v3, v2, s[6:7] offset:4
+; DEFAULT-NEXT:    global_store_dword v3, v1, s[6:7]
 ; DEFAULT-NEXT:    s_endpgm
 entry:
   %idx = call i32 @llvm.amdgcn.workitem.id.x()
@@ -272,58 +272,58 @@ bb.2:
 define amdgpu_kernel void @v8i8_liveout(ptr addrspace(1) %src1, ptr addrspace(1) %src2, ptr addrspace(1) nocapture %dst) {
 ; GFX906-LABEL: v8i8_liveout:
 ; GFX906:       ; %bb.0: ; %entry
-; GFX906-NEXT:    s_load_dwordx4 s[4:7], s[0:1], 0x24
-; GFX906-NEXT:    s_load_dwordx2 s[2:3], s[0:1], 0x34
+; GFX906-NEXT:    s_load_dwordx4 s[0:3], s[4:5], 0x24
+; GFX906-NEXT:    s_load_dwordx2 s[6:7], s[4:5], 0x34
 ; GFX906-NEXT:    v_lshlrev_b32_e32 v4, 3, v0
 ; GFX906-NEXT:    v_mov_b32_e32 v3, 0
 ; GFX906-NEXT:    v_cmp_gt_u32_e32 vcc, 15, v0
 ; GFX906-NEXT:    s_waitcnt lgkmcnt(0)
-; GFX906-NEXT:    global_load_dwordx2 v[1:2], v4, s[4:5]
+; GFX906-NEXT:    global_load_dwordx2 v[1:2], v4, s[0:1]
 ; GFX906-NEXT:    s_and_saveexec_b64 s[0:1], vcc
 ; GFX906-NEXT:    s_cbranch_execz .LBB3_2
 ; GFX906-NEXT:  ; %bb.1: ; %bb.1
-; GFX906-NEXT:    global_load_dwordx2 v[1:2], v4, s[6:7]
+; GFX906-NEXT:    global_load_dwordx2 v[1:2], v4, s[2:3]
 ; GFX906-NEXT:  .LBB3_2: ; %bb.2
 ; GFX906-NEXT:    s_or_b64 exec, exec, s[0:1]
 ; GFX906-NEXT:    s_waitcnt vmcnt(0)
-; GFX906-NEXT:    global_store_dwordx2 v3, v[1:2], s[2:3]
+; GFX906-NEXT:    global_store_dwordx2 v3, v[1:2], s[6:7]
 ; GFX906-NEXT:    s_endpgm
 ; FEATURE-LABEL: v8i8_liveout:
 ; FEATURE:       ; %bb.0: ; %entry
-; FEATURE-NEXT:    s_load_dwordx4 s[4:7], s[0:1], 0x24
-; FEATURE-NEXT:    s_load_dwordx2 s[2:3], s[0:1], 0x34
+; FEATURE-NEXT:    s_load_dwordx4 s[0:3], s[4:5], 0x24
+; FEATURE-NEXT:    s_load_dwordx2 s[6:7], s[4:5], 0x34
 ; FEATURE-NEXT:    v_lshlrev_b32_e32 v4, 3, v0
 ; FEATURE-NEXT:    v_mov_b32_e32 v3, 0
 ; FEATURE-NEXT:    v_cmp_gt_u32_e32 vcc, 15, v0
 ; FEATURE-NEXT:    s_waitcnt lgkmcnt(0)
-; FEATURE-NEXT:    global_load_dwordx2 v[1:2], v4, s[4:5]
+; FEATURE-NEXT:    global_load_dwordx2 v[1:2], v4, s[0:1]
 ; FEATURE-NEXT:    s_and_saveexec_b64 s[0:1], vcc
 ; FEATURE-NEXT:    s_cbranch_execz .LBB3_2
 ; FEATURE-NEXT:  ; %bb.1: ; %bb.1
-; FEATURE-NEXT:    global_load_dwordx2 v[1:2], v4, s[6:7]
+; FEATURE-NEXT:    global_load_dwordx2 v[1:2], v4, s[2:3]
 ; FEATURE-NEXT:  .LBB3_2: ; %bb.2
 ; FEATURE-NEXT:    s_or_b64 exec, exec, s[0:1]
 ; FEATURE-NEXT:    s_waitcnt vmcnt(0)
-; FEATURE-NEXT:    global_store_dwordx2 v3, v[1:2], s[2:3]
+; FEATURE-NEXT:    global_store_dwordx2 v3, v[1:2], s[6:7]
 ; FEATURE-NEXT:    s_endpgm
 ;
 ; DEFAULT-LABEL: v8i8_liveout:
 ; DEFAULT:       ; %bb.0: ; %entry
-; DEFAULT-NEXT:    s_load_dwordx4 s[4:7], s[0:1], 0x24
-; DEFAULT-NEXT:    s_load_dwordx2 s[2:3], s[0:1], 0x34
+; DEFAULT-NEXT:    s_load_dwordx4 s[0:3], s[4:5], 0x24
+; DEFAULT-NEXT:    s_load_dwordx2 s[6:7], s[4:5], 0x34
 ; DEFAULT-NEXT:    v_lshlrev_b32_e32 v4, 3, v0
 ; DEFAULT-NEXT:    v_mov_b32_e32 v3, 0
 ; DEFAULT-NEXT:    v_cmp_gt_u32_e32 vcc, 15, v0
 ; DEFAULT-NEXT:    s_waitcnt lgkmcnt(0)
-; DEFAULT-NEXT:    global_load_dwordx2 v[1:2], v4, s[4:5]
+; DEFAULT-NEXT:    global_load_dwordx2 v[1:2], v4, s[0:1]
 ; DEFAULT-NEXT:    s_and_saveexec_b64 s[0:1], vcc
 ; DEFAULT-NEXT:    s_cbranch_execz .LBB3_2
 ; DEFAULT-NEXT:  ; %bb.1: ; %bb.1
-; DEFAULT-NEXT:    global_load_dwordx2 v[1:2], v4, s[6:7]
+; DEFAULT-NEXT:    global_load_dwordx2 v[1:2], v4, s[2:3]
 ; DEFAULT-NEXT:  .LBB3_2: ; %bb.2
 ; DEFAULT-NEXT:    s_or_b64 exec, exec, s[0:1]
 ; DEFAULT-NEXT:    s_waitcnt vmcnt(0)
-; DEFAULT-NEXT:    global_store_dwordx2 v3, v[1:2], s[2:3]
+; DEFAULT-NEXT:    global_store_dwordx2 v3, v[1:2], s[6:7]
 ; DEFAULT-NEXT:    s_endpgm
 entry:
   %idx = call i32 @llvm.amdgcn.workitem.id.x()
@@ -345,58 +345,58 @@ bb.2:
 define amdgpu_kernel void @v16i8_liveout(ptr addrspace(1) %src1, ptr addrspace(1) %src2, ptr addrspace(1) nocapture %dst) {
 ; GFX906-LABEL: v16i8_liveout:
 ; GFX906:       ; %bb.0: ; %entry
-; GFX906-NEXT:    s_load_dwordx4 s[4:7], s[0:1], 0x24
-; GFX906-NEXT:    s_load_dwordx2 s[2:3], s[0:1], 0x34
+; GFX906-NEXT:    s_load_dwordx4 s[0:3], s[4:5], 0x24
+; GFX906-NEXT:    s_load_dwordx2 s[6:7], s[4:5], 0x34
 ; GFX906-NEXT:    v_lshlrev_b32_e32 v6, 4, v0
 ; GFX906-NEXT:    v_mov_b32_e32 v5, 0
 ; GFX906-NEXT:    v_cmp_gt_u32_e32 vcc, 15, v0
 ; GFX906-NEXT:    s_waitcnt lgkmcnt(0)
-; GFX906-NEXT:    global_load_dwordx4 v[1:4], v6, s[4:5]
+; GFX906-NEXT:    global_load_dwordx4 v[1:4], v6, s[0:1]
 ; GFX906-NEXT:    s_and_saveexec_b64 s[0:1], vcc
 ; GFX906-NEXT:    s_cbranch_execz .LBB4_2
 ; GFX906-NEXT:  ; %bb.1: ; %bb.1
-; GFX906-NEXT:    global_load_dwordx4 v[1:4], v6, s[6:7]
+; GFX906-NEXT:    global_load_dwordx4 v[1:4], v6, s[2:3]
 ; GFX906-NEXT:  .LBB4_2: ; %bb.2
 ; GFX906-NEXT:    s_or_b64 exec, exec, s[0:1]
 ; GFX906-NEXT:    s_waitcnt vmcnt(0)
-; GFX906-NEXT:    global_store_dwordx4 v5, v[1:4], s[2:3]
+; GFX906-NEXT:    global_store_dwordx4 v5, v[1:4], s[6:7]
 ; GFX906-NEXT:    s_endpgm
 ; FEATURE-LABEL: v16i8_liveout:
 ; FEATURE:       ; %bb.0: ; %entry
-; FEATURE-NEXT:    s_load_dwordx4 s[4:7], s[0:1], 0x24
-; FEATURE-NEXT:    s_load_dwordx2 s[2:3], s[0:1], 0x34
+; FEATURE-NEXT:    s_load_dwordx4 s[0:3], s[4:5], 0x24
+; FEATURE-NEXT:    s_load_dwordx2 s[6:7], s[4:5], 0x34
 ; FEATURE-NEXT:    v_lshlrev_b32_e32 v6, 4, v0
 ; FEATURE-NEXT:    v_mov_b32_e32 v5, 0
 ; FEATURE-NEXT:    v_cmp_gt_u32_e32 vcc, 15, v0
 ; FEATURE-NEXT:    s_waitcnt lgkmcnt(0)
-; FEATURE-NEXT:    global_load_dwordx4 v[1:4], v6, s[4:5]
+; FEATURE-NEXT:    global_load_dwordx4 v[1:4], v6, s[0:1]
 ; FEATURE-NEXT:    s_and_saveexec_b64 s[0:1], vcc
 ; FEATURE-NEXT:    s_cbranch_execz .LBB4_2
 ; FEATURE-NEXT:  ; %bb.1: ; %bb.1
-; FEATURE-NEXT:    global_load_dwordx4 v[1:4], v6, s[6:7]
+; FEATURE-NEXT:    global_load_dwordx4 v[1:4], v6, s[2:3]
 ; FEATURE-NEXT:  .LBB4_2: ; %bb.2
 ; FEATURE-NEXT:    s_or_b64 exec, exec, s[0:1]
 ; FEATURE-NEXT:    s_waitcnt vmcnt(0)
-; FEATURE-NEXT:    global_store_dwordx4 v5, v[1:4], s[2:3]
+; FEATURE-NEXT:    global_store_dwordx4 v5, v[1:4], s[6:7]
 ; FEATURE-NEXT:    s_endpgm
 ;
 ; DEFAULT-LABEL: v16i8_liveout:
 ; DEFAULT:       ; %bb.0: ; %entry
-; DEFAULT-NEXT:    s_load_dwordx4 s[4:7], s[0:1], 0x24
-; DEFAULT-NEXT:    s_load_dwordx2 s[2:3], s[0:1], 0x34
+; DEFAULT-NEXT:    s_load_dwordx4 s[0:3], s[4:5], 0x24
+; DEFAULT-NEXT:    s_load_dwordx2 s[6:7], s[4:5], 0x34
 ; DEFAULT-NEXT:    v_lshlrev_b32_e32 v6, 4, v0
 ; DEFAULT-NEXT:    v_mov_b32_e32 v5, 0
 ; DEFAULT-NEXT:    v_cmp_gt_u32_e32 vcc, 15, v0
 ; DEFAULT-NEXT:    s_waitcnt lgkmcnt(0)
-; DEFAULT-NEXT:    global_load_dwordx4 v[1:4], v6, s[4:5]
+; DEFAULT-NEXT:    global_load_dwordx4 v[1:4], v6, s[0:1]
 ; DEFAULT-NEXT:    s_and_saveexec_b64 s[0:1], vcc
 ; DEFAULT-NEXT:    s_cbranch_execz .LBB4_2
 ; DEFAULT-NEXT:  ; %bb.1: ; %bb.1
-; DEFAULT-NEXT:    global_load_dwordx4 v[1:4], v6, s[6:7]
+; DEFAULT-NEXT:    global_load_dwordx4 v[1:4], v6, s[2:3]
 ; DEFAULT-NEXT:  .LBB4_2: ; %bb.2
 ; DEFAULT-NEXT:    s_or_b64 exec, exec, s[0:1]
 ; DEFAULT-NEXT:    s_waitcnt vmcnt(0)
-; DEFAULT-NEXT:    global_store_dwordx4 v5, v[1:4], s[2:3]
+; DEFAULT-NEXT:    global_store_dwordx4 v5, v[1:4], s[6:7]
 ; DEFAULT-NEXT:    s_endpgm
 entry:
   %idx = call i32 @llvm.amdgcn.workitem.id.x()
@@ -418,70 +418,70 @@ bb.2:
 define amdgpu_kernel void @v32i8_liveout(ptr addrspace(1) %src1, ptr addrspace(1) %src2, ptr addrspace(1) nocapture %dst) {
 ; GFX906-LABEL: v32i8_liveout:
 ; GFX906:       ; %bb.0: ; %entry
-; GFX906-NEXT:    s_load_dwordx4 s[4:7], s[0:1], 0x24
-; GFX906-NEXT:    s_load_dwordx2 s[2:3], s[0:1], 0x34
+; GFX906-NEXT:    s_load_dwordx4 s[0:3], s[4:5], 0x24
+; GFX906-NEXT:    s_load_dwordx2 s[6:7], s[4:5], 0x34
 ; GFX906-NEXT:    v_lshlrev_b32_e32 v10, 5, v0
 ; GFX906-NEXT:    v_mov_b32_e32 v9, 0
 ; GFX906-NEXT:    v_cmp_gt_u32_e32 vcc, 15, v0
 ; GFX906-NEXT:    s_waitcnt lgkmcnt(0)
-; GFX906-NEXT:    global_load_dwordx4 v[1:4], v10, s[4:5] offset:16
-; GFX906-NEXT:    global_load_dwordx4 v[5:8], v10, s[4:5]
+; GFX906-NEXT:    global_load_dwordx4 v[1:4], v10, s[0:1] offset:16
+; GFX906-NEXT:    global_load_dwordx4 v[5:8], v10, s[0:1]
 ; GFX906-NEXT:    s_and_saveexec_b64 s[0:1], vcc
 ; GFX906-NEXT:    s_cbranch_execz .LBB5_2
 ; GFX906-NEXT:  ; %bb.1: ; %bb.1
-; GFX906-NEXT:    global_load_dwordx4 v[1:4], v10, s[6:7] offset:16
-; GFX906-NEXT:    global_load_dwordx4 v[5:8], v10, s[6:7]
+; GFX906-NEXT:    global_load_dwordx4 v[1:4], v10, s[2:3] offset:16
+; GFX906-NEXT:    global_load_dwordx4 v[5:8], v10, s[2:3]
 ; GFX906-NEXT:  .LBB5_2: ; %bb.2
 ; GFX906-NEXT:    s_or_b64 exec, exec, s[0:1]
 ; GFX906-NEXT:    s_waitcnt vmcnt(1)
-; GFX906-NEXT:    global_store_dwordx4 v9, v[1:4], s[2:3] offset:16
+; GFX906-NEXT:    global_store_dwordx4 v9, v[1:4], s[6:7] offset:16
 ; GFX906-NEXT:    s_waitcnt vmcnt(1)
-; GFX906-NEXT:    global_store_dwordx4 v9, v[5:8], s[2:3]
+; GFX906-NEXT:    global_store_dwordx4 v9, v[5:8], s[6:7]
 ; GFX906-NEXT:    s_endpgm
 ; FEATURE-LABEL: v32i8_liveout:
 ; FEATURE:       ; %bb.0: ; %entry
-; FEATURE-NEXT:    s_load_dwordx4 s[4:7], s[0:1], 0x24
-; FEATURE-NEXT:    s_load_dwordx2 s[2:3], s[0:1], 0x34
+; FEATURE-NEXT:    s_load_dwordx4 s[0:3], s[4:5], 0x24
+; FEATURE-NEXT:    s_load_dwordx2 s[6:7], s[4:5], 0x34
 ; FEATURE-NEXT:    v_lshlrev_b32_e32 v10, 5, v0
 ; FEATURE-NEXT:    v_mov_b32_e32 v9, 0
 ; FEATURE-NEXT:    v_cmp_gt_u32_e32 vcc, 15, v0
 ; FEATURE-NEXT:    s_waitcnt lgkmcnt(0)
-; FEATURE-NEXT:    global_load_dwordx4 v[1:4], v10, s[4:5] offset:16
-; FEATURE-NEXT:    global_load_dwordx4 v[5:8], v10, s[4:5]
+; FEATURE-NEXT:    global_load_dwordx4 v[1:4], v10, s[0:1] offset:16
+; FEATURE-NEXT:    global_load_dwordx4 v[5:8], v10, s[0:1]
 ; FEATURE-NEXT:    s_and_saveexec_b64 s[0:1], vcc
 ; FEATURE-NEXT:    s_cbranch_execz .LBB5_2
 ; FEATURE-NEXT:  ; %bb.1: ; %bb.1
-; FEATURE-NEXT:    global_load_dwordx4 v[1:4], v10, s[6:7] offset:16
-; FEATURE-NEXT:    global_load_dwordx4 v[5:8], v10, s[6:7]
+; FEATURE-NEXT:    global_load_dwordx4 v[1:4], v10, s[2:3] offset:16
+; FEATURE-NEXT:    global_load_dwordx4 v[5:8], v10, s[2:3]
 ; FEATURE-NEXT:  .LBB5_2: ; %bb.2
 ; FEATURE-NEXT:    s_or_b64 exec, exec, s[0:1]
 ; FEATURE-NEXT:    s_waitcnt vmcnt(1)
-; FEATURE-NEXT:    global_store_dwordx4 v9, v[1:4], s[2:3] offset:16
+; FEATURE-NEXT:    global_store_dwordx4 v9, v[1:4], s[6:7] offset:16
 ; FEATURE-NEXT:    s_waitcnt vmcnt(1)
-; FEATURE-NEXT:    global_store_dwordx4 v9, v[5:8], s[2:3]
+; FEATURE-NEXT:    global_store_dwordx4 v9, v[5:8], s[6:7]
 ; FEATURE-NEXT:    s_endpgm
 ;
 ; DEFAULT-LABEL: v32i8_liveout:
 ; DEFAULT:       ; %bb.0: ; %entry
-; DEFAULT-NEXT:    s_load_dwordx4 s[4:7], s[0:1], 0x24
-; DEFAULT-NEXT:    s_load_dwordx2 s[2:3], s[0:1], 0x34
+; DEFAULT-NEXT:    s_load_dwordx4 s[0:3], s[4:5], 0x24
+; DEFAULT-NEXT:    s_load_dwordx2 s[6:7], s[4:5], 0x34
 ; DEFAULT-NEXT:    v_lshlrev_b32_e32 v10, 5, v0
 ; DEFAULT-NEXT:    v_mov_b32_e32 v9, 0
 ; DEFAULT-NEXT:    v_cmp_gt_u32_e32 vcc, 15, v0
 ; DEFAULT-NEXT:    s_waitcnt lgkmcnt(0)
-; DEFAULT-NEXT:    global_load_dwordx4 v[1:4], v10, s[4:5] offset:16
-; DEFAULT-NEXT:    global_load_dwordx4 v[5:8], v10, s[4:5]
+; DEFAULT-NEXT:    global_load_dwordx4 v[1:4], v10, s[0:1] offset:16
+; DEFAULT-NEXT:    global_load_dwordx4 v[5:8], v10, s[0:1]
 ; DEFAULT-NEXT:    s_and_saveexec_b64 s[0:1], vcc
 ; DEFAULT-NEXT:    s_cbranch_execz .LBB5_2
 ; DEFAULT-NEXT:  ; %bb.1: ; %bb.1
-; DEFAULT-NEXT:    global_load_dwordx4 v[1:4], v10, s[6:7] offset:16
-; DEFAULT-NEXT:    global_load_dwordx4 v[5:8], v10, s[6:7]
+; DEFAULT-NEXT:    global_load_dwordx4 v[1:4], v10, s[2:3] offset:16
+; DEFAULT-NEXT:    global_load_dwordx4 v[5:8], v10, s[2:3]
 ; DEFAULT-NEXT:  .LBB5_2: ; %bb.2
 ; DEFAULT-NEXT:    s_or_b64 exec, exec, s[0:1]
 ; DEFAULT-NEXT:    s_waitcnt vmcnt(1)
-; DEFAULT-NEXT:    global_store_dwordx4 v9, v[1:4], s[2:3] offset:16
+; DEFAULT-NEXT:    global_store_dwordx4 v9, v[1:4], s[6:7] offset:16
 ; DEFAULT-NEXT:    s_waitcnt vmcnt(1)
-; DEFAULT-NEXT:    global_store_dwordx4 v9, v[5:8], s[2:3]
+; DEFAULT-NEXT:    global_store_dwordx4 v9, v[5:8], s[6:7]
 ; DEFAULT-NEXT:    s_endpgm
 entry:
   %idx = call i32 @llvm.amdgcn.workitem.id.x()
@@ -503,289 +503,289 @@ bb.2:
 define amdgpu_kernel void @v256i8_liveout(ptr addrspace(1) %src1, ptr addrspace(1) %src2, ptr addrspace(1) nocapture %dst) {
 ; GFX906-LABEL: v256i8_liveout:
 ; GFX906:       ; %bb.0: ; %entry
-; GFX906-NEXT:    s_load_dwordx4 s[4:7], s[0:1], 0x24
+; GFX906-NEXT:    s_load_dwordx4 s[0:3], s[4:5], 0x24
+; GFX906-NEXT:    s_load_dwordx2 s[6:7], s[4:5], 0x34
 ; GFX906-NEXT:    v_lshlrev_b32_e32 v61, 3, v0
-; GFX906-NEXT:    s_mov_b32 s8, SCRATCH_RSRC_DWORD0
-; GFX906-NEXT:    s_mov_b32 s9, SCRATCH_RSRC_DWORD1
-; GFX906-NEXT:    s_mov_b32 s10, -1
+; GFX906-NEXT:    s_mov_b32 s12, SCRATCH_RSRC_DWORD0
+; GFX906-NEXT:    s_mov_b32 s13, SCRATCH_RSRC_DWORD1
 ; GFX906-NEXT:    s_waitcnt lgkmcnt(0)
-; GFX906-NEXT:    global_load_dwordx4 v[5:8], v61, s[4:5] offset:240
-; GFX906-NEXT:    s_mov_b32 s11, 0xe00000
-; GFX906-NEXT:    s_add_u32 s8, s8, s3
-; GFX906-NEXT:    s_addc_u32 s9, s9, 0
+; GFX906-NEXT:    global_load_dwordx4 v[5:8], v61, s[0:1] offset:240
+; GFX906-NEXT:    s_mov_b32 s14, -1
+; GFX906-NEXT:    s_mov_b32 s15, 0xe00000
+; GFX906-NEXT:    s_add_u32 s12, s12, s11
+; GFX906-NEXT:    s_addc_u32 s13, s13, 0
 ; GFX906-NEXT:    v_cmp_gt_u32_e32 vcc, 15, v0
-; GFX906-NEXT:    s_load_dwordx2 s[0:1], s[0:1], 0x34
 ; GFX906-NEXT:    v_mov_b32_e32 v4, 0
 ; GFX906-NEXT:    s_waitcnt vmcnt(0)
-; GFX906-NEXT:    buffer_store_dword v5, off, s[8:11], 0 ; 4-byte Folded Spill
+; GFX906-NEXT:    buffer_store_dword v5, off, s[12:15], 0 ; 4-byte Folded Spill
 ; GFX906-NEXT:    s_nop 0
-; GFX906-NEXT:    buffer_store_dword v6, off, s[8:11], 0 offset:4 ; 4-byte Folded Spill
-; GFX906-NEXT:    buffer_store_dword v7, off, s[8:11], 0 offset:8 ; 4-byte Folded Spill
-; GFX906-NEXT:    buffer_store_dword v8, off, s[8:11], 0 offset:12 ; 4-byte Folded Spill
-; GFX906-NEXT:    global_load_dwordx4 v[5:8], v61, s[4:5] offset:224
+; GFX906-NEXT:    buffer_store_dword v6, off, s[12:15], 0 offset:4 ; 4-byte Folded Spill
+; GFX906-NEXT:    buffer_store_dword v7, off, s[12:15], 0 offset:8 ; 4-byte Folded Spill
+; GFX906-NEXT:    buffer_store_dword v8, off, s[12:15], 0 offset:12 ; 4-byte Folded Spill
+; GFX906-NEXT:    global_load_dwordx4 v[5:8], v61, s[0:1] offset:224
 ; GFX906-NEXT:    s_nop 0
-; GFX906-NEXT:    global_load_dwordx4 v[9:12], v61, s[4:5] offset:208
-; GFX906-NEXT:    global_load_dwordx4 v[13:16], v61, s[4:5] offset:192
-; GFX906-NEXT:    global_load_dwordx4 v[17:20], v61, s[4:5] offset:176
-; GFX906-NEXT:    global_load_dwordx4 v[21:24], v61, s[4:5] offset:160
-; GFX906-NEXT:    global_load_dwordx4 v[25:28], v61, s[4:5] offset:144
-; GFX906-NEXT:    global_load_dwordx4 v[29:32], v61, s[4:5] offset:128
-; GFX906-NEXT:    global_load_dwordx4 v[33:36], v61, s[4:5] offset:112
-; GFX906-NEXT:    global_load_dwordx4 v[37:40], v61, s[4:5] offset:96
-; GFX906-NEXT:    global_load_dwordx4 v[41:44], v61, s[4:5] offset:80
-; GFX906-NEXT:    global_load_dwordx4 v[45:48], v61, s[4:5] offset:64
-; GFX906-NEXT:    global_load_dwordx4 v[49:52], v61, s[4:5] offset:48
-; GFX906-NEXT:    global_load_dwordx4 v[53:56], v61, s[4:5] offset:32
-; GFX906-NEXT:    global_load_dwordx4 v[57:60], v61, s[4:5] offset:16
-; GFX906-NEXT:    global_load_dwordx4 v[0:3], v61, s[4:5]
-; GFX906-NEXT:    s_and_saveexec_b64 s[2:3], vcc
+; GFX906-NEXT:    global_load_dwordx4 v[9:12], v61, s[0:1] offset:208
+; GFX906-NEXT:    global_load_dwordx4 v[13:16], v61, s[0:1] offset:192
+; GFX906-NEXT:    global_load_dwordx4 v[17:20], v61, s[0:1] offset:176
+; GFX906-NEXT:    global_load_dwordx4 v[21:24], v61, s[0:1] offset:160
+; GFX906-NEXT:    global_load_dwordx4 v[25:28], v61, s[0:1] offset:144
+; GFX906-NEXT:    global_load_dwordx4 v[29:32], v61, s[0:1] offset:128
+; GFX906-NEXT:    global_load_dwordx4 v[33:36], v61, s[0:1] offset:112
+; GFX906-NEXT:    global_load_dwordx4 v[37:40], v61, s[0:1] offset:96
+; GFX906-NEXT:    global_load_dwordx4 v[41:44], v61, s[0:1] offset:80
+; GFX906-NEXT:    global_load_dwordx4 v[45:48], v61, s[0:1] offset:64
+; GFX906-NEXT:    global_load_dwordx4 v[49:52], v61, s[0:1] offset:48
+; GFX906-NEXT:    global_load_dwordx4 v[53:56], v61, s[0:1] offset:32
+; GFX906-NEXT:    global_load_dwordx4 v[57:60], v61, s[0:1] offset:16
+; GFX906-NEXT:    global_load_dwordx4 v[0:3], v61, s[0:1]
+; GFX906-NEXT:    s_and_saveexec_b64 s[0:1], vcc
 ; GFX906-NEXT:    s_cbranch_execz .LBB6_2
 ; GFX906-NEXT:  ; %bb.1: ; %bb.1
-; GFX906-NEXT:    global_load_dwordx4 v[0:3], v61, s[6:7] offset:240
+; GFX906-NEXT:    global_load_dwordx4 v[0:3], v61, s[2:3] offset:240
 ; GFX906-NEXT:    s_waitcnt vmcnt(0)
-; GFX906-NEXT:    buffer_store_dword v0, off, s[8:11], 0 ; 4-byte Folded Spill
+; GFX906-NEXT:    buffer_store_dword v0, off, s[12:15], 0 ; 4-byte Folded Spill
 ; GFX906-NEXT:    s_nop 0
-; GFX906-NEXT:    buffer_store_dword v1, off, s[8:11], 0 offset:4 ; 4-byte Folded Spill
-; GFX906-NEXT:    buffer_store_dword v2, off, s[8:11], 0 offset:8 ; 4-byte Folded Spill
-; GFX906-NEXT:    buffer_store_dword v3, off, s[8:11], 0 offset:12 ; 4-byte Folded Spill
-; GFX906-NEXT:    global_load_dwordx4 v[5:8], v61, s[6:7] offset:224
-; GFX906-NEXT:    global_load_dwordx4 v[9:12], v61, s[6:7] offset:208
-; GFX906-NEXT:    global_load_dwordx4 v[13:16], v61, s[6:7] offset:192
-; GFX906-NEXT:    global_load_dwordx4 v[17:20], v61, s[6:7] offset:176
-; GFX906-NEXT:    global_load_dwordx4 v[21:24], v61, s[6:7] offset:160
-; GFX906-NEXT:    global_load_dwordx4 v[25:28], v61, s[6:7] offset:144
-; GFX906-NEXT:    global_load_dwordx4 v[29:32], v61, s[6:7] offset:128
-; GFX906-NEXT:    global_load_dwordx4 v[33:36], v61, s[6:7] offset:112
-; GFX906-NEXT:    global_load_dwordx4 v[37:40], v61, s[6:7] offset:96
-; GFX906-NEXT:    global_load_dwordx4 v[41:44], v61, s[6:7] offset:80
-; GFX906-NEXT:    global_load_dwordx4 v[45:48], v61, s[6:7] offset:64
-; GFX906-NEXT:    global_load_dwordx4 v[49:52], v61, s[6:7] offset:48
-; GFX906-NEXT:    global_load_dwordx4 v[53:56], v61, s[6:7] offset:32
-; GFX906-NEXT:    global_load_dwordx4 v[57:60], v61, s[6:7] offset:16
-; GFX906-NEXT:    global_load_dwordx4 v[0:3], v61, s[6:7]
+; GFX906-NEXT:    buffer_store_dword v1, off, s[12:15], 0 offset:4 ; 4-byte Folded Spill
+; GFX906-NEXT:    buffer_store_dword v2, off, s[12:15], 0 offset:8 ; 4-byte Folded Spill
+; GFX906-NEXT:    buffer_store_dword v3, off, s[12:15], 0 offset:12 ; 4-byte Folded Spill
+; GFX906-NEXT:    global_load_dwordx4 v[5:8], v61, s[2:3] offset:224
+; GFX906-NEXT:    global_load_dwordx4 v[9:12], v61, s[2:3] offset:208
+; GFX906-NEXT:    global_load_dwordx4 v[13:16], v61, s[2:3] offset:192
+; GFX906-NEXT:    global_load_dwordx4 v[17:20], v61, s[2:3] offset:176
+; GFX906-NEXT:    global_load_dwordx4 v[21:24], v61, s[2:3] offset:160
+; GFX906-NEXT:    global_load_dwordx4 v[25:28], v61, s[2:3] offset:144
+; GFX906-NEXT:    global_load_dwordx4 v[29:32], v61, s[2:3] offset:128
+; GFX906-NEXT:    global_load_dwordx4 v[33:36], v61, s[2:3] offset:112
+; GFX906-NEXT:    global_load_dwordx4 v[37:40], v61, s[2:3] offset:96
+; GFX906-NEXT:    global_load_dwordx4 v[41:44], v61, s[2:3] offset:80
+; GFX906-NEXT:    global_load_dwordx4 v[45:48], v61, s[2:3] offset:64
+; GFX906-NEXT:    global_load_dwordx4 v[49:52], v61, s[2:3] offset:48
+; GFX906-NEXT:    global_load_dwordx4 v[53:56], v61, s[2:3] offset:32
+; GFX906-NEXT:    global_load_dwordx4 v[57:60], v61, s[2:3] offset:16
+; GFX906-NEXT:    global_load_dwordx4 v[0:3], v61, s[2:3]
 ; GFX906-NEXT:  .LBB6_2: ; %bb.2
-; GFX906-NEXT:    s_or_b64 exec, exec, s[2:3]
-; GFX906-NEXT:    s_waitcnt vmcnt(7) lgkmcnt(0)
-; GFX906-NEXT:    global_store_dwordx4 v4, v[33:36], s[0:1] offset:112
+; GFX906-NEXT:    s_or_b64 exec, exec, s[0:1]
 ; GFX906-NEXT:    s_waitcnt vmcnt(7)
-; GFX906-NEXT:    global_store_dwordx4 v4, v[37:40], s[0:1] offset:96
+; GFX906-NEXT:    global_store_dwordx4 v4, v[33:36], s[6:7] offset:112
 ; GFX906-NEXT:    s_waitcnt vmcnt(7)
-; GFX906-NEXT:    global_store_dwordx4 v4, v[41:44], s[0:1] offset:80
+; GFX906-NEXT:    global_store_dwordx4 v4, v[37:40], s[6:7] offset:96
 ; GFX906-NEXT:    s_waitcnt vmcnt(7)
-; GFX906-NEXT:    global_store_dwordx4 v4, v[45:48], s[0:1] offset:64
+; GFX906-NEXT:    global_store_dwordx4 v4, v[41:44], s[6:7] offset:80
 ; GFX906-NEXT:    s_waitcnt vmcnt(7)
-; GFX906-NEXT:    global_store_dwordx4 v4, v[49:52], s[0:1] offset:48
+; GFX906-NEXT:    global_store_dwordx4 v4, v[45:48], s[6:7] offset:64
 ; GFX906-NEXT:    s_waitcnt vmcnt(7)
-; GFX906-NEXT:    global_store_dwordx4 v4, v[53:56], s[0:1] offset:32
+; GFX906-NEXT:    global_store_dwordx4 v4, v[49:52], s[6:7] offset:48
 ; GFX906-NEXT:    s_waitcnt vmcnt(7)
-; GFX906-NEXT:    global_store_dwordx4 v4, v[57:60], s[0:1] offset:16
+; GFX906-NEXT:    global_store_dwordx4 v4, v[53:56], s[6:7] offset:32
 ; GFX906-NEXT:    s_waitcnt vmcnt(7)
-; GFX906-NEXT:    global_store_dwordx4 v4, v[0:3], s[0:1]
-; GFX906-NEXT:    buffer_load_dword v0, off, s[8:11], 0 ; 4-byte Folded Reload
+; GFX906-NEXT:    global_store_dwordx4 v4, v[57:60], s[6:7] offset:16
+; GFX906-NEXT:    s_waitcnt vmcnt(7)
+; GFX906-NEXT:    global_store_dwordx4 v4, v[0:3], s[6:7]
+; GFX906-NEXT:    buffer_load_dword v0, off, s[12:15], 0 ; 4-byte Folded Reload
 ; GFX906-NEXT:    s_nop 0
-; GFX906-NEXT:    buffer_load_dword v1, off, s[8:11], 0 offset:4 ; 4-byte Folded Reload
-; GFX906-NEXT:    buffer_load_dword v2, off, s[8:11], 0 offset:8 ; 4-byte Folded Reload
-; GFX906-NEXT:    buffer_load_dword v3, off, s[8:11], 0 offset:12 ; 4-byte Folded Reload
+; GFX906-NEXT:    buffer_load_dword v1, off, s[12:15], 0 offset:4 ; 4-byte Folded Reload
+; GFX906-NEXT:    buffer_load_dword v2, off, s[12:15], 0 offset:8 ; 4-byte Folded Reload
+; GFX906-NEXT:    buffer_load_dword v3, off, s[12:15], 0 offset:12 ; 4-byte Folded Reload
 ; GFX906-NEXT:    s_waitcnt vmcnt(0)
-; GFX906-NEXT:    global_store_dwordx4 v4, v[0:3], s[0:1] offset:240
-; GFX906-NEXT:    global_store_dwordx4 v4, v[5:8], s[0:1] offset:224
-; GFX906-NEXT:    global_store_dwordx4 v4, v[9:12], s[0:1] offset:208
-; GFX906-NEXT:    global_store_dwordx4 v4, v[13:16], s[0:1] offset:192
-; GFX906-NEXT:    global_store_dwordx4 v4, v[17:20], s[0:1] offset:176
-; GFX906-NEXT:    global_store_dwordx4 v4, v[21:24], s[0:1] offset:160
-; GFX906-NEXT:    global_store_dwordx4 v4, v[25:28], s[0:1] offset:144
-; GFX906-NEXT:    global_store_dwordx4 v4, v[29:32], s[0:1] offset:128
+; GFX906-NEXT:    global_store_dwordx4 v4, v[0:3], s[6:7] offset:240
+; GFX906-NEXT:    global_store_dwordx4 v4, v[5:8], s[6:7] offset:224
+; GFX906-NEXT:    global_store_dwordx4 v4, v[9:12], s[6:7] offset:208
+; GFX906-NEXT:    global_store_dwordx4 v4, v[13:16], s[6:7] offset:192
+; GFX906-NEXT:    global_store_dwordx4 v4, v[17:20], s[6:7] offset:176
+; GFX906-NEXT:    global_store_dwordx4 v4, v[21:24], s[6:7] offset:160
+; GFX906-NEXT:    global_store_dwordx4 v4, v[25:28], s[6:7] offset:144
+; GFX906-NEXT:    global_store_dwordx4 v4, v[29:32], s[6:7] offset:128
 ; GFX906-NEXT:    s_endpgm
 ; FEATURE-LABEL: v256i8_liveout:
 ; FEATURE:       ; %bb.0: ; %entry
-; FEATURE-NEXT:    s_load_dwordx4 s[4:7], s[0:1], 0x24
+; FEATURE-NEXT:    s_load_dwordx4 s[0:3], s[4:5], 0x24
+; FEATURE-NEXT:    s_load_dwordx2 s[6:7], s[4:5], 0x34
 ; FEATURE-NEXT:    v_lshlrev_b32_e32 v61, 3, v0
-; FEATURE-NEXT:    s_mov_b32 s8, SCRATCH_RSRC_DWORD0
-; FEATURE-NEXT:    s_mov_b32 s9, SCRATCH_RSRC_DWORD1
-; FEATURE-NEXT:    s_mov_b32 s10, -1
+; FEATURE-NEXT:    s_mov_b32 s12, SCRATCH_RSRC_DWORD0
+; FEATURE-NEXT:    s_mov_b32 s13, SCRATCH_RSRC_DWORD1
 ; FEATURE-NEXT:    s_waitcnt lgkmcnt(0)
-; FEATURE-NEXT:    global_load_dwordx4 v[5:8], v61, s[4:5] offset:240
-; FEATURE-NEXT:    s_mov_b32 s11, 0xe00000
-; FEATURE-NEXT:    s_add_u32 s8, s8, s3
-; FEATURE-NEXT:    s_addc_u32 s9, s9, 0
+; FEATURE-NEXT:    global_load_dwordx4 v[5:8], v61, s[0:1] offset:240
+; FEATURE-NEXT:    s_mov_b32 s14, -1
+; FEATURE-NEXT:    s_mov_b32 s15, 0xe00000
+; FEATURE-NEXT:    s_add_u32 s12, s12, s11
+; FEATURE-NEXT:    s_addc_u32 s13, s13, 0
 ; FEATURE-NEXT:    v_cmp_gt_u32_e32 vcc, 15, v0
-; FEATURE-NEXT:    s_load_dwordx2 s[0:1], s[0:1], 0x34
 ; FEATURE-NEXT:    v_mov_b32_e32 v4, 0
 ; FEATURE-NEXT:    s_waitcnt vmcnt(0)
-; FEATURE-NEXT:    buffer_store_dword v5, off, s[8:11], 0 ; 4-byte Folded Spill
+; FEATURE-NEXT:    buffer_store_dword v5, off, s[12:15], 0 ; 4-byte Folded Spill
 ; FEATURE-NEXT:    s_nop 0
-; FEATURE-NEXT:    buffer_store_dword v6, off, s[8:11], 0 offset:4 ; 4-byte Folded Spill
-; FEATURE-NEXT:    buffer_store_dword v7, off, s[8:11], 0 offset:8 ; 4-byte Folded Spill
-; FEATURE-NEXT:    buffer_store_dword v8, off, s[8:11], 0 offset:12 ; 4-byte Folded Spill
-; FEATURE-NEXT:    global_load_dwordx4 v[5:8], v61, s[4:5] offset:224
+; FEATURE-NEXT:    buffer_store_dword v6, off, s[12:15], 0 offset:4 ; 4-byte Folded Spill
+; FEATURE-NEXT:    buffer_store_dword v7, off, s[12:15], 0 offset:8 ; 4-byte Folded Spill
+; FEATURE-NEXT:    buffer_store_dword v8, off, s[12:15], 0 offset:12 ; 4-byte Folded Spill
+; FEATURE-NEXT:    global_load_dwordx4 v[5:8], v61, s[0:1] offset:224
 ; FEATURE-NEXT:    s_nop 0
-; FEATURE-NEXT:    global_load_dwordx4 v[9:12], v61, s[4:5] offset:208
-; FEATURE-NEXT:    global_load_dwordx4 v[13:16], v61, s[4:5] offset:192
-; FEATURE-NEXT:    global_load_dwordx4 v[17:20], v61, s[4:5] offset:176
-; FEATURE-NEXT:    global_load_dwordx4 v[21:24], v61, s[4:5] offset:160
-; FEATURE-NEXT:    global_load_dwordx4 v[25:28], v61, s[4:5] offset:144
-; FEATURE-NEXT:    global_load_dwordx4 v[29:32], v61, s[4:5] offset:128
-; FEATURE-NEXT:    global_load_dwordx4 v[33:36], v61, s[4:5] offset:112
-; FEATURE-NEXT:    global_load_dwordx4 v[37:40], v61, s[4:5] offset:96
-; FEATURE-NEXT:    global_load_dwordx4 v[41:44], v61, s[4:5] offset:80
-; FEATURE-NEXT:    global_load_dwordx4 v[45:48], v61, s[4:5] offset:64
-; FEATURE-NEXT:    global_load_dwordx4 v[49:52], v61, s[4:5] offset:48
-; FEATURE-NEXT:    global_load_dwordx4 v[53:56], v61, s[4:5] offset:32
-; FEATURE-NEXT:    global_load_dwordx4 v[57:60], v61, s[4:5] offset:16
-; FEATURE-NEXT:    global_load_dwordx4 v[0:3], v61, s[4:5]
-; FEATURE-NEXT:    s_and_saveexec_b64 s[2:3], vcc
+; FEATURE-NEXT:    global_load_dwordx4 v[9:12], v61, s[0:1] offset:208
+; FEATURE-NEXT:    global_load_dwordx4 v[13:16], v61, s[0:1] offset:192
+; FEATURE-NEXT:    global_load_dwordx4 v[17:20], v61, s[0:1] offset:176
+; FEATURE-NEXT:    global_load_dwordx4 v[21:24], v61, s[0:1] offset:160
+; FEATURE-NEXT:    global_load_dwordx4 v[25:28], v61, s[0:1] offset:144
+; FEATURE-NEXT:    global_load_dwordx4 v[29:32], v61, s[0:1] offset:128
+; FEATURE-NEXT:    global_load_dwordx4 v[33:36], v61, s[0:1] offset:112
+; FEATURE-NEXT:    global_load_dwordx4 v[37:40], v61, s[0:1] offset:96
+; FEATURE-NEXT:    global_load_dwordx4 v[41:44], v61, s[0:1] offset:80
+; FEATURE-NEXT:    global_load_dwordx4 v[45:48], v61, s[0:1] offset:64
+; FEATURE-NEXT:    global_load_dwordx4 v[49:52], v61, s[0:1] offset:48
+; FEATURE-NEXT:    global_load_dwordx4 v[53:56], v61, s[0:1] offset:32
+; FEATURE-NEXT:    global_load_dwordx4 v[57:60], v61, s[0:1] offset:16
+; FEATURE-NEXT:    global_load_dwordx4 v[0:3], v61, s[0:1]
+; FEATURE-NEXT:    s_and_saveexec_b64 s[0:1], vcc
 ; FEATURE-NEXT:    s_cbranch_execz .LBB6_2
 ; FEATURE-NEXT:  ; %bb.1: ; %bb.1
-; FEATURE-NEXT:    global_load_dwordx4 v[0:3], v61, s[6:7] offset:240
+; FEATURE-NEXT:    global_load_dwordx4 v[0:3], v61, s[2:3] offset:240
 ; FEATURE-NEXT:    s_waitcnt vmcnt(0)
-; FEATURE-NEXT:    buffer_store_dword v0, off, s[8:11], 0 ; 4-byte Folded Spill
+; FEATURE-NEXT:    buffer_store_dword v0, off, s[12:15], 0 ; 4-byte Folded Spill
 ; FEATURE-NEXT:    s_nop 0
-; FEATURE-NEXT:    buffer_store_dword v1, off, s[8:11], 0 offset:4 ; 4-byte Folded Spill
-; FEATURE-NEXT:    buffer_store_dword v2, off, s[8:11], 0 offset:8 ; 4-byte Folded Spill
-; FEATURE-NEXT:    buffer_store_dword v3, off, s[8:11], 0 offset:12 ; 4-byte Folded Spill
-; FEATURE-NEXT:    global_load_dwordx4 v[5:8], v61, s[6:7] offset:224
-; FEATURE-NEXT:    global_load_dwordx4 v[9:12], v61, s[6:7] offset:208
-; FEATURE-NEXT:    global_load_dwordx4 v[13:16], v61, s[6:7] offset:192
-; FEATURE-NEXT:    global_load_dwordx4 v[17:20], v61, s[6:7] offset:176
-; FEATURE-NEXT:    global_load_dwordx4 v[21:24], v61, s[6:7] offset:160
-; FEATURE-NEXT:    global_load_dwordx4 v[25:28], v61, s[6:7] offset:144
-; FEATURE-NEXT:    global_load_dwordx4 v[29:32], v61, s[6:7] offset:128
-; FEATURE-NEXT:    global_load_dwordx4 v[33:36], v61, s[6:7] offset:112
-; FEATURE-NEXT:    global_load_dwordx4 v[37:40], v61, s[6:7] offset:96
-; FEATURE-NEXT:    global_load_dwordx4 v[41:44], v61, s[6:7] offset:80
-; FEATURE-NEXT:    global_load_dwordx4 v[45:48], v61, s[6:7] offset:64
-; FEATURE-NEXT:    global_load_dwordx4 v[49:52], v61, s[6:7] offset:48
-; FEATURE-NEXT:    global_load_dwordx4 v[53:56], v61, s[6:7] offset:32
-; FEATURE-NEXT:    global_load_dwordx4 v[57:60], v61, s[6:7] offset:16
-; FEATURE-NEXT:    global_load_dwordx4 v[0:3], v61, s[6:7]
+; FEATURE-NEXT:    buffer_store_dword v1, off, s[12:15], 0 offset:4 ; 4-byte Folded Spill
+; FEATURE-NEXT:    buffer_store_dword v2, off, s[12:15], 0 offset:8 ; 4-byte Folded Spill
+; FEATURE-NEXT:    buffer_store_dword v3, off, s[12:15], 0 offset:12 ; 4-byte Folded Spill
+; FEATURE-NEXT:    global_load_dwordx4 v[5:8], v61, s[2:3] offset:224
+; FEATURE-NEXT:    global_load_dwordx4 v[9:12], v61, s[2:3] offset:208
+; FEATURE-NEXT:    global_load_dwordx4 v[13:16], v61, s[2:3] offset:192
+; FEATURE-NEXT:    global_load_dwordx4 v[17:20], v61, s[2:3] offset:176
+; FEATURE-NEXT:    global_load_dwordx4 v[21:24], v61, s[2:3] offset:160
+; FEATURE-NEXT:    global_load_dwordx4 v[25:28], v61, s[2:3] offset:144
+; FEATURE-NEXT:    global_load_dwordx4 v[29:32], v61, s[2:3] offset:128
+; FEATURE-NEXT:    global_load_dwordx4 v[33:36], v61, s[2:3] offset:112
+; FEATURE-NEXT:    global_load_dwordx4 v[37:40], v61, s[2:3] offset:96
+; FEATURE-NEXT:    global_load_dwordx4 v[41:44], v61, s[2:3] offset:80
+; FEATURE-NEXT:    global_load_dwordx4 v[45:48], v61, s[2:3] offset:64
+; FEATURE-NEXT:    global_load_dwordx4 v[49:52], v61, s[2:3] offset:48
+; FEATURE-NEXT:    global_load_dwordx4 v[53:56], v61, s[2:3] offset:32
+; FEATURE-NEXT:    global_load_dwordx4 v[57:60], v61, s[2:3] offset:16
+; FEATURE-NEXT:    global_load_dwordx4 v[0:3], v61, s[2:3]
 ; FEATURE-NEXT:  .LBB6_2: ; %bb.2
-; FEATURE-NEXT:    s_or_b64 exec, exec, s[2:3]
-; FEATURE-NEXT:    s_waitcnt vmcnt(7) lgkmcnt(0)
-; FEATURE-NEXT:    global_store_dwordx4 v4, v[33:36], s[0:1] offset:112
+; FEATURE-NEXT:    s_or_b64 exec, exec, s[0:1]
 ; FEATURE-NEXT:    s_waitcnt vmcnt(7)
-; FEATURE-NEXT:    global_store_dwordx4 v4, v[37:40], s[0:1] offset:96
+; FEATURE-NEXT:    global_store_dwordx4 v4, v[33:36], s[6:7] offset:112
 ; FEATURE-NEXT:    s_waitcnt vmcnt(7)
-; FEATURE-NEXT:    global_store_dwordx4 v4, v[41:44], s[0:1] offset:80
+; FEATURE-NEXT:    global_store_dwordx4 v4, v[37:40], s[6:7] offset:96
 ; FEATURE-NEXT:    s_waitcnt vmcnt(7)
-; FEATURE-NEXT:    global_store_dwordx4 v4, v[45:48], s[0:1] offset:64
+; FEATURE-NEXT:    global_store_dwordx4 v4, v[41:44], s[6:7] offset:80
 ; FEATURE-NEXT:    s_waitcnt vmcnt(7)
-; FEATURE-NEXT:    global_store_dwordx4 v4, v[49:52], s[0:1] offset:48
+; FEATURE-NEXT:    global_store_dwordx4 v4, v[45:48], s[6:7] offset:64
 ; FEATURE-NEXT:    s_waitcnt vmcnt(7)
-; FEATURE-NEXT:    global_store_dwordx4 v4, v[53:56], s[0:1] offset:32
+; FEATURE-NEXT:    global_store_dwordx4 v4, v[49:52], s[6:7] offset:48
 ; FEATURE-NEXT:    s_waitcnt vmcnt(7)
-; FEATURE-NEXT:    global_store_dwordx4 v4, v[57:60], s[0:1] offset:16
+; FEATURE-NEXT:    global_store_dwordx4 v4, v[53:56], s[6:7] offset:32
 ; FEATURE-NEXT:    s_waitcnt vmcnt(7)
-; FEATURE-NEXT:    global_store_dwordx4 v4, v[0:3], s[0:1]
-; FEATURE-NEXT:    buffer_load_dword v0, off, s[8:11], 0 ; 4-byte Folded Reload
+; FEATURE-NEXT:    global_store_dwordx4 v4, v[57:60], s[6:7] offset:16
+; FEATURE-NEXT:    s_waitcnt vmcnt(7)
+; FEATURE-NEXT:    global_store_dwordx4 v4, v[0:3], s[6:7]
+; FEATURE-NEXT:    buffer_load_dword v0, off, s[12:15], 0 ; 4-byte Folded Reload
 ; FEATURE-NEXT:    s_nop 0
-; FEATURE-NEXT:    buffer_load_dword v1, off, s[8:11], 0 offset:4 ; 4-byte Folded Reload
-; FEATURE-NEXT:    buffer_load_dword v2, off, s[8:11], 0 offset:8 ; 4-byte Folded Reload
-; FEATURE-NEXT:    buffer_load_dword v3, off, s[8:11], 0 offset:12 ; 4-byte Folded Reload
+; FEATURE-NEXT:    buffer_load_dword v1, off, s[12:15], 0 offset:4 ; 4-byte Folded Reload
+; FEATURE-NEXT:    buffer_load_dword v2, off, s[12:15], 0 offset:8 ; 4-byte Folded Reload
+; FEATURE-NEXT:    buffer_load_dword v3, off, s[12:15], 0 offset:12 ; 4-byte Folded Reload
 ; FEATURE-NEXT:    s_waitcnt vmcnt(0)
-; FEATURE-NEXT:    global_store_dwordx4 v4, v[0:3], s[0:1] offset:240
-; FEATURE-NEXT:    global_store_dwordx4 v4, v[5:8], s[0:1] offset:224
-; FEATURE-NEXT:    global_store_dwordx4 v4, v[9:12], s[0:1] offset:208
-; FEATURE-NEXT:    global_store_dwordx4 v4, v[13:16], s[0:1] offset:192
-; FEATURE-NEXT:    global_store_dwordx4 v4, v[17:20], s[0:1] offset:176
-; FEATURE-NEXT:    global_store_dwordx4 v4, v[21:24], s[0:1] offset:160
-; FEATURE-NEXT:    global_store_dwordx4 v4, v[25:28], s[0:1] offset:144
-; FEATURE-NEXT:    global_store_dwordx4 v4, v[29:32], s[0:1] offset:128
+; FEATURE-NEXT:    global_store_dwordx4 v4, v[0:3], s[6:7] offset:240
+; FEATURE-NEXT:    global_store_dwordx4 v4, v[5:8], s[6:7] offset:224
+; FEATURE-NEXT:    global_store_dwordx4 v4, v[9:12], s[6:7] offset:208
+; FEATURE-NEXT:    global_store_dwordx4 v4, v[13:16], s[6:7] offset:192
+; FEATURE-NEXT:    global_store_dwordx4 v4, v[17:20], s[6:7] offset:176
+; FEATURE-NEXT:    global_store_dwordx4 v4, v[21:24], s[6:7] offset:160
+; FEATURE-NEXT:    global_store_dwordx4 v4, v[25:28], s[6:7] offset:144
+; FEATURE-NEXT:    global_store_dwordx4 v4, v[29:32], s[6:7] offset:128
 ; FEATURE-NEXT:    s_endpgm
 ;
 ; DEFAULT-LABEL: v256i8_liveout:
 ; DEFAULT:       ; %bb.0: ; %entry
-; DEFAULT-NEXT:    s_load_dwordx4 s[4:7], s[0:1], 0x24
+; DEFAULT-NEXT:    s_load_dwordx4 s[0:3], s[4:5], 0x24
+; DEFAULT-NEXT:    s_load_dwordx2 s[6:7], s[4:5], 0x34
 ; DEFAULT-NEXT:    v_lshlrev_b32_e32 v61, 3, v0
-; DEFAULT-NEXT:    s_mov_b32 s8, SCRATCH_RSRC_DWORD0
-; DEFAULT-NEXT:    s_mov_b32 s9, SCRATCH_RSRC_DWORD1
-; DEFAULT-NEXT:    s_mov_b32 s10, -1
+; DEFAULT-NEXT:    s_mov_b32 s12, SCRATCH_RSRC_DWORD0
+; DEFAULT-NEXT:    s_mov_b32 s13, SCRATCH_RSRC_DWORD1
 ; DEFAULT-NEXT:    s_waitcnt lgkmcnt(0)
-; DEFAULT-NEXT:    global_load_dwordx4 v[5:8], v61, s[4:5] offset:240
-; DEFAULT-NEXT:    s_mov_b32 s11, 0xe00000
-; DEFAULT-NEXT:    s_add_u32 s8, s8, s3
-; DEFAULT-NEXT:    s_addc_u32 s9, s9, 0
+; DEFAULT-NEXT:    global_load_dwordx4 v[5:8], v61, s[0:1] offset:240
+; DEFAULT-NEXT:    s_mov_b32 s14, -1
+; DEFAULT-NEXT:    s_mov_b32 s15, 0xe00000
+; DEFAULT-NEXT:    s_add_u32 s12, s12, s11
+; DEFAULT-NEXT:    s_addc_u32 s13, s13, 0
 ; DEFAULT-NEXT:    v_cmp_gt_u32_e32 vcc, 15, v0
-; DEFAULT-NEXT:    s_load_dwordx2 s[0:1], s[0:1], 0x34
 ; DEFAULT-NEXT:    v_mov_b32_e32 v4, 0
 ; DEFAULT-NEXT:    s_waitcnt vmcnt(0)
-; DEFAULT-NEXT:    buffer_store_dword v5, off, s[8:11], 0 ; 4-byte Folded Spill
+; DEFAULT-NEXT:    buffer_store_dword v5, off, s[12:15], 0 ; 4-byte Folded Spill
 ; DEFAULT-NEXT:    s_nop 0
-; DEFAULT-NEXT:    buffer_store_dword v6, off, s[8:11], 0 offset:4 ; 4-byte Folded Spill
-; DEFAULT-NEXT:    buffer_store_dword v7, off, s[8:11], 0 offset:8 ; 4-byte Folded Spill
-; DEFAULT-NEXT:    buffer_store_dword v8, off, s[8:11], 0 offset:12 ; 4-byte Folded Spill
-; DEFAULT-NEXT:    global_load_dwordx4 v[5:8], v61, s[4:5] offset:224
+; DEFAULT-NEXT:    buffer_store_dword v6, off, s[12:15], 0 offset:4 ; 4-byte Folded Spill
+; DEFAULT-NEXT:    buffer_store_dword v7, off, s[12:15], 0 offset:8 ; 4-byte Folded Spill
+; DEFAULT-NEXT:    buffer_store_dword v8, off, s[12:15], 0 offset:12 ; 4-byte Folded Spill
+; DEFAULT-NEXT:    global_load_dwordx4 v[5:8], v61, s[0:1] offset:224
 ; DEFAULT-NEXT:    s_nop 0
-; DEFAULT-NEXT:    global_load_dwordx4 v[9:12], v61, s[4:5] offset:208
-; DEFAULT-NEXT:    global_load_dwordx4 v[13:16], v61, s[4:5] offset:192
-; DEFAULT-NEXT:    global_load_dwordx4 v[17:20], v61, s[4:5] offset:176
-; DEFAULT-NEXT:    global_load_dwordx4 v[21:24], v61, s[4:5] offset:160
-; DEFAULT-NEXT:    global_load_dwordx4 v[25:28], v61, s[4:5] offset:144
-; DEFAULT-NEXT:    global_load_dwordx4 v[29:32], v61, s[4:5] offset:128
-; DEFAULT-NEXT:    global_load_dwordx4 v[33:36], v61, s[4:5] offset:112
-; DEFAULT-NEXT:    global_load_dwordx4 v[37:40], v61, s[4:5] offset:96
-; DEFAULT-NEXT:    global_load_dwordx4 v[41:44], v61, s[4:5] offset:80
-; DEFAULT-NEXT:    global_load_dwordx4 v[45:48], v61, s[4:5] offset:64
-; DEFAULT-NEXT:    global_load_dwordx4 v[49:52], v61, s[4:5] offset:48
-; DEFAULT-NEXT:    global_load_dwordx4 v[53:56], v61, s[4:5] offset:32
-; DEFAULT-NEXT:    global_load_dwordx4 v[57:60], v61, s[4:5] offset:16
-; DEFAULT-NEXT:    global_load_dwordx4 v[0:3], v61, s[4:5]
-; DEFAULT-NEXT:    s_and_saveexec_b64 s[2:3], vcc
+; DEFAULT-NEXT:    global_load_dwordx4 v[9:12], v61, s[0:1] offset:208
+; DEFAULT-NEXT:    global_load_dwordx4 v[13:16], v61, s[0:1] offset:192
+; DEFAULT-NEXT:    global_load_dwordx4 v[17:20], v61, s[0:1] offset:176
+; DEFAULT-NEXT:    global_load_dwordx4 v[21:24], v61, s[0:1] offset:160
+; DEFAULT-NEXT:    global_load_dwordx4 v[25:28], v61, s[0:1] offset:144
+; DEFAULT-NEXT:    global_load_dwordx4 v[29:32], v61, s[0:1] offset:128
+; DEFAULT-NEXT:    global_load_dwordx4 v[33:36], v61, s[0:1] offset:112
+; DEFAULT-NEXT:    global_load_dwordx4 v[37:40], v61, s[0:1] offset:96
+; DEFAULT-NEXT:    global_load_dwordx4 v[41:44], v61, s[0:1] offset:80
+; DEFAULT-NEXT:    global_load_dwordx4 v[45:48], v61, s[0:1] offset:64
+; DEFAULT-NEXT:    global_load_dwordx4 v[49:52], v61, s[0:1] offset:48
+; DEFAULT-NEXT:    global_load_dwordx4 v[53:56], v61, s[0:1] offset:32
+; DEFAULT-NEXT:    global_load_dwordx4 v[57:60], v61, s[0:1] offset:16
+; DEFAULT-NEXT:    global_load_dwordx4 v[0:3], v61, s[0:1]
+; DEFAULT-NEXT:    s_and_saveexec_b64 s[0:1], vcc
 ; DEFAULT-NEXT:    s_cbranch_execz .LBB6_2
 ; DEFAULT-NEXT:  ; %bb.1: ; %bb.1
-; DEFAULT-NEXT:    global_load_dwordx4 v[0:3], v61, s[6:7] offset:240
+; DEFAULT-NEXT:    global_load_dwordx4 v[0:3], v61, s[2:3] offset:240
 ; DEFAULT-NEXT:    s_waitcnt vmcnt(0)
-; DEFAULT-NEXT:    buffer_store_dword v0, off, s[8:11], 0 ; 4-byte Folded Spill
+; DEFAULT-NEXT:    buffer_store_dword v0, off, s[12:15], 0 ; 4-byte Folded Spill
 ; DEFAULT-NEXT:    s_nop 0
-; DEFAULT-NEXT:    buffer_store_dword v1, off, s[8:11], 0 offset:4 ; 4-byte Folded Spill
-; DEFAULT-NEXT:    buffer_store_dword v2, off, s[8:11], 0 offset:8 ; 4-byte Folded Spill
-; DEFAULT-NEXT:    buffer_store_dword v3, off, s[8:11], 0 offset:12 ; 4-byte Folded Spill
-; DEFAULT-NEXT:    global_load_dwordx4 v[5:8], v61, s[6:7] offset:224
-; DEFAULT-NEXT:    global_load_dwordx4 v[9:12], v61, s[6:7] offset:208
-; DEFAULT-NEXT:    global_load_dwordx4 v[13:16], v61, s[6:7] offset:192
-; DEFAULT-NEXT:    global_load_dwordx4 v[17:20], v61, s[6:7] offset:176
-; DEFAULT-NEXT:    global_load_dwordx4 v[21:24], v61, s[6:7] offset:160
-; DEFAULT-NEXT:    global_load_dwordx4 v[25:28], v61, s[6:7] offset:144
-; DEFAULT-NEXT:    global_load_dwordx4 v[29:32], v61, s[6:7] offset:128
-; DEFAULT-NEXT:    global_load_dwordx4 v[33:36], v61, s[6:7] offset:112
-; DEFAULT-NEXT:    global_load_dwordx4 v[37:40], v61, s[6:7] offset:96
-; DEFAULT-NEXT:    global_load_dwordx4 v[41:44], v61, s[6:7] offset:80
-; DEFAULT-NEXT:    global_load_dwordx4 v[45:48], v61, s[6:7] offset:64
-; DEFAULT-NEXT:    global_load_dwordx4 v[49:52], v61, s[6:7] offset:48
-; DEFAULT-NEXT:    global_load_dwordx4 v[53:56], v61, s[6:7] offset:32
-; DEFAULT-NEXT:    global_load_dwordx4 v[57:60], v61, s[6:7] offset:16
-; DEFAULT-NEXT:    global_load_dwordx4 v[0:3], v61, s[6:7]
+; DEFAULT-NEXT:    buffer_store_dword v1, off, s[12:15], 0 offset:4 ; 4-byte Folded Spill
+; DEFAULT-NEXT:    buffer_store_dword v2, off, s[12:15], 0 offset:8 ; 4-byte Folded Spill
+; DEFAULT-NEXT:    buffer_store_dword v3, off, s[12:15], 0 offset:12 ; 4-byte Folded Spill
+; DEFAULT-NEXT:    global_load_dwordx4 v[5:8], v61, s[2:3] offset:224
+; DEFAULT-NEXT:    global_load_dwordx4 v[9:12], v61, s[2:3] offset:208
+; DEFAULT-NEXT:    global_load_dwordx4 v[13:16], v61, s[2:3] offset:192
+; DEFAULT-NEXT:    global_load_dwordx4 v[17:20], v61, s[2:3] offset:176
+; DEFAULT-NEXT:    global_load_dwordx4 v[21:24], v61, s[2:3] offset:160
+; DEFAULT-NEXT:    global_load_dwordx4 v[25:28], v61, s[2:3] offset:144
+; DEFAULT-NEXT:    global_load_dwordx4 v[29:32], v61, s[2:3] offset:128
+; DEFAULT-NEXT:    global_load_dwordx4 v[33:36], v61, s[2:3] offset:112
+; DEFAULT-NEXT:    global_load_dwordx4 v[37:40], v61, s[2:3] offset:96
+; DEFAULT-NEXT:    global_load_dwordx4 v[41:44], v61, s[2:3] offset:80
+; DEFAULT-NEXT:    global_load_dwordx4 v[45:48], v61, s[2:3] offset:64
+; DEFAULT-NEXT:    global_load_dwordx4 v[49:52], v61, s[2:3] offset:48
+; DEFAULT-NEXT:    global_load_dwordx4 v[53:56], v61, s[2:3] offset:32
+; DEFAULT-NEXT:    global_load_dwordx4 v[57:60], v61, s[2:3] offset:16
+; DEFAULT-NEXT:    global_load_dwordx4 v[0:3], v61, s[2:3]
 ; DEFAULT-NEXT:  .LBB6_2: ; %bb.2
-; DEFAULT-NEXT:    s_or_b64 exec, exec, s[2:3]
-; DEFAULT-NEXT:    s_waitcnt vmcnt(7) lgkmcnt(0)
-; DEFAULT-NEXT:    global_store_dwordx4 v4, v[33:36], s[0:1] offset:112
+; DEFAULT-NEXT:    s_or_b64 exec, exec, s[0:1]
 ; DEFAULT-NEXT:    s_waitcnt vmcnt(7)
-; DEFAULT-NEXT:    global_store_dwordx4 v4, v[37:40], s[0:1] offset:96
+; DEFAULT-NEXT:    global_store_dwordx4 v4, v[33:36], s[6:7] offset:112
 ; DEFAULT-NEXT:    s_waitcnt vmcnt(7)
-; DEFAULT-NEXT:    global_store_dwordx4 v4, v[41:44], s[0:1] offset:80
+; DEFAULT-NEXT:    global_store_dwordx4 v4, v[37:40], s[6:7] offset:96
 ; DEFAULT-NEXT:    s_waitcnt vmcnt(7)
-; DEFAULT-NEXT:    global_store_dwordx4 v4, v[45:48], s[0:1] offset:64
+; DEFAULT-NEXT:    global_store_dwordx4 v4, v[41:44], s[6:7] offset:80
 ; DEFAULT-NEXT:    s_waitcnt vmcnt(7)
-; DEFAULT-NEXT:    global_store_dwordx4 v4, v[49:52], s[0:1] offset:48
+; DEFAULT-NEXT:    global_store_dwordx4 v4, v[45:48], s[6:7] offset:64
 ; DEFAULT-NEXT:    s_waitcnt vmcnt(7)
-; DEFAULT-NEXT:    global_store_dwordx4 v4, v[53:56], s[0:1] offset:32
+; DEFAULT-NEXT:    global_store_dwordx4 v4, v[49:52], s[6:7] offset:48
 ; DEFAULT-NEXT:    s_waitcnt vmcnt(7)
-; DEFAULT-NEXT:    global_store_dwordx4 v4, v[57:60], s[0:1] offset:16
+; DEFAULT-NEXT:    global_store_dwordx4 v4, v[53:56], s[6:7] offset:32
 ; DEFAULT-NEXT:    s_waitcnt vmcnt(7)
-; DEFAULT-NEXT:    global_store_dwordx4 v4, v[0:3], s[0:1]
-; DEFAULT-NEXT:    buffer_load_dword v0, off, s[8:11], 0 ; 4-byte Folded Reload
+; DEFAULT-NEXT:    global_store_dwordx4 v4, v[57:60], s[6:7] offset:16
+; DEFAULT-NEXT:    s_waitcnt vmcnt(7)
+; DEFAULT-NEXT:    global_store_dwordx4 v4, v[0:3], s[6:7]
+; DEFAULT-NEXT:    buffer_load_dword v0, off, s[12:15], 0 ; 4-byte Folded Reload
 ; DEFAULT-NEXT:    s_nop 0
-; DEFAULT-NEXT:    buffer_load_dword v1, off, s[8:11], 0 offset:4 ; 4-byte Folded Reload
-; DEFAULT-NEXT:    buffer_load_dword v2, off, s[8:11], 0 offset:8 ; 4-byte Folded Reload
-; DEFAULT-NEXT:    buffer_load_dword v3, off, s[8:11], 0 offset:12 ; 4-byte Folded Reload
+; DEFAULT-NEXT:    buffer_load_dword v1, off, s[12:15], 0 offset:4 ; 4-byte Folded Reload
+; DEFAULT-NEXT:    buffer_load_dword v2, off, s[12:15], 0 offset:8 ; 4-byte Folded Reload
+; DEFAULT-NEXT:    buffer_load_dword v3, off, s[12:15], 0 offset:12 ; 4-byte Folded Reload
 ; DEFAULT-NEXT:    s_waitcnt vmcnt(0)
-; DEFAULT-NEXT:    global_store_dwordx4 v4, v[0:3], s[0:1] offset:240
-; DEFAULT-NEXT:    global_store_dwordx4 v4, v[5:8], s[0:1] offset:224
-; DEFAULT-NEXT:    global_store_dwordx4 v4, v[9:12], s[0:1] offset:208
-; DEFAULT-NEXT:    global_store_dwordx4 v4, v[13:16], s[0:1] offset:192
-; DEFAULT-NEXT:    global_store_dwordx4 v4, v[17:20], s[0:1] offset:176
-; DEFAULT-NEXT:    global_store_dwordx4 v4, v[21:24], s[0:1] offset:160
-; DEFAULT-NEXT:    global_store_dwordx4 v4, v[25:28], s[0:1] offset:144
-; DEFAULT-NEXT:    global_store_dwordx4 v4, v[29:32], s[0:1] offset:128
+; DEFAULT-NEXT:    global_store_dwordx4 v4, v[0:3], s[6:7] offset:240
+; DEFAULT-NEXT:    global_store_dwordx4 v4, v[5:8], s[6:7] offset:224
+; DEFAULT-NEXT:    global_store_dwordx4 v4, v[9:12], s[6:7] offset:208
+; DEFAULT-NEXT:    global_store_dwordx4 v4, v[13:16], s[6:7] offset:192
+; DEFAULT-NEXT:    global_store_dwordx4 v4, v[17:20], s[6:7] offset:176
+; DEFAULT-NEXT:    global_store_dwordx4 v4, v[21:24], s[6:7] offset:160
+; DEFAULT-NEXT:    global_store_dwordx4 v4, v[25:28], s[6:7] offset:144
+; DEFAULT-NEXT:    global_store_dwordx4 v4, v[29:32], s[6:7] offset:128
 ; DEFAULT-NEXT:    s_endpgm
 entry:
   %idx = call i32 @llvm.amdgcn.workitem.id.x()
@@ -807,9 +807,9 @@ bb.2:
 define amdgpu_kernel void @repeat_successor(i32 %in, ptr addrspace(1) %src1, ptr addrspace(1) %src2, ptr addrspace(1) nocapture %dst) {
 ; GFX906-LABEL: repeat_successor:
 ; GFX906:       ; %bb.0: ; %entry
-; GFX906-NEXT:    s_load_dword s8, s[0:1], 0x24
-; GFX906-NEXT:    s_load_dwordx4 s[4:7], s[0:1], 0x2c
-; GFX906-NEXT:    s_load_dwordx2 s[2:3], s[0:1], 0x3c
+; GFX906-NEXT:    s_load_dword s8, s[4:5], 0x24
+; GFX906-NEXT:    s_load_dwordx4 s[0:3], s[4:5], 0x2c
+; GFX906-NEXT:    s_load_dwordx2 s[6:7], s[4:5], 0x3c
 ; GFX906-NEXT:    s_waitcnt lgkmcnt(0)
 ; GFX906-NEXT:    s_cmp_lt_i32 s8, 3
 ; GFX906-NEXT:    s_cbranch_scc0 .LBB7_3
@@ -818,25 +818,25 @@ define amdgpu_kernel void @repeat_successor(i32 %in, ptr addrspace(1) %src1, ptr
 ; GFX906-NEXT:    s_cbranch_scc0 .LBB7_6
 ; GFX906-NEXT:  ; %bb.2:
 ; GFX906-NEXT:    v_lshlrev_b32_e32 v0, 2, v0
-; GFX906-NEXT:    global_load_dword v0, v0, s[4:5]
+; GFX906-NEXT:    global_load_dword v0, v0, s[0:1]
 ; GFX906-NEXT:    s_branch .LBB7_5
 ; GFX906-NEXT:  .LBB7_3: ; %LeafBlock5
 ; GFX906-NEXT:    s_cmp_eq_u32 s8, 3
 ; GFX906-NEXT:    s_cbranch_scc0 .LBB7_6
 ; GFX906-NEXT:  ; %bb.4: ; %sw.bb5
 ; GFX906-NEXT:    v_lshlrev_b32_e32 v0, 2, v0
-; GFX906-NEXT:    global_load_dword v0, v0, s[6:7]
+; GFX906-NEXT:    global_load_dword v0, v0, s[2:3]
 ; GFX906-NEXT:  .LBB7_5: ; %return.sink.split
 ; GFX906-NEXT:    v_mov_b32_e32 v1, 0
 ; GFX906-NEXT:    s_waitcnt vmcnt(0)
-; GFX906-NEXT:    global_store_dword v1, v0, s[2:3]
+; GFX906-NEXT:    global_store_dword v1, v0, s[6:7]
 ; GFX906-NEXT:  .LBB7_6: ; %return
 ; GFX906-NEXT:    s_endpgm
 ; FEATURE-LABEL: repeat_successor:
 ; FEATURE:       ; %bb.0: ; %entry
-; FEATURE-NEXT:    s_load_dword s8, s[0:1], 0x24
-; FEATURE-NEXT:    s_load_dwordx4 s[4:7], s[0:1], 0x2c
-; FEATURE-NEXT:    s_load_dwordx2 s[2:3], s[0:1], 0x3c
+; FEATURE-NEXT:    s_load_dword s8, s[4:5], 0x24
+; FEATURE-NEXT:    s_load_dwordx4 s[0:3], s[4:5], 0x2c
+; FEATURE-NEXT:    s_load_dwordx2 s[6:7], s[4:5], 0x3c
 ; FEATURE-NEXT:    s_waitcnt lgkmcnt(0)
 ; FEATURE-NEXT:    s_cmp_lt_i32 s8, 3
 ; FEATURE-NEXT:    s_cbranch_scc0 .LBB7_3
@@ -845,26 +845,26 @@ define amdgpu_kernel void @repeat_successor(i32 %in, ptr addrspace(1) %src1, ptr
 ; FEATURE-NEXT:    s_cbranch_scc0 .LBB7_6
 ; FEATURE-NEXT:  ; %bb.2:
 ; FEATURE-NEXT:    v_lshlrev_b32_e32 v0, 2, v0
-; FEATURE-NEXT:    global_load_dword v0, v0, s[4:5]
+; FEATURE-NEXT:    global_load_dword v0, v0, s[0:1]
 ; FEATURE-NEXT:    s_branch .LBB7_5
 ; FEATURE-NEXT:  .LBB7_3: ; %LeafBlock5
 ; FEATURE-NEXT:    s_cmp_eq_u32 s8, 3
 ; FEATURE-NEXT:    s_cbranch_scc0 .LBB7_6
 ; FEATURE-NEXT:  ; %bb.4: ; %sw.bb5
 ; FEATURE-NEXT:    v_lshlrev_b32_e32 v0, 2, v0
-; FEATURE-NEXT:    global_load_dword v0, v0, s[6:7]
+; FEATURE-NEXT:    global_load_dword v0, v0, s[2:3]
 ; FEATURE-NEXT:  .LBB7_5: ; %return.sink.split
 ; FEATURE-NEXT:    v_mov_b32_e32 v1, 0
 ; FEATURE-NEXT:    s_waitcnt vmcnt(0)
-; FEATURE-NEXT:    global_store_dword v1, v0, s[2:3]
+; FEATURE-NEXT:    global_store_dword v1, v0, s[6:7]
 ; FEATURE-NEXT:  .LBB7_6: ; %return
 ; FEATURE-NEXT:    s_endpgm
 ;
 ; DEFAULT-LABEL: repeat_successor:
 ; DEFAULT:       ; %bb.0: ; %entry
-; DEFAULT-NEXT:    s_load_dword s8, s[0:1], 0x24
-; DEFAULT-NEXT:    s_load_dwordx4 s[4:7], s[0:1], 0x2c
-; DEFAULT-NEXT:    s_load_dwordx2 s[2:3], s[0:1], 0x3c
+; DEFAULT-NEXT:    s_load_dword s8, s[4:5], 0x24
+; DEFAULT-NEXT:    s_load_dwordx4 s[0:3], s[4:5], 0x2c
+; DEFAULT-NEXT:    s_load_dwordx2 s[6:7], s[4:5], 0x3c
 ; DEFAULT-NEXT:    s_waitcnt lgkmcnt(0)
 ; DEFAULT-NEXT:    s_cmp_lt_i32 s8, 3
 ; DEFAULT-NEXT:    s_cbranch_scc0 .LBB7_3
@@ -873,18 +873,18 @@ define amdgpu_kernel void @repeat_successor(i32 %in, ptr addrspace(1) %src1, ptr
 ; DEFAULT-NEXT:    s_cbranch_scc0 .LBB7_6
 ; DEFAULT-NEXT:  ; %bb.2:
 ; DEFAULT-NEXT:    v_lshlrev_b32_e32 v0, 2, v0
-; DEFAULT-NEXT:    global_load_dword v0, v0, s[4:5]
+; DEFAULT-NEXT:    global_load_dword v0, v0, s[0:1]
 ; DEFAULT-NEXT:    s_branch .LBB7_5
 ; DEFAULT-NEXT:  .LBB7_3: ; %LeafBlock5
 ; DEFAULT-NEXT:    s_cmp_eq_u32 s8, 3
 ; DEFAULT-NEXT:    s_cbranch_scc0 .LBB7_6
 ; DEFAULT-NEXT:  ; %bb.4: ; %sw.bb5
 ; DEFAULT-NEXT:    v_lshlrev_b32_e32 v0, 2, v0
-; DEFAULT-NEXT:    global_load_dword v0, v0, s[6:7]
+; DEFAULT-NEXT:    global_load_dword v0, v0, s[2:3]
 ; DEFAULT-NEXT:  .LBB7_5: ; %return.sink.split
 ; DEFAULT-NEXT:    v_mov_b32_e32 v1, 0
 ; DEFAULT-NEXT:    s_waitcnt vmcnt(0)
-; DEFAULT-NEXT:    global_store_dword v1, v0, s[2:3]
+; DEFAULT-NEXT:    global_store_dword v1, v0, s[6:7]
 ; DEFAULT-NEXT:  .LBB7_6: ; %return
 ; DEFAULT-NEXT:    s_endpgm
 entry:
@@ -914,94 +914,94 @@ return:
 define amdgpu_kernel void @v8i8_phi_chain(ptr addrspace(1) %src1, ptr addrspace(1) %src2, ptr addrspace(1) nocapture %dst0, ptr addrspace(1) nocapture %dst1) {
 ; GFX906-LABEL: v8i8_phi_chain:
 ; GFX906:       ; %bb.0: ; %entry
-; GFX906-NEXT:    s_load_dwordx8 s[0:7], s[0:1], 0x24
+; GFX906-NEXT:    s_load_dwordx8 s[8:15], s[4:5], 0x24
 ; GFX906-NEXT:    v_lshlrev_b32_e32 v3, 3, v0
+; GFX906-NEXT:    v_cmp_lt_u32_e64 s[0:1], 14, v0
 ; GFX906-NEXT:    v_cmp_gt_u32_e32 vcc, 15, v0
 ; GFX906-NEXT:    s_waitcnt lgkmcnt(0)
-; GFX906-NEXT:    global_load_dwordx2 v[1:2], v3, s[0:1]
-; GFX906-NEXT:    v_cmp_lt_u32_e64 s[0:1], 14, v0
-; GFX906-NEXT:    s_and_saveexec_b64 s[8:9], vcc
+; GFX906-NEXT:    global_load_dwordx2 v[1:2], v3, s[8:9]
+; GFX906-NEXT:    s_and_saveexec_b64 s[2:3], vcc
 ; GFX906-NEXT:    s_cbranch_execz .LBB8_2
 ; GFX906-NEXT:  ; %bb.1: ; %bb.1
-; GFX906-NEXT:    global_load_dwordx2 v[1:2], v3, s[2:3]
+; GFX906-NEXT:    global_load_dwordx2 v[1:2], v3, s[10:11]
 ; GFX906-NEXT:    v_cmp_gt_u32_e32 vcc, 7, v0
 ; GFX906-NEXT:    s_andn2_b64 s[0:1], s[0:1], exec
-; GFX906-NEXT:    s_and_b64 s[2:3], vcc, exec
-; GFX906-NEXT:    s_or_b64 s[0:1], s[0:1], s[2:3]
+; GFX906-NEXT:    s_and_b64 s[4:5], vcc, exec
+; GFX906-NEXT:    s_or_b64 s[0:1], s[0:1], s[4:5]
 ; GFX906-NEXT:  .LBB8_2: ; %Flow
-; GFX906-NEXT:    s_or_b64 exec, exec, s[8:9]
+; GFX906-NEXT:    s_or_b64 exec, exec, s[2:3]
 ; GFX906-NEXT:    s_and_saveexec_b64 s[2:3], s[0:1]
 ; GFX906-NEXT:    s_cbranch_execz .LBB8_4
 ; GFX906-NEXT:  ; %bb.3: ; %bb.2
 ; GFX906-NEXT:    v_mov_b32_e32 v0, 0
 ; GFX906-NEXT:    s_waitcnt vmcnt(0)
-; GFX906-NEXT:    global_store_dwordx2 v0, v[1:2], s[4:5]
+; GFX906-NEXT:    global_store_dwordx2 v0, v[1:2], s[12:13]
 ; GFX906-NEXT:  .LBB8_4: ; %bb.3
 ; GFX906-NEXT:    s_or_b64 exec, exec, s[2:3]
 ; GFX906-NEXT:    v_mov_b32_e32 v0, 0
 ; GFX906-NEXT:    s_waitcnt vmcnt(0)
-; GFX906-NEXT:    global_store_dwordx2 v0, v[1:2], s[6:7]
+; GFX906-NEXT:    global_store_dwordx2 v0, v[1:2], s[14:15]
 ; GFX906-NEXT:    s_endpgm
 ; FEATURE-LABEL: v8i8_phi_chain:
 ; FEATURE:       ; %bb.0: ; %entry
-; FEATURE-NEXT:    s_load_dwordx8 s[0:7], s[0:1], 0x24
+; FEATURE-NEXT:    s_load_dwordx8 s[8:15], s[4:5], 0x24
 ; FEATURE-NEXT:    v_lshlrev_b32_e32 v3, 3, v0
+; FEATURE-NEXT:    v_cmp_lt_u32_e64 s[0:1], 14, v0
 ; FEATURE-NEXT:    v_cmp_gt_u32_e32 vcc, 15, v0
 ; FEATURE-NEXT:    s_waitcnt lgkmcnt(0)
-; FEATURE-NEXT:    global_load_dwordx2 v[1:2], v3, s[0:1]
-; FEATURE-NEXT:    v_cmp_lt_u32_e64 s[0:1], 14, v0
-; FEATURE-NEXT:    s_and_saveexec_b64 s[8:9], vcc
+; FEATURE-NEXT:    global_load_dwordx2 v[1:2], v3, s[8:9]
+; FEATURE-NEXT:    s_and_saveexec_b64 s[2:3], vcc
 ; FEATURE-NEXT:    s_cbranch_execz .LBB8_2
 ; FEATURE-NEXT:  ; %bb.1: ; %bb.1
-; FEATURE-NEXT:    global_load_dwordx2 v[1:2], v3, s[2:3]
+; FEATURE-NEXT:    global_load_dwordx2 v[1:2], v3, s[10:11]
 ; FEATURE-NEXT:    v_cmp_gt_u32_e32 vcc, 7, v0
 ; FEATURE-NEXT:    s_andn2_b64 s[0:1], s[0:1], exec
-; FEATURE-NEXT:    s_and_b64 s[2:3], vcc, exec
-; FEATURE-NEXT:    s_or_b64 s[0:1], s[0:1], s[2:3]
+; FEATURE-NEXT:    s_and_b64 s[4:5], vcc, exec
+; FEATURE-NEXT:    s_or_b64 s[0:1], s[0:1], s[4:5]
 ; FEATURE-NEXT:  .LBB8_2: ; %Flow
-; FEATURE-NEXT:    s_or_b64 exec, exec, s[8:9]
+; FEATURE-NEXT:    s_or_b64 exec, exec, s[2:3]
 ; FEATURE-NEXT:    s_and_saveexec_b64 s[2:3], s[0:1]
 ; FEATURE-NEXT:    s_cbranch_execz .LBB8_4
 ; FEATURE-NEXT:  ; %bb.3: ; %bb.2
 ; FEATURE-NEXT:    v_mov_b32_e32 v0, 0
 ; FEATURE-NEXT:    s_waitcnt vmcnt(0)
-; FEATURE-NEXT:    global_store_dwordx2 v0, v[1:2], s[4:5]
+; FEATURE-NEXT:    global_store_dwordx2 v0, v[1:2], s[12:13]
 ; FEATURE-NEXT:  .LBB8_4: ; %bb.3
 ; FEATURE-NEXT:    s_or_b64 exec, exec, s[2:3]
 ; FEATURE-NEXT:    v_mov_b32_e32 v0, 0
 ; FEATURE-NEXT:    s_waitcnt vmcnt(0)
-; FEATURE-NEXT:    global_store_dwordx2 v0, v[1:2], s[6:7]
+; FEATURE-NEXT:    global_store_dwordx2 v0, v[1:2], s[14:15]
 ; FEATURE-NEXT:    s_endpgm
 ;
 ; DEFAULT-LABEL: v8i8_phi_chain:
 ; DEFAULT:       ; %bb.0: ; %entry
-; DEFAULT-NEXT:    s_load_dwordx8 s[0:7], s[0:1], 0x24
+; DEFAULT-NEXT:    s_load_dwordx8 s[8:15], s[4:5], 0x24
 ; DEFAULT-NEXT:    v_lshlrev_b32_e32 v3, 3, v0
+; DEFAULT-NEXT:    v_cmp_lt_u32_e64 s[0:1], 14, v0
 ; DEFAULT-NEXT:    v_cmp_gt_u32_e32 vcc, 15, v0
 ; DEFAULT-NEXT:    s_waitcnt lgkmcnt(0)
-; DEFAULT-NEXT:    global_load_dwordx2 v[1:2], v3, s[0:1]
-; DEFAULT-NEXT:    v_cmp_lt_u32_e64 s[0:1], 14, v0
-; DEFAULT-NEXT:    s_and_saveexec_b64 s[8:9], vcc
+; DEFAULT-NEXT:    global_load_dwordx2 v[1:2], v3, s[8:9]
+; DEFAULT-NEXT:    s_and_saveexec_b64 s[2:3], vcc
 ; DEFAULT-NEXT:    s_cbranch_execz .LBB8_2
 ; DEFAULT-NEXT:  ; %bb.1: ; %bb.1
-; DEFAULT-NEXT:    global_load_dwordx2 v[1:2], v3, s[2:3]
+; DEFAULT-NEXT:    global_load_dwordx2 v[1:2], v3, s[10:11]
 ; DEFAULT-NEXT:    v_cmp_gt_u32_e32 vcc, 7, v0
 ; DEFAULT-NEXT:    s_andn2_b64 s[0:1], s[0:1], exec
-; DEFAULT-NEXT:    s_and_b64 s[2:3], vcc, exec
-; DEFAULT-NEXT:    s_or_b64 s[0:1], s[0:1], s[2:3]
+; DEFAULT-NEXT:    s_and_b64 s[4:5], vcc, exec
+; DEFAULT-NEXT:    s_or_b64 s[0:1], s[0:1], s[4:5]
 ; DEFAULT-NEXT:  .LBB8_2: ; %Flow
-; DEFAULT-NEXT:    s_or_b64 exec, exec, s[8:9]
+; DEFAULT-NEXT:    s_or_b64 exec, exec, s[2:3]
 ; DEFAULT-NEXT:    s_and_saveexec_b64 s[2:3], s[0:1]
 ; DEFAULT-NEXT:    s_cbranch_execz .LBB8_4
 ; DEFAULT-NEXT:  ; %bb.3: ; %bb.2
 ; DEFAULT-NEXT:    v_mov_b32_e32 v0, 0
 ; DEFAULT-NEXT:    s_waitcnt vmcnt(0)
-; DEFAULT-NEXT:    global_store_dwordx2 v0, v[1:2], s[4:5]
+; DEFAULT-NEXT:    global_store_dwordx2 v0, v[1:2], s[12:13]
 ; DEFAULT-NEXT:  .LBB8_4: ; %bb.3
 ; DEFAULT-NEXT:    s_or_b64 exec, exec, s[2:3]
 ; DEFAULT-NEXT:    v_mov_b32_e32 v0, 0
 ; DEFAULT-NEXT:    s_waitcnt vmcnt(0)
-; DEFAULT-NEXT:    global_store_dwordx2 v0, v[1:2], s[6:7]
+; DEFAULT-NEXT:    global_store_dwordx2 v0, v[1:2], s[14:15]
 ; DEFAULT-NEXT:    s_endpgm
 entry:
   %idx = call i32 @llvm.amdgcn.workitem.id.x()
@@ -1030,28 +1030,28 @@ bb.3:
 define amdgpu_kernel void @v8i8_phi_zeroinit(ptr addrspace(1) %src1, ptr addrspace(1) %src2, ptr addrspace(1) nocapture %dst0, ptr addrspace(1) nocapture %dst1) {
 ; GFX906-LABEL: v8i8_phi_zeroinit:
 ; GFX906:       ; %bb.0: ; %entry
-; GFX906-NEXT:    s_load_dwordx8 s[0:7], s[0:1], 0x24
+; GFX906-NEXT:    s_load_dwordx8 s[8:15], s[4:5], 0x24
 ; GFX906-NEXT:    v_lshlrev_b32_e32 v5, 3, v0
+; GFX906-NEXT:    v_cmp_lt_u32_e64 s[0:1], 14, v0
 ; GFX906-NEXT:    v_cmp_gt_u32_e32 vcc, 15, v0
 ; GFX906-NEXT:    ; implicit-def: $vgpr1_vgpr2
 ; GFX906-NEXT:    s_waitcnt lgkmcnt(0)
-; GFX906-NEXT:    global_load_dwordx2 v[3:4], v5, s[0:1]
-; GFX906-NEXT:    v_cmp_lt_u32_e64 s[0:1], 14, v0
-; GFX906-NEXT:    s_and_saveexec_b64 s[8:9], vcc
+; GFX906-NEXT:    global_load_dwordx2 v[3:4], v5, s[8:9]
+; GFX906-NEXT:    s_and_saveexec_b64 s[2:3], vcc
 ; GFX906-NEXT:    s_cbranch_execz .LBB9_2
 ; GFX906-NEXT:  ; %bb.1: ; %bb.1
-; GFX906-NEXT:    global_load_dwordx2 v[1:2], v5, s[2:3]
-; GFX906-NEXT:    s_mov_b32 s2, 0
-; GFX906-NEXT:    s_mov_b32 s3, s2
+; GFX906-NEXT:    global_load_dwordx2 v[1:2], v5, s[10:11]
+; GFX906-NEXT:    s_mov_b32 s4, 0
 ; GFX906-NEXT:    v_cmp_gt_u32_e32 vcc, 7, v0
+; GFX906-NEXT:    s_mov_b32 s5, s4
 ; GFX906-NEXT:    s_waitcnt vmcnt(1)
-; GFX906-NEXT:    v_mov_b32_e32 v4, s3
-; GFX906-NEXT:    v_mov_b32_e32 v3, s2
+; GFX906-NEXT:    v_mov_b32_e32 v3, s4
+; GFX906-NEXT:    v_mov_b32_e32 v4, s5
 ; GFX906-NEXT:    s_andn2_b64 s[0:1], s[0:1], exec
-; GFX906-NEXT:    s_and_b64 s[2:3], vcc, exec
-; GFX906-NEXT:    s_or_b64 s[0:1], s[0:1], s[2:3]
+; GFX906-NEXT:    s_and_b64 s[4:5], vcc, exec
+; GFX906-NEXT:    s_or_b64 s[0:1], s[0:1], s[4:5]
 ; GFX906-NEXT:  .LBB9_2: ; %Flow
-; GFX906-NEXT:    s_or_b64 exec, exec, s[8:9]
+; GFX906-NEXT:    s_or_b64 exec, exec, s[2:3]
 ; GFX906-NEXT:    s_and_saveexec_b64 s[2:3], s[0:1]
 ; GFX906-NEXT:    s_cbranch_execz .LBB9_4
 ; GFX906-NEXT:  ; %bb.3: ; %bb.2
@@ -1059,37 +1059,37 @@ define amdgpu_kernel void @v8i8_phi_zeroinit(ptr addrspace(1) %src1, ptr addrspa
 ; GFX906-NEXT:    v_mov_b32_e32 v1, v3
 ; GFX906-NEXT:    v_mov_b32_e32 v0, 0
 ; GFX906-NEXT:    v_mov_b32_e32 v2, v4
-; GFX906-NEXT:    global_store_dwordx2 v0, v[3:4], s[4:5]
+; GFX906-NEXT:    global_store_dwordx2 v0, v[3:4], s[12:13]
 ; GFX906-NEXT:  .LBB9_4: ; %bb.3
 ; GFX906-NEXT:    s_or_b64 exec, exec, s[2:3]
 ; GFX906-NEXT:    v_mov_b32_e32 v0, 0
 ; GFX906-NEXT:    s_waitcnt vmcnt(0)
-; GFX906-NEXT:    global_store_dwordx2 v0, v[1:2], s[6:7]
+; GFX906-NEXT:    global_store_dwordx2 v0, v[1:2], s[14:15]
 ; GFX906-NEXT:    s_endpgm
 ; FEATURE-LABEL: v8i8_phi_zeroinit:
 ; FEATURE:       ; %bb.0: ; %entry
-; FEATURE-NEXT:    s_load_dwordx8 s[0:7], s[0:1], 0x24
+; FEATURE-NEXT:    s_load_dwordx8 s[8:15], s[4:5], 0x24
 ; FEATURE-NEXT:    v_lshlrev_b32_e32 v5, 3, v0
+; FEATURE-NEXT:    v_cmp_lt_u32_e64 s[0:1], 14, v0
 ; FEATURE-NEXT:    v_cmp_gt_u32_e32 vcc, 15, v0
 ; FEATURE-NEXT:    ; implicit-def: $vgpr1_vgpr2
 ; FEATURE-NEXT:    s_waitcnt lgkmcnt(0)
-; FEATURE-NEXT:    global_load_dwordx2 v[3:4], v5, s[0:1]
-; FEATURE-NEXT:    v_cmp_lt_u32_e64 s[0:1], 14, v0
-; FEATURE-NEXT:    s_and_saveexec_b64 s[8:9], vcc
+; FEATURE-NEXT:    global_load_dwordx2 v[3:4], v5, s[8:9]
+; FEATURE-NEXT:    s_and_saveexec_b64 s[2:3], vcc
 ; FEATURE-NEXT:    s_cbranch_execz .LBB9_2
 ; FEATURE-NEXT:  ; %bb.1: ; %bb.1
-; FEATURE-NEXT:    global_load_dwordx2 v[1:2], v5, s[2:3]
-; FEATURE-NEXT:    s_mov_b32 s2, 0
-; FEATURE-NEXT:    s_mov_b32 s3, s2
+; FEATURE-NEXT:    global_load_dwordx2 v[1:2], v5, s[10:11]
+; FEATURE-NEXT:    s_mov_b32 s4, 0
 ; FEATURE-NEXT:    v_cmp_gt_u32_e32 vcc, 7, v0
+; FEATURE-NEXT:    s_mov_b32 s5, s4
 ; FEATURE-NEXT:    s_waitcnt vmcnt(1)
-; FEATURE-NEXT:    v_mov_b32_e32 v4, s3
-; FEATURE-NEXT:    v_mov_b32_e32 v3, s2
+; FEATURE-NEXT:    v_mov_b32_e32 v3, s4
+; FEATURE-NEXT:    v_mov_b32_e32 v4, s5
 ; FEATURE-NEXT:    s_andn2_b64 s[0:1], s[0:1], exec
-; FEATURE-NEXT:    s_and_b64 s[2:3], vcc, exec
-; FEATURE-NEXT:    s_or_b64 s[0:1], s[0:1], s[2:3]
+; FEATURE-NEXT:    s_and_b64 s[4:5], vcc, exec
+; FEATURE-NEXT:    s_or_b64 s[0:1], s[0:1], s[4:5]
 ; FEATURE-NEXT:  .LBB9_2: ; %Flow
-; FEATURE-NEXT:    s_or_b64 exec, exec, s[8:9]
+; FEATURE-NEXT:    s_or_b64 exec, exec, s[2:3]
 ; FEATURE-NEXT:    s_and_saveexec_b64 s[2:3], s[0:1]
 ; FEATURE-NEXT:    s_cbranch_execz .LBB9_4
 ; FEATURE-NEXT:  ; %bb.3: ; %bb.2
@@ -1097,38 +1097,38 @@ define amdgpu_kernel void @v8i8_phi_zeroinit(ptr addrspace(1) %src1, ptr addrspa
 ; FEATURE-NEXT:    v_mov_b32_e32 v1, v3
 ; FEATURE-NEXT:    v_mov_b32_e32 v0, 0
 ; FEATURE-NEXT:    v_mov_b32_e32 v2, v4
-; FEATURE-NEXT:    global_store_dwordx2 v0, v[3:4], s[4:5]
+; FEATURE-NEXT:    global_store_dwordx2 v0, v[3:4], s[12:13]
 ; FEATURE-NEXT:  .LBB9_4: ; %bb.3
 ; FEATURE-NEXT:    s_or_b64 exec, exec, s[2:3]
 ; FEATURE-NEXT:    v_mov_b32_e32 v0, 0
 ; FEATURE-NEXT:    s_waitcnt vmcnt(0)
-; FEATURE-NEXT:    global_store_dwordx2 v0, v[1:2], s[6:7]
+; FEATURE-NEXT:    global_store_dwordx2 v0, v[1:2], s[14:15]
 ; FEATURE-NEXT:    s_endpgm
 ;
 ; DEFAULT-LABEL: v8i8_phi_zeroinit:
 ; DEFAULT:       ; %bb.0: ; %entry
-; DEFAULT-NEXT:    s_load_dwordx8 s[0:7], s[0:1], 0x24
+; DEFAULT-NEXT:    s_load_dwordx8 s[8:15], s[4:5], 0x24
 ; DEFAULT-NEXT:    v_lshlrev_b32_e32 v5, 3, v0
+; DEFAULT-NEXT:    v_cmp_lt_u32_e64 s[0:1], 14, v0
 ; DEFAULT-NEXT:    v_cmp_gt_u32_e32 vcc, 15, v0
 ; DEFAULT-NEXT:    ; implicit-def: $vgpr1_vgpr2
 ; DEFAULT-NEXT:    s_waitcnt lgkmcnt(0)
-; DEFAULT-NEXT:    global_load_dwordx2 v[3:4], v5, s[0:1]
-; DEFAULT-NEXT:    v_cmp_lt_u32_e64 s[0:1], 14, v0
-; DEFAULT-NEXT:    s_and_saveexec_b64 s[8:9], vcc
+; DEFAULT-NEXT:    global_load_dwordx2 v[3:4], v5, s[8:9]
+; DEFAULT-NEXT:    s_and_saveexec_b64 s[2:3], vcc
 ; DEFAULT-NEXT:    s_cbranch_execz .LBB9_2
 ; DEFAULT-NEXT:  ; %bb.1: ; %bb.1
-; DEFAULT-NEXT:    global_load_dwordx2 v[1:2], v5, s[2:3]
-; DEFAULT-NEXT:    s_mov_b32 s2, 0
-; DEFAULT-NEXT:    s_mov_b32 s3, s2
+; DEFAULT-NEXT:    global_load_dwordx2 v[1:2], v5, s[10:11]
+; DEFAULT-NEXT:    s_mov_b32 s4, 0
 ; DEFAULT-NEXT:    v_cmp_gt_u32_e32 vcc, 7, v0
+; DEFAULT-NEXT:    s_mov_b32 s5, s4
 ; DEFAULT-NEXT:    s_waitcnt vmcnt(1)
-; DEFAULT-NEXT:    v_mov_b32_e32 v4, s3
-; DEFAULT-NEXT:    v_mov_b32_e32 v3, s2
+; DEFAULT-NEXT:    v_mov_b32_e32 v3, s4
+; DEFAULT-NEXT:    v_mov_b32_e32 v4, s5
 ; DEFAULT-NEXT:    s_andn2_b64 s[0:1], s[0:1], exec
-; DEFAULT-NEXT:    s_and_b64 s[2:3], vcc, exec
-; DEFAULT-NEXT:    s_or_b64 s[0:1], s[0:1], s[2:3]
+; DEFAULT-NEXT:    s_and_b64 s[4:5], vcc, exec
+; DEFAULT-NEXT:    s_or_b64 s[0:1], s[0:1], s[4:5]
 ; DEFAULT-NEXT:  .LBB9_2: ; %Flow
-; DEFAULT-NEXT:    s_or_b64 exec, exec, s[8:9]
+; DEFAULT-NEXT:    s_or_b64 exec, exec, s[2:3]
 ; DEFAULT-NEXT:    s_and_saveexec_b64 s[2:3], s[0:1]
 ; DEFAULT-NEXT:    s_cbranch_execz .LBB9_4
 ; DEFAULT-NEXT:  ; %bb.3: ; %bb.2
@@ -1136,12 +1136,12 @@ define amdgpu_kernel void @v8i8_phi_zeroinit(ptr addrspace(1) %src1, ptr addrspa
 ; DEFAULT-NEXT:    v_mov_b32_e32 v1, v3
 ; DEFAULT-NEXT:    v_mov_b32_e32 v0, 0
 ; DEFAULT-NEXT:    v_mov_b32_e32 v2, v4
-; DEFAULT-NEXT:    global_store_dwordx2 v0, v[3:4], s[4:5]
+; DEFAULT-NEXT:    global_store_dwordx2 v0, v[3:4], s[12:13]
 ; DEFAULT-NEXT:  .LBB9_4: ; %bb.3
 ; DEFAULT-NEXT:    s_or_b64 exec, exec, s[2:3]
 ; DEFAULT-NEXT:    v_mov_b32_e32 v0, 0
 ; DEFAULT-NEXT:    s_waitcnt vmcnt(0)
-; DEFAULT-NEXT:    global_store_dwordx2 v0, v[1:2], s[6:7]
+; DEFAULT-NEXT:    global_store_dwordx2 v0, v[1:2], s[14:15]
 ; DEFAULT-NEXT:    s_endpgm
 entry:
   %idx = call i32 @llvm.amdgcn.workitem.id.x()
@@ -1169,8 +1169,9 @@ bb.3:
 define amdgpu_kernel void @v8i8_phi_const(ptr addrspace(1) %src1, ptr addrspace(1) %src2, ptr addrspace(1) nocapture %dst0, ptr addrspace(1) nocapture %dst1) {
 ; GFX906-LABEL: v8i8_phi_const:
 ; GFX906:       ; %bb.0: ; %entry
-; GFX906-NEXT:    s_load_dwordx8 s[0:7], s[0:1], 0x24
+; GFX906-NEXT:    s_load_dwordx8 s[8:15], s[4:5], 0x24
 ; GFX906-NEXT:    v_lshlrev_b32_e32 v4, 3, v0
+; GFX906-NEXT:    v_cmp_lt_u32_e64 s[0:1], 14, v0
 ; GFX906-NEXT:    v_cmp_gt_u32_e32 vcc, 15, v0
 ; GFX906-NEXT:    ; implicit-def: $vgpr3
 ; GFX906-NEXT:    ; implicit-def: $vgpr13
@@ -1180,8 +1181,7 @@ define amdgpu_kernel void @v8i8_phi_const(ptr addrspace(1) %src1, ptr addrspace(
 ; GFX906-NEXT:    ; implicit-def: $vgpr12
 ; GFX906-NEXT:    ; implicit-def: $vgpr16
 ; GFX906-NEXT:    s_waitcnt lgkmcnt(0)
-; GFX906-NEXT:    global_load_dwordx2 v[1:2], v4, s[0:1]
-; GFX906-NEXT:    v_cmp_lt_u32_e64 s[0:1], 14, v0
+; GFX906-NEXT:    global_load_dwordx2 v[1:2], v4, s[8:9]
 ; GFX906-NEXT:    s_waitcnt vmcnt(0)
 ; GFX906-NEXT:    v_lshrrev_b32_e32 v5, 24, v2
 ; GFX906-NEXT:    v_lshrrev_b32_e32 v6, 16, v2
@@ -1189,13 +1189,13 @@ define amdgpu_kernel void @v8i8_phi_const(ptr addrspace(1) %src1, ptr addrspace(
 ; GFX906-NEXT:    v_lshrrev_b32_e32 v8, 24, v1
 ; GFX906-NEXT:    v_lshrrev_b32_e32 v9, 16, v1
 ; GFX906-NEXT:    v_lshrrev_b32_e32 v10, 8, v1
-; GFX906-NEXT:    s_and_saveexec_b64 s[8:9], vcc
+; GFX906-NEXT:    s_and_saveexec_b64 s[2:3], vcc
 ; GFX906-NEXT:    s_cbranch_execz .LBB10_2
 ; GFX906-NEXT:  ; %bb.1: ; %bb.1
-; GFX906-NEXT:    global_load_dwordx2 v[3:4], v4, s[2:3]
+; GFX906-NEXT:    global_load_dwordx2 v[3:4], v4, s[10:11]
 ; GFX906-NEXT:    v_cmp_gt_u32_e32 vcc, 7, v0
 ; GFX906-NEXT:    s_andn2_b64 s[0:1], s[0:1], exec
-; GFX906-NEXT:    s_and_b64 s[2:3], vcc, exec
+; GFX906-NEXT:    s_and_b64 s[4:5], vcc, exec
 ; GFX906-NEXT:    v_mov_b32_e32 v1, 1
 ; GFX906-NEXT:    v_mov_b32_e32 v10, 2
 ; GFX906-NEXT:    v_mov_b32_e32 v9, 3
@@ -1204,7 +1204,7 @@ define amdgpu_kernel void @v8i8_phi_const(ptr addrspace(1) %src1, ptr addrspace(
 ; GFX906-NEXT:    v_mov_b32_e32 v7, 6
 ; GFX906-NEXT:    v_mov_b32_e32 v6, 7
 ; GFX906-NEXT:    v_mov_b32_e32 v5, 8
-; GFX906-NEXT:    s_or_b64 s[0:1], s[0:1], s[2:3]
+; GFX906-NEXT:    s_or_b64 s[0:1], s[0:1], s[4:5]
 ; GFX906-NEXT:    s_waitcnt vmcnt(0)
 ; GFX906-NEXT:    v_lshrrev_b32_e32 v16, 24, v4
 ; GFX906-NEXT:    v_lshrrev_b32_e32 v12, 16, v4
@@ -1213,7 +1213,7 @@ define amdgpu_kernel void @v8i8_phi_const(ptr addrspace(1) %src1, ptr addrspace(
 ; GFX906-NEXT:    v_lshrrev_b32_e32 v11, 16, v3
 ; GFX906-NEXT:    v_lshrrev_b32_e32 v13, 8, v3
 ; GFX906-NEXT:  .LBB10_2: ; %Flow
-; GFX906-NEXT:    s_or_b64 exec, exec, s[8:9]
+; GFX906-NEXT:    s_or_b64 exec, exec, s[2:3]
 ; GFX906-NEXT:    s_and_saveexec_b64 s[2:3], s[0:1]
 ; GFX906-NEXT:    s_cbranch_execz .LBB10_4
 ; GFX906-NEXT:  ; %bb.3: ; %bb.2
@@ -1228,7 +1228,7 @@ define amdgpu_kernel void @v8i8_phi_const(ptr addrspace(1) %src1, ptr addrspace(
 ; GFX906-NEXT:    v_or_b32_sdwa v11, v6, v11 dst_sel:WORD_1 dst_unused:UNUSED_PAD src0_sel:BYTE_0 src1_sel:DWORD
 ; GFX906-NEXT:    v_mov_b32_e32 v0, 0
 ; GFX906-NEXT:    v_or_b32_sdwa v4, v4, v11 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:WORD_0 src1_sel:DWORD
-; GFX906-NEXT:    global_store_dwordx2 v0, v[3:4], s[4:5]
+; GFX906-NEXT:    global_store_dwordx2 v0, v[3:4], s[12:13]
 ; GFX906-NEXT:    v_mov_b32_e32 v3, v1
 ; GFX906-NEXT:    v_mov_b32_e32 v13, v10
 ; GFX906-NEXT:    v_mov_b32_e32 v11, v9
@@ -1250,12 +1250,13 @@ define amdgpu_kernel void @v8i8_phi_const(ptr addrspace(1) %src1, ptr addrspace(
 ; GFX906-NEXT:    v_or_b32_sdwa v3, v12, v3 dst_sel:WORD_1 dst_unused:UNUSED_PAD src0_sel:BYTE_0 src1_sel:DWORD
 ; GFX906-NEXT:    v_mov_b32_e32 v2, 0
 ; GFX906-NEXT:    v_or_b32_sdwa v1, v1, v3 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:WORD_0 src1_sel:DWORD
-; GFX906-NEXT:    global_store_dwordx2 v2, v[0:1], s[6:7]
+; GFX906-NEXT:    global_store_dwordx2 v2, v[0:1], s[14:15]
 ; GFX906-NEXT:    s_endpgm
 ; FEATURE-LABEL: v8i8_phi_const:
 ; FEATURE:       ; %bb.0: ; %entry
-; FEATURE-NEXT:    s_load_dwordx8 s[0:7], s[0:1], 0x24
+; FEATURE-NEXT:    s_load_dwordx8 s[8:15], s[4:5], 0x24
 ; FEATURE-NEXT:    v_lshlrev_b32_e32 v4, 3, v0
+; FEATURE-NEXT:    v_cmp_lt_u32_e64 s[0:1], 14, v0
 ; FEATURE-NEXT:    v_cmp_gt_u32_e32 vcc, 15, v0
 ; FEATURE-NEXT:    ; implicit-def: $vgpr3
 ; FEATURE-NEXT:    ; implicit-def: $vgpr13
@@ -1265,8 +1266,7 @@ define amdgpu_kernel void @v8i8_phi_const(ptr addrspace(1) %src1, ptr addrspace(
 ; FEATURE-NEXT:    ; implicit-def: $vgpr12
 ; FEATURE-NEXT:    ; implicit-def: $vgpr16
 ; FEATURE-NEXT:    s_waitcnt lgkmcnt(0)
-; FEATURE-NEXT:    global_load_dwordx2 v[1:2], v4, s[0:1]
-; FEATURE-NEXT:    v_cmp_lt_u32_e64 s[0:1], 14, v0
+; FEATURE-NEXT:    global_load_dwordx2 v[1:2], v4, s[8:9]
 ; FEATURE-NEXT:    s_waitcnt vmcnt(0)
 ; FEATURE-NEXT:    v_lshrrev_b32_e32 v5, 24, v2
 ; FEATURE-NEXT:    v_lshrrev_b32_e32 v6, 16, v2
@@ -1274,13 +1274,13 @@ define amdgpu_kernel void @v8i8_phi_const(ptr addrspace(1) %src1, ptr addrspace(
 ; FEATURE-NEXT:    v_lshrrev_b32_e32 v8, 24, v1
 ; FEATURE-NEXT:    v_lshrrev_b32_e32 v9, 16, v1
 ; FEATURE-NEXT:    v_lshrrev_b32_e32 v10, 8, v1
-; FEATURE-NEXT:    s_and_saveexec_b64 s[8:9], vcc
+; FEATURE-NEXT:    s_and_saveexec_b64 s[2:3], vcc
 ; FEATURE-NEXT:    s_cbranch_execz .LBB10_2
 ; FEATURE-NEXT:  ; %bb.1: ; %bb.1
-; FEATURE-NEXT:    global_load_dwordx2 v[3:4], v4, s[2:3]
+; FEATURE-NEXT:    global_load_dwordx2 v[3:4], v4, s[10:11]
 ; FEATURE-NEXT:    v_cmp_gt_u32_e32 vcc, 7, v0
 ; FEATURE-NEXT:    s_andn2_b64 s[0:1], s[0:1], exec
-; FEATURE-NEXT:    s_and_b64 s[2:3], vcc, exec
+; FEATURE-NEXT:    s_and_b64 s[4:5], vcc, exec
 ; FEATURE-NEXT:    v_mov_b32_e32 v1, 1
 ; FEATURE-NEXT:    v_mov_b32_e32 v10, 2
 ; FEATURE-NEXT:    v_mov_b32_e32 v9, 3
@@ -1289,7 +1289,7 @@ define amdgpu_kernel void @v8i8_phi_const(ptr addrspace(1) %src1, ptr addrspace(
 ; FEATURE-NEXT:    v_mov_b32_e32 v7, 6
 ; FEATURE-NEXT:    v_mov_b32_e32 v6, 7
 ; FEATURE-NEXT:    v_mov_b32_e32 v5, 8
-; FEATURE-NEXT:    s_or_b64 s[0:1], s[0:1], s[2:3]
+; FEATURE-NEXT:    s_or_b64 s[0:1], s[0:1], s[4:5]
 ; FEATURE-NEXT:    s_waitcnt vmcnt(0)
 ; FEATURE-NEXT:    v_lshrrev_b32_e32 v16, 24, v4
 ; FEATURE-NEXT:    v_lshrrev_b32_e32 v12, 16, v4
@@ -1298,7 +1298,7 @@ define amdgpu_kernel void @v8i8_phi_const(ptr addrspace(1) %src1, ptr addrspace(
 ; FEATURE-NEXT:    v_lshrrev_b32_e32 v11, 16, v3
 ; FEATURE-NEXT:    v_lshrrev_b32_e32 v13, 8, v3
 ; FEATURE-NEXT:  .LBB10_2: ; %Flow
-; FEATURE-NEXT:    s_or_b64 exec, exec, s[8:9]
+; FEATURE-NEXT:    s_or_b64 exec, exec, s[2:3]
 ; FEATURE-NEXT:    s_and_saveexec_b64 s[2:3], s[0:1]
 ; FEATURE-NEXT:    s_cbranch_execz .LBB10_4
 ; FEATURE-NEXT:  ; %bb.3: ; %bb.2
@@ -1313,7 +1313,7 @@ define amdgpu_kernel void @v8i8_phi_const(ptr addrspace(1) %src1, ptr addrspace(
 ; FEATURE-NEXT:    v_or_b32_sdwa v11, v6, v11 dst_sel:WORD_1 dst_unused:UNUSED_PAD src0_sel:BYTE_0 src1_sel:DWORD
 ; FEATURE-NEXT:    v_mov_b32_e32 v0, 0
 ; FEATURE-NEXT:    v_or_b32_sdwa v4, v4, v11 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:WORD_0 src1_sel:DWORD
-; FEATURE-NEXT:    global_store_dwordx2 v0, v[3:4], s[4:5]
+; FEATURE-NEXT:    global_store_dwordx2 v0, v[3:4], s[12:13]
 ; FEATURE-NEXT:    v_mov_b32_e32 v3, v1
 ; FEATURE-NEXT:    v_mov_b32_e32 v13, v10
 ; FEATURE-NEXT:    v_mov_b32_e32 v11, v9
@@ -1335,13 +1335,14 @@ define amdgpu_kernel void @v8i8_phi_const(ptr addrspace(1) %src1, ptr addrspace(
 ; FEATURE-NEXT:    v_or_b32_sdwa v3, v12, v3 dst_sel:WORD_1 dst_unused:UNUSED_PAD src0_sel:BYTE_0 src1_sel:DWORD
 ; FEATURE-NEXT:    v_mov_b32_e32 v2, 0
 ; FEATURE-NEXT:    v_or_b32_sdwa v1, v1, v3 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:WORD_0 src1_sel:DWORD
-; FEATURE-NEXT:    global_store_dwordx2 v2, v[0:1], s[6:7]
+; FEATURE-NEXT:    global_store_dwordx2 v2, v[0:1], s[14:15]
 ; FEATURE-NEXT:    s_endpgm
 ;
 ; DEFAULT-LABEL: v8i8_phi_const:
 ; DEFAULT:       ; %bb.0: ; %entry
-; DEFAULT-NEXT:    s_load_dwordx8 s[0:7], s[0:1], 0x24
+; DEFAULT-NEXT:    s_load_dwordx8 s[8:15], s[4:5], 0x24
 ; DEFAULT-NEXT:    v_lshlrev_b32_e32 v4, 3, v0
+; DEFAULT-NEXT:    v_cmp_lt_u32_e64 s[0:1], 14, v0
 ; DEFAULT-NEXT:    v_cmp_gt_u32_e32 vcc, 15, v0
 ; DEFAULT-NEXT:    ; implicit-def: $vgpr3
 ; DEFAULT-NEXT:    ; implicit-def: $vgpr13
@@ -1351,8 +1352,7 @@ define amdgpu_kernel void @v8i8_phi_const(ptr addrspace(1) %src1, ptr addrspace(
 ; DEFAULT-NEXT:    ; implicit-def: $vgpr12
 ; DEFAULT-NEXT:    ; implicit-def: $vgpr16
 ; DEFAULT-NEXT:    s_waitcnt lgkmcnt(0)
-; DEFAULT-NEXT:    global_load_dwordx2 v[1:2], v4, s[0:1]
-; DEFAULT-NEXT:    v_cmp_lt_u32_e64 s[0:1], 14, v0
+; DEFAULT-NEXT:    global_load_dwordx2 v[1:2], v4, s[8:9]
 ; DEFAULT-NEXT:    s_waitcnt vmcnt(0)
 ; DEFAULT-NEXT:    v_lshrrev_b32_e32 v5, 24, v2
 ; DEFAULT-NEXT:    v_lshrrev_b32_e32 v6, 16, v2
@@ -1360,13 +1360,13 @@ define amdgpu_kernel void @v8i8_phi_const(ptr addrspace(1) %src1, ptr addrspace(
 ; DEFAULT-NEXT:    v_lshrrev_b32_e32 v8, 24, v1
 ; DEFAULT-NEXT:    v_lshrrev_b32_e32 v9, 16, v1
 ; DEFAULT-NEXT:    v_lshrrev_b32_e32 v10, 8, v1
-; DEFAULT-NEXT:    s_and_saveexec_b64 s[8:9], vcc
+; DEFAULT-NEXT:    s_and_saveexec_b64 s[2:3], vcc
 ; DEFAULT-NEXT:    s_cbranch_execz .LBB10_2
 ; DEFAULT-NEXT:  ; %bb.1: ; %bb.1
-; DEFAULT-NEXT:    global_load_dwordx2 v[3:4], v4, s[2:3]
+; DEFAULT-NEXT:    global_load_dwordx2 v[3:4], v4, s[10:11]
 ; DEFAULT-NEXT:    v_cmp_gt_u32_e32 vcc, 7, v0
 ; DEFAULT-NEXT:    s_andn2_b64 s[0:1], s[0:1], exec
-; DEFAULT-NEXT:    s_and_b64 s[2:3], vcc, exec
+; DEFAULT-NEXT:    s_and_b64 s[4:5], vcc, exec
 ; DEFAULT-NEXT:    v_mov_b32_e32 v1, 1
 ; DEFAULT-NEXT:    v_mov_b32_e32 v10, 2
 ; DEFAULT-NEXT:    v_mov_b32_e32 v9, 3
@@ -1375,7 +1375,7 @@ define amdgpu_kernel void @v8i8_phi_const(ptr addrspace(1) %src1, ptr addrspace(
 ; DEFAULT-NEXT:    v_mov_b32_e32 v7, 6
 ; DEFAULT-NEXT:    v_mov_b32_e32 v6, 7
 ; DEFAULT-NEXT:    v_mov_b32_e32 v5, 8
-; DEFAULT-NEXT:    s_or_b64 s[0:1], s[0:1], s[2:3]
+; DEFAULT-NEXT:    s_or_b64 s[0:1], s[0:1], s[4:5]
 ; DEFAULT-NEXT:    s_waitcnt vmcnt(0)
 ; DEFAULT-NEXT:    v_lshrrev_b32_e32 v16, 24, v4
 ; DEFAULT-NEXT:    v_lshrrev_b32_e32 v12, 16, v4
@@ -1384,7 +1384,7 @@ define amdgpu_kernel void @v8i8_phi_const(ptr addrspace(1) %src1, ptr addrspace(
 ; DEFAULT-NEXT:    v_lshrrev_b32_e32 v11, 16, v3
 ; DEFAULT-NEXT:    v_lshrrev_b32_e32 v13, 8, v3
 ; DEFAULT-NEXT:  .LBB10_2: ; %Flow
-; DEFAULT-NEXT:    s_or_b64 exec, exec, s[8:9]
+; DEFAULT-NEXT:    s_or_b64 exec, exec, s[2:3]
 ; DEFAULT-NEXT:    s_and_saveexec_b64 s[2:3], s[0:1]
 ; DEFAULT-NEXT:    s_cbranch_execz .LBB10_4
 ; DEFAULT-NEXT:  ; %bb.3: ; %bb.2
@@ -1399,7 +1399,7 @@ define amdgpu_kernel void @v8i8_phi_const(ptr addrspace(1) %src1, ptr addrspace(
 ; DEFAULT-NEXT:    v_or_b32_sdwa v11, v6, v11 dst_sel:WORD_1 dst_unused:UNUSED_PAD src0_sel:BYTE_0 src1_sel:DWORD
 ; DEFAULT-NEXT:    v_mov_b32_e32 v0, 0
 ; DEFAULT-NEXT:    v_or_b32_sdwa v4, v4, v11 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:WORD_0 src1_sel:DWORD
-; DEFAULT-NEXT:    global_store_dwordx2 v0, v[3:4], s[4:5]
+; DEFAULT-NEXT:    global_store_dwordx2 v0, v[3:4], s[12:13]
 ; DEFAULT-NEXT:    v_mov_b32_e32 v3, v1
 ; DEFAULT-NEXT:    v_mov_b32_e32 v13, v10
 ; DEFAULT-NEXT:    v_mov_b32_e32 v11, v9
@@ -1421,7 +1421,7 @@ define amdgpu_kernel void @v8i8_phi_const(ptr addrspace(1) %src1, ptr addrspace(
 ; DEFAULT-NEXT:    v_or_b32_sdwa v3, v12, v3 dst_sel:WORD_1 dst_unused:UNUSED_PAD src0_sel:BYTE_0 src1_sel:DWORD
 ; DEFAULT-NEXT:    v_mov_b32_e32 v2, 0
 ; DEFAULT-NEXT:    v_or_b32_sdwa v1, v1, v3 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:WORD_0 src1_sel:DWORD
-; DEFAULT-NEXT:    global_store_dwordx2 v2, v[0:1], s[6:7]
+; DEFAULT-NEXT:    global_store_dwordx2 v2, v[0:1], s[14:15]
 ; DEFAULT-NEXT:    s_endpgm
 entry:
   %idx = call i32 @llvm.amdgcn.workitem.id.x()
@@ -1449,88 +1449,88 @@ bb.3:
 define amdgpu_kernel void @v8i8_multi_block(ptr addrspace(1) %src1, ptr addrspace(1) %src2, ptr addrspace(1) nocapture %dst0, ptr addrspace(1) nocapture %dst1) {
 ; GFX906-LABEL: v8i8_multi_block:
 ; GFX906:       ; %bb.0: ; %entry
-; GFX906-NEXT:    s_load_dwordx8 s[0:7], s[0:1], 0x24
+; GFX906-NEXT:    s_load_dwordx8 s[8:15], s[4:5], 0x24
 ; GFX906-NEXT:    v_lshlrev_b32_e32 v6, 3, v0
 ; GFX906-NEXT:    v_mov_b32_e32 v5, 0
 ; GFX906-NEXT:    v_cmp_gt_u32_e32 vcc, 15, v0
 ; GFX906-NEXT:    s_waitcnt lgkmcnt(0)
-; GFX906-NEXT:    global_load_dwordx2 v[3:4], v6, s[0:1]
+; GFX906-NEXT:    global_load_dwordx2 v[3:4], v6, s[8:9]
 ; GFX906-NEXT:    s_waitcnt vmcnt(0)
 ; GFX906-NEXT:    v_mov_b32_e32 v1, v3
 ; GFX906-NEXT:    v_mov_b32_e32 v2, v4
 ; GFX906-NEXT:    s_and_saveexec_b64 s[0:1], vcc
 ; GFX906-NEXT:    s_cbranch_execz .LBB11_4
 ; GFX906-NEXT:  ; %bb.1: ; %bb.1
-; GFX906-NEXT:    global_load_dwordx2 v[1:2], v6, s[2:3]
+; GFX906-NEXT:    global_load_dwordx2 v[1:2], v6, s[10:11]
 ; GFX906-NEXT:    v_cmp_gt_u32_e32 vcc, 7, v0
 ; GFX906-NEXT:    s_and_saveexec_b64 s[2:3], vcc
 ; GFX906-NEXT:    s_cbranch_execz .LBB11_3
 ; GFX906-NEXT:  ; %bb.2: ; %bb.2
 ; GFX906-NEXT:    v_mov_b32_e32 v0, 0
-; GFX906-NEXT:    global_store_dwordx2 v0, v[3:4], s[4:5]
+; GFX906-NEXT:    global_store_dwordx2 v0, v[3:4], s[12:13]
 ; GFX906-NEXT:  .LBB11_3: ; %Flow
 ; GFX906-NEXT:    s_or_b64 exec, exec, s[2:3]
 ; GFX906-NEXT:  .LBB11_4: ; %bb.3
 ; GFX906-NEXT:    s_or_b64 exec, exec, s[0:1]
 ; GFX906-NEXT:    s_waitcnt vmcnt(0)
-; GFX906-NEXT:    global_store_dwordx2 v5, v[1:2], s[6:7]
+; GFX906-NEXT:    global_store_dwordx2 v5, v[1:2], s[14:15]
 ; GFX906-NEXT:    s_endpgm
 ; FEATURE-LABEL: v8i8_multi_block:
 ; FEATURE:       ; %bb.0: ; %entry
-; FEATURE-NEXT:    s_load_dwordx8 s[0:7], s[0:1], 0x24
+; FEATURE-NEXT:    s_load_dwordx8 s[8:15], s[4:5], 0x24
 ; FEATURE-NEXT:    v_lshlrev_b32_e32 v6, 3, v0
 ; FEATURE-NEXT:    v_mov_b32_e32 v5, 0
 ; FEATURE-NEXT:    v_cmp_gt_u32_e32 vcc, 15, v0
 ; FEATURE-NEXT:    s_waitcnt lgkmcnt(0)
-; FEATURE-NEXT:    global_load_dwordx2 v[3:4], v6, s[0:1]
+; FEATURE-NEXT:    global_load_dwordx2 v[3:4], v6, s[8:9]
 ; FEATURE-NEXT:    s_waitcnt vmcnt(0)
 ; FEATURE-NEXT:    v_mov_b32_e32 v1, v3
 ; FEATURE-NEXT:    v_mov_b32_e32 v2, v4
 ; FEATURE-NEXT:    s_and_saveexec_b64 s[0:1], vcc
 ; FEATURE-NEXT:    s_cbranch_execz .LBB11_4
 ; FEATURE-NEXT:  ; %bb.1: ; %bb.1
-; FEATURE-NEXT:    global_load_dwordx2 v[1:2], v6, s[2:3]
+; FEATURE-NEXT:    global_load_dwordx2 v[1:2], v6, s[10:11]
 ; FEATURE-NEXT:    v_cmp_gt_u32_e32 vcc, 7, v0
 ; FEATURE-NEXT:    s_and_saveexec_b64 s[2:3], vcc
 ; FEATURE-NEXT:    s_cbranch_execz .LBB11_3
 ; FEATURE-NEXT:  ; %bb.2: ; %bb.2
 ; FEATURE-NEXT:    v_mov_b32_e32 v0, 0
-; FEATURE-NEXT:    global_store_dwordx2 v0, v[3:4], s[4:5]
+; FEATURE-NEXT:    global_store_dwordx2 v0, v[3:4], s[12:13]
 ; FEATURE-NEXT:  .LBB11_3: ; %Flow
 ; FEATURE-NEXT:    s_or_b64 exec, exec, s[2:3]
 ; FEATURE-NEXT:  .LBB11_4: ; %bb.3
 ; FEATURE-NEXT:    s_or_b64 exec, exec, s[0:1]
 ; FEATURE-NEXT:    s_waitcnt vmcnt(0)
-; FEATURE-NEXT:    global_store_dwordx2 v5, v[1:2], s[6:7]
+; FEATURE-NEXT:    global_store_dwordx2 v5, v[1:2], s[14:15]
 ; FEATURE-NEXT:    s_endpgm
 ;
 ; DEFAULT-LABEL: v8i8_multi_block:
 ; DEFAULT:       ; %bb.0: ; %entry
-; DEFAULT-NEXT:    s_load_dwordx8 s[0:7], s[0:1], 0x24
+; DEFAULT-NEXT:    s_load_dwordx8 s[8:15], s[4:5], 0x24
 ; DEFAULT-NEXT:    v_lshlrev_b32_e32 v6, 3, v0
 ; DEFAULT-NEXT:    v_mov_b32_e32 v5, 0
 ; DEFAULT-NEXT:    v_cmp_gt_u32_e32 vcc, 15, v0
 ; DEFAULT-NEXT:    s_waitcnt lgkmcnt(0)
-; DEFAULT-NEXT:    global_load_dwordx2 v[3:4], v6, s[0:1]
+; DEFAULT-NEXT:    global_load_dwordx2 v[3:4], v6, s[8:9]
 ; DEFAULT-NEXT:    s_waitcnt vmcnt(0)
 ; DEFAULT-NEXT:    v_mov_b32_e32 v1, v3
 ; DEFAULT-NEXT:    v_mov_b32_e32 v2, v4
 ; DEFAULT-NEXT:    s_and_saveexec_b64 s[0:1], vcc
 ; DEFAULT-NEXT:    s_cbranch_execz .LBB11_4
 ; DEFAULT-NEXT:  ; %bb.1: ; %bb.1
-; DEFAULT-NEXT:    global_load_dwordx2 v[1:2], v6, s[2:3]
+; DEFAULT-NEXT:    global_load_dwordx2 v[1:2], v6, s[10:11]
 ; DEFAULT-NEXT:    v_cmp_gt_u32_e32 vcc, 7, v0
 ; DEFAULT-NEXT:    s_and_saveexec_b64 s[2:3], vcc
 ; DEFAULT-NEXT:    s_cbranch_execz .LBB11_3
 ; DEFAULT-NEXT:  ; %bb.2: ; %bb.2
 ; DEFAULT-NEXT:    v_mov_b32_e32 v0, 0
-; DEFAULT-NEXT:    global_store_dwordx2 v0, v[3:4], s[4:5]
+; DEFAULT-NEXT:    global_store_dwordx2 v0, v[3:4], s[12:13]
 ; DEFAULT-NEXT:  .LBB11_3: ; %Flow
 ; DEFAULT-NEXT:    s_or_b64 exec, exec, s[2:3]
 ; DEFAULT-NEXT:  .LBB11_4: ; %bb.3
 ; DEFAULT-NEXT:    s_or_b64 exec, exec, s[0:1]
 ; DEFAULT-NEXT:    s_waitcnt vmcnt(0)
-; DEFAULT-NEXT:    global_store_dwordx2 v5, v[1:2], s[6:7]
+; DEFAULT-NEXT:    global_store_dwordx2 v5, v[1:2], s[14:15]
 ; DEFAULT-NEXT:    s_endpgm
 entry:
   %idx = call i32 @llvm.amdgcn.workitem.id.x()
@@ -1557,50 +1557,50 @@ bb.3:
 define amdgpu_kernel void @v32i8_loop_carried(ptr addrspace(1) %src1, ptr addrspace(1) %src2, ptr addrspace(1) nocapture %dst) {
 ; GFX906-LABEL: v32i8_loop_carried:
 ; GFX906:       ; %bb.0: ; %entry
-; GFX906-NEXT:    s_load_dwordx2 s[2:3], s[0:1], 0x24
+; GFX906-NEXT:    s_load_dwordx2 s[0:1], s[4:5], 0x24
 ; GFX906-NEXT:    v_lshlrev_b32_e32 v1, 5, v0
 ; GFX906-NEXT:    v_cmp_lt_u32_e32 vcc, 14, v0
-; GFX906-NEXT:    s_mov_b32 s4, 0x2000604
+; GFX906-NEXT:    s_mov_b32 s2, 0x2000604
 ; GFX906-NEXT:    s_waitcnt lgkmcnt(0)
-; GFX906-NEXT:    global_load_dword v1, v1, s[2:3]
-; GFX906-NEXT:    s_mov_b64 s[2:3], 0
+; GFX906-NEXT:    global_load_dword v1, v1, s[0:1]
+; GFX906-NEXT:    s_mov_b64 s[0:1], 0
 ; GFX906-NEXT:    s_waitcnt vmcnt(0)
 ; GFX906-NEXT:    v_mov_b32_e32 v0, v1
 ; GFX906-NEXT:  .LBB12_1: ; %bb.1
 ; GFX906-NEXT:    ; =>This Inner Loop Header: Depth=1
 ; GFX906-NEXT:    s_and_b64 s[6:7], exec, vcc
-; GFX906-NEXT:    s_or_b64 s[2:3], s[6:7], s[2:3]
-; GFX906-NEXT:    v_perm_b32 v0, v1, v0, s4
-; GFX906-NEXT:    s_andn2_b64 exec, exec, s[2:3]
+; GFX906-NEXT:    s_or_b64 s[0:1], s[6:7], s[0:1]
+; GFX906-NEXT:    v_perm_b32 v0, v1, v0, s2
+; GFX906-NEXT:    s_andn2_b64 exec, exec, s[0:1]
 ; GFX906-NEXT:    s_cbranch_execnz .LBB12_1
 ; GFX906-NEXT:  ; %bb.2: ; %bb.2.loopexit
-; GFX906-NEXT:    s_or_b64 exec, exec, s[2:3]
-; GFX906-NEXT:    s_load_dwordx2 s[0:1], s[0:1], 0x34
+; GFX906-NEXT:    s_or_b64 exec, exec, s[0:1]
+; GFX906-NEXT:    s_load_dwordx2 s[0:1], s[4:5], 0x34
 ; GFX906-NEXT:    v_mov_b32_e32 v1, 0
 ; GFX906-NEXT:    s_waitcnt lgkmcnt(0)
 ; GFX906-NEXT:    global_store_dword v1, v0, s[0:1]
 ; GFX906-NEXT:    s_endpgm
 ; FEATURE-LABEL: v32i8_loop_carried:
 ; FEATURE:       ; %bb.0: ; %entry
-; FEATURE-NEXT:    s_load_dwordx2 s[2:3], s[0:1], 0x24
+; FEATURE-NEXT:    s_load_dwordx2 s[0:1], s[4:5], 0x24
 ; FEATURE-NEXT:    v_lshlrev_b32_e32 v1, 5, v0
 ; FEATURE-NEXT:    v_cmp_lt_u32_e32 vcc, 14, v0
-; FEATURE-NEXT:    s_mov_b32 s4, 0x2000604
+; FEATURE-NEXT:    s_mov_b32 s2, 0x2000604
 ; FEATURE-NEXT:    s_waitcnt lgkmcnt(0)
-; FEATURE-NEXT:    global_load_dword v1, v1, s[2:3]
-; FEATURE-NEXT:    s_mov_b64 s[2:3], 0
+; FEATURE-NEXT:    global_load_dword v1, v1, s[0:1]
+; FEATURE-NEXT:    s_mov_b64 s[0:1], 0
 ; FEATURE-NEXT:    s_waitcnt vmcnt(0)
 ; FEATURE-NEXT:    v_mov_b32_e32 v0, v1
 ; FEATURE-NEXT:  .LBB12_1: ; %bb.1
 ; FEATURE-NEXT:    ; =>This Inner Loop Header: Depth=1
 ; FEATURE-NEXT:    s_and_b64 s[6:7], exec, vcc
-; FEATURE-NEXT:    s_or_b64 s[2:3], s[6:7], s[2:3]
-; FEATURE-NEXT:    v_perm_b32 v0, v1, v0, s4
-; FEATURE-NEXT:    s_andn2_b64 exec, exec, s[2:3]
+; FEATURE-NEXT:    s_or_b64 s[0:1], s[6:7], s[0:1]
+; FEATURE-NEXT:    v_perm_b32 v0, v1, v0, s2
+; FEATURE-NEXT:    s_andn2_b64 exec, exec, s[0:1]
 ; FEATURE-NEXT:    s_cbranch_execnz .LBB12_1
 ; FEATURE-NEXT:  ; %bb.2: ; %bb.2.loopexit
-; FEATURE-NEXT:    s_or_b64 exec, exec, s[2:3]
-; FEATURE-NEXT:    s_load_dwordx2 s[0:1], s[0:1], 0x34
+; FEATURE-NEXT:    s_or_b64 exec, exec, s[0:1]
+; FEATURE-NEXT:    s_load_dwordx2 s[0:1], s[4:5], 0x34
 ; FEATURE-NEXT:    v_mov_b32_e32 v1, 0
 ; FEATURE-NEXT:    s_waitcnt lgkmcnt(0)
 ; FEATURE-NEXT:    global_store_dword v1, v0, s[0:1]
@@ -1608,25 +1608,25 @@ define amdgpu_kernel void @v32i8_loop_carried(ptr addrspace(1) %src1, ptr addrsp
 ;
 ; DEFAULT-LABEL: v32i8_loop_carried:
 ; DEFAULT:       ; %bb.0: ; %entry
-; DEFAULT-NEXT:    s_load_dwordx2 s[2:3], s[0:1], 0x24
+; DEFAULT-NEXT:    s_load_dwordx2 s[0:1], s[4:5], 0x24
 ; DEFAULT-NEXT:    v_lshlrev_b32_e32 v1, 5, v0
 ; DEFAULT-NEXT:    v_cmp_lt_u32_e32 vcc, 14, v0
-; DEFAULT-NEXT:    s_mov_b32 s4, 0x2000604
+; DEFAULT-NEXT:    s_mov_b32 s2, 0x2000604
 ; DEFAULT-NEXT:    s_waitcnt lgkmcnt(0)
-; DEFAULT-NEXT:    global_load_dword v1, v1, s[2:3]
-; DEFAULT-NEXT:    s_mov_b64 s[2:3], 0
+; DEFAULT-NEXT:    global_load_dword v1, v1, s[0:1]
+; DEFAULT-NEXT:    s_mov_b64 s[0:1], 0
 ; DEFAULT-NEXT:    s_waitcnt vmcnt(0)
 ; DEFAULT-NEXT:    v_mov_b32_e32 v0, v1
 ; DEFAULT-NEXT:  .LBB12_1: ; %bb.1
 ; DEFAULT-NEXT:    ; =>This Inner Loop Header: Depth=1
 ; DEFAULT-NEXT:    s_and_b64 s[6:7], exec, vcc
-; DEFAULT-NEXT:    s_or_b64 s[2:3], s[6:7], s[2:3]
-; DEFAULT-NEXT:    v_perm_b32 v0, v1, v0, s4
-; DEFAULT-NEXT:    s_andn2_b64 exec, exec, s[2:3]
+; DEFAULT-NEXT:    s_or_b64 s[0:1], s[6:7], s[0:1]
+; DEFAULT-NEXT:    v_perm_b32 v0, v1, v0, s2
+; DEFAULT-NEXT:    s_andn2_b64 exec, exec, s[0:1]
 ; DEFAULT-NEXT:    s_cbranch_execnz .LBB12_1
 ; DEFAULT-NEXT:  ; %bb.2: ; %bb.2.loopexit
-; DEFAULT-NEXT:    s_or_b64 exec, exec, s[2:3]
-; DEFAULT-NEXT:    s_load_dwordx2 s[0:1], s[0:1], 0x34
+; DEFAULT-NEXT:    s_or_b64 exec, exec, s[0:1]
+; DEFAULT-NEXT:    s_load_dwordx2 s[0:1], s[4:5], 0x34
 ; DEFAULT-NEXT:    v_mov_b32_e32 v1, 0
 ; DEFAULT-NEXT:    s_waitcnt lgkmcnt(0)
 ; DEFAULT-NEXT:    global_store_dword v1, v0, s[0:1]
@@ -1654,13 +1654,13 @@ bb.2:
 define amdgpu_kernel void @v8i8_multiuse_multiblock(ptr addrspace(1) %src1, ptr addrspace(1) %src2, ptr addrspace(1) nocapture %dst1, ptr addrspace(1) nocapture %dst2, ptr addrspace(1) nocapture %dst3) {
 ; GFX906-LABEL: v8i8_multiuse_multiblock:
 ; GFX906:       ; %bb.0: ; %entry
-; GFX906-NEXT:    s_load_dwordx8 s[4:11], s[0:1], 0x24
+; GFX906-NEXT:    s_load_dwordx8 s[8:15], s[4:5], 0x24
 ; GFX906-NEXT:    v_lshlrev_b32_e32 v1, 3, v0
-; GFX906-NEXT:    s_load_dwordx2 s[0:1], s[0:1], 0x44
+; GFX906-NEXT:    s_load_dwordx2 s[0:1], s[4:5], 0x44
 ; GFX906-NEXT:    v_cmp_lt_u32_e64 s[2:3], 14, v0
 ; GFX906-NEXT:    v_cmp_gt_u32_e32 vcc, 15, v0
 ; GFX906-NEXT:    s_waitcnt lgkmcnt(0)
-; GFX906-NEXT:    global_load_dwordx2 v[1:2], v1, s[4:5]
+; GFX906-NEXT:    global_load_dwordx2 v[1:2], v1, s[8:9]
 ; GFX906-NEXT:    s_waitcnt vmcnt(0)
 ; GFX906-NEXT:    v_lshrrev_b32_e32 v2, 16, v1
 ; GFX906-NEXT:    s_and_saveexec_b64 s[4:5], vcc
@@ -1683,10 +1683,10 @@ define amdgpu_kernel void @v8i8_multiuse_multiblock(ptr addrspace(1) %src1, ptr 
 ; GFX906-NEXT:    s_or_b64 s[2:3], s[2:3], s[6:7]
 ; GFX906-NEXT:    v_or_b32_sdwa v6, v5, v6 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:WORD_0 src1_sel:DWORD
 ; GFX906-NEXT:    v_or_b32_sdwa v4, v5, v4 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:WORD_0 src1_sel:DWORD
-; GFX906-NEXT:    global_store_dword v3, v1, s[8:9]
-; GFX906-NEXT:    global_store_dword v3, v7, s[8:9] offset:8
-; GFX906-NEXT:    global_store_dword v3, v6, s[8:9] offset:16
-; GFX906-NEXT:    global_store_dword v3, v4, s[8:9] offset:24
+; GFX906-NEXT:    global_store_dword v3, v1, s[12:13]
+; GFX906-NEXT:    global_store_dword v3, v7, s[12:13] offset:8
+; GFX906-NEXT:    global_store_dword v3, v6, s[12:13] offset:16
+; GFX906-NEXT:    global_store_dword v3, v4, s[12:13] offset:24
 ; GFX906-NEXT:  .LBB13_2: ; %Flow
 ; GFX906-NEXT:    s_or_b64 exec, exec, s[4:5]
 ; GFX906-NEXT:    s_and_saveexec_b64 s[4:5], s[2:3]
@@ -1708,10 +1708,10 @@ define amdgpu_kernel void @v8i8_multiuse_multiblock(ptr addrspace(1) %src1, ptr 
 ; GFX906-NEXT:    v_and_or_b32 v7, v1, s3, v6
 ; GFX906-NEXT:    v_or_b32_sdwa v4, v4, v5 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:WORD_0 src1_sel:DWORD
 ; GFX906-NEXT:    v_or_b32_e32 v2, v6, v2
-; GFX906-NEXT:    global_store_dword v0, v3, s[10:11]
-; GFX906-NEXT:    global_store_dword v0, v4, s[10:11] offset:8
-; GFX906-NEXT:    global_store_dword v0, v7, s[10:11] offset:16
-; GFX906-NEXT:    global_store_dword v0, v2, s[10:11] offset:24
+; GFX906-NEXT:    global_store_dword v0, v3, s[14:15]
+; GFX906-NEXT:    global_store_dword v0, v4, s[14:15] offset:8
+; GFX906-NEXT:    global_store_dword v0, v7, s[14:15] offset:16
+; GFX906-NEXT:    global_store_dword v0, v2, s[14:15] offset:24
 ; GFX906-NEXT:  .LBB13_4: ; %bb.3
 ; GFX906-NEXT:    s_or_b64 exec, exec, s[4:5]
 ; GFX906-NEXT:    s_movk_i32 s3, 0xff00
@@ -1739,13 +1739,13 @@ define amdgpu_kernel void @v8i8_multiuse_multiblock(ptr addrspace(1) %src1, ptr 
 ; GFX906-NEXT:    s_endpgm
 ; FEATURE-LABEL: v8i8_multiuse_multiblock:
 ; FEATURE:       ; %bb.0: ; %entry
-; FEATURE-NEXT:    s_load_dwordx8 s[4:11], s[0:1], 0x24
+; FEATURE-NEXT:    s_load_dwordx8 s[8:15], s[4:5], 0x24
 ; FEATURE-NEXT:    v_lshlrev_b32_e32 v1, 3, v0
-; FEATURE-NEXT:    s_load_dwordx2 s[0:1], s[0:1], 0x44
+; FEATURE-NEXT:    s_load_dwordx2 s[0:1], s[4:5], 0x44
 ; FEATURE-NEXT:    v_cmp_lt_u32_e64 s[2:3], 14, v0
 ; FEATURE-NEXT:    v_cmp_gt_u32_e32 vcc, 15, v0
 ; FEATURE-NEXT:    s_waitcnt lgkmcnt(0)
-; FEATURE-NEXT:    global_load_dwordx2 v[1:2], v1, s[4:5]
+; FEATURE-NEXT:    global_load_dwordx2 v[1:2], v1, s[8:9]
 ; FEATURE-NEXT:    s_waitcnt vmcnt(0)
 ; FEATURE-NEXT:    v_lshrrev_b32_e32 v2, 16, v1
 ; FEATURE-NEXT:    s_and_saveexec_b64 s[4:5], vcc
@@ -1768,10 +1768,10 @@ define amdgpu_kernel void @v8i8_multiuse_multiblock(ptr addrspace(1) %src1, ptr 
 ; FEATURE-NEXT:    s_or_b64 s[2:3], s[2:3], s[6:7]
 ; FEATURE-NEXT:    v_or_b32_sdwa v6, v5, v6 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:WORD_0 src1_sel:DWORD
 ; FEATURE-NEXT:    v_or_b32_sdwa v4, v5, v4 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:WORD_0 src1_sel:DWORD
-; FEATURE-NEXT:    global_store_dword v3, v1, s[8:9]
-; FEATURE-NEXT:    global_store_dword v3, v7, s[8:9] offset:8
-; FEATURE-NEXT:    global_store_dword v3, v6, s[8:9] offset:16
-; FEATURE-NEXT:    global_store_dword v3, v4, s[8:9] offset:24
+; FEATURE-NEXT:    global_store_dword v3, v1, s[12:13]
+; FEATURE-NEXT:    global_store_dword v3, v7, s[12:13] offset:8
+; FEATURE-NEXT:    global_store_dword v3, v6, s[12:13] offset:16
+; FEATURE-NEXT:    global_store_dword v3, v4, s[12:13] offset:24
 ; FEATURE-NEXT:  .LBB13_2: ; %Flow
 ; FEATURE-NEXT:    s_or_b64 exec, exec, s[4:5]
 ; FEATURE-NEXT:    s_and_saveexec_b64 s[4:5], s[2:3]
@@ -1793,10 +1793,10 @@ define amdgpu_kernel void @v8i8_multiuse_multiblock(ptr addrspace(1) %src1, ptr 
 ; FEATURE-NEXT:    v_and_or_b32 v7, v1, s3, v6
 ; FEATURE-NEXT:    v_or_b32_sdwa v4, v4, v5 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:WORD_0 src1_sel:DWORD
 ; FEATURE-NEXT:    v_or_b32_e32 v2, v6, v2
-; FEATURE-NEXT:    global_store_dword v0, v3, s[10:11]
-; FEATURE-NEXT:    global_store_dword v0, v4, s[10:11] offset:8
-; FEATURE-NEXT:    global_store_dword v0, v7, s[10:11] offset:16
-; FEATURE-NEXT:    global_store_dword v0, v2, s[10:11] offset:24
+; FEATURE-NEXT:    global_store_dword v0, v3, s[14:15]
+; FEATURE-NEXT:    global_store_dword v0, v4, s[14:15] offset:8
+; FEATURE-NEXT:    global_store_dword v0, v7, s[14:15] offset:16
+; FEATURE-NEXT:    global_store_dword v0, v2, s[14:15] offset:24
 ; FEATURE-NEXT:  .LBB13_4: ; %bb.3
 ; FEATURE-NEXT:    s_or_b64 exec, exec, s[4:5]
 ; FEATURE-NEXT:    s_movk_i32 s3, 0xff00
@@ -1825,13 +1825,13 @@ define amdgpu_kernel void @v8i8_multiuse_multiblock(ptr addrspace(1) %src1, ptr 
 ;
 ; DEFAULT-LABEL: v8i8_multiuse_multiblock:
 ; DEFAULT:       ; %bb.0: ; %entry
-; DEFAULT-NEXT:    s_load_dwordx8 s[4:11], s[0:1], 0x24
+; DEFAULT-NEXT:    s_load_dwordx8 s[8:15], s[4:5], 0x24
 ; DEFAULT-NEXT:    v_lshlrev_b32_e32 v1, 3, v0
-; DEFAULT-NEXT:    s_load_dwordx2 s[0:1], s[0:1], 0x44
+; DEFAULT-NEXT:    s_load_dwordx2 s[0:1], s[4:5], 0x44
 ; DEFAULT-NEXT:    v_cmp_lt_u32_e64 s[2:3], 14, v0
 ; DEFAULT-NEXT:    v_cmp_gt_u32_e32 vcc, 15, v0
 ; DEFAULT-NEXT:    s_waitcnt lgkmcnt(0)
-; DEFAULT-NEXT:    global_load_dwordx2 v[1:2], v1, s[4:5]
+; DEFAULT-NEXT:    global_load_dwordx2 v[1:2], v1, s[8:9]
 ; DEFAULT-NEXT:    s_waitcnt vmcnt(0)
 ; DEFAULT-NEXT:    v_lshrrev_b32_e32 v2, 16, v1
 ; DEFAULT-NEXT:    s_and_saveexec_b64 s[4:5], vcc
@@ -1854,10 +1854,10 @@ define amdgpu_kernel void @v8i8_multiuse_multiblock(ptr addrspace(1) %src1, ptr 
 ; DEFAULT-NEXT:    s_or_b64 s[2:3], s[2:3], s[6:7]
 ; DEFAULT-NEXT:    v_or_b32_sdwa v6, v5, v6 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:WORD_0 src1_sel:DWORD
 ; DEFAULT-NEXT:    v_or_b32_sdwa v4, v5, v4 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:WORD_0 src1_sel:DWORD
-; DEFAULT-NEXT:    global_store_dword v3, v1, s[8:9]
-; DEFAULT-NEXT:    global_store_dword v3, v7, s[8:9] offset:8
-; DEFAULT-NEXT:    global_store_dword v3, v6, s[8:9] offset:16
-; DEFAULT-NEXT:    global_store_dword v3, v4, s[8:9] offset:24
+; DEFAULT-NEXT:    global_store_dword v3, v1, s[12:13]
+; DEFAULT-NEXT:    global_store_dword v3, v7, s[12:13] offset:8
+; DEFAULT-NEXT:    global_store_dword v3, v6, s[12:13] offset:16
+; DEFAULT-NEXT:    global_store_dword v3, v4, s[12:13] offset:24
 ; DEFAULT-NEXT:  .LBB13_2: ; %Flow
 ; DEFAULT-NEXT:    s_or_b64 exec, exec, s[4:5]
 ; DEFAULT-NEXT:    s_and_saveexec_b64 s[4:5], s[2:3]
@@ -1879,10 +1879,10 @@ define amdgpu_kernel void @v8i8_multiuse_multiblock(ptr addrspace(1) %src1, ptr 
 ; DEFAULT-NEXT:    v_and_or_b32 v7, v1, s3, v6
 ; DEFAULT-NEXT:    v_or_b32_sdwa v4, v4, v5 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:WORD_0 src1_sel:DWORD
 ; DEFAULT-NEXT:    v_or_b32_e32 v2, v6, v2
-; DEFAULT-NEXT:    global_store_dword v0, v3, s[10:11]
-; DEFAULT-NEXT:    global_store_dword v0, v4, s[10:11] offset:8
-; DEFAULT-NEXT:    global_store_dword v0, v7, s[10:11] offset:16
-; DEFAULT-NEXT:    global_store_dword v0, v2, s[10:11] offset:24
+; DEFAULT-NEXT:    global_store_dword v0, v3, s[14:15]
+; DEFAULT-NEXT:    global_store_dword v0, v4, s[14:15] offset:8
+; DEFAULT-NEXT:    global_store_dword v0, v7, s[14:15] offset:16
+; DEFAULT-NEXT:    global_store_dword v0, v2, s[14:15] offset:24
 ; DEFAULT-NEXT:  .LBB13_4: ; %bb.3
 ; DEFAULT-NEXT:    s_or_b64 exec, exec, s[4:5]
 ; DEFAULT-NEXT:    s_movk_i32 s3, 0xff00
@@ -2004,7 +2004,7 @@ define amdgpu_kernel void @MissingInc_PhiChain(i1 %cmp1.i.i.i.i.i.not, <16 x i8>
 ; GFX906-NEXT:    s_endpgm
 ; FEATURE-LABEL: MissingInc_PhiChain:
 ; FEATURE:       ; %bb.0: ; %entry
-; FEATURE-NEXT:    s_load_dword s0, s[0:1], 0x24
+; FEATURE-NEXT:    s_load_dword s0, s[4:5], 0x24
 ; FEATURE-NEXT:    s_waitcnt lgkmcnt(0)
 ; FEATURE-NEXT:    s_bitcmp1_b32 s0, 0
 ; FEATURE-NEXT:    s_cselect_b64 s[2:3], -1, 0
@@ -2039,7 +2039,7 @@ define amdgpu_kernel void @MissingInc_PhiChain(i1 %cmp1.i.i.i.i.i.not, <16 x i8>
 ;
 ; DEFAULT-LABEL: MissingInc_PhiChain:
 ; DEFAULT:       ; %bb.0: ; %entry
-; DEFAULT-NEXT:    s_load_dword s0, s[0:1], 0x24
+; DEFAULT-NEXT:    s_load_dword s0, s[4:5], 0x24
 ; DEFAULT-NEXT:    s_waitcnt lgkmcnt(0)
 ; DEFAULT-NEXT:    s_bitcmp1_b32 s0, 0
 ; DEFAULT-NEXT:    s_cselect_b64 s[2:3], -1, 0

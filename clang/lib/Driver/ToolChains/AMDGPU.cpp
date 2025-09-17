@@ -621,24 +621,48 @@ void amdgpu::Linker::ConstructJob(Compilation &C, const JobAction &JA,
                                   const char *LinkingOutput) const {
   std::string Linker = getToolChain().GetLinkerPath();
   ArgStringList CmdArgs;
-  CmdArgs.push_back("--no-undefined");
-  CmdArgs.push_back("-shared");
+  if (!Args.hasArg(options::OPT_r)) {
+    CmdArgs.push_back("--no-undefined");
+    CmdArgs.push_back("-shared");
+  }
+
+  if (C.getDriver().isUsingLTO()) {
+    const bool ThinLTO = (C.getDriver().getLTOMode() == LTOK_Thin);
+    addLTOOptions(getToolChain(), Args, CmdArgs, Output, Inputs[0], ThinLTO);
+  } else if (Args.hasArg(options::OPT_mcpu_EQ))
+    CmdArgs.push_back(Args.MakeArgString(
+        "-plugin-opt=mcpu=" + Args.getLastArgValue(options::OPT_mcpu_EQ)));
 
   addLinkerCompressDebugSectionsOption(getToolChain(), Args, CmdArgs);
   Args.AddAllArgs(CmdArgs, options::OPT_L);
   getToolChain().AddFilePathLibArgs(Args, CmdArgs);
   AddLinkerInputs(getToolChain(), Inputs, Args, CmdArgs, JA);
-  if (C.getDriver().isUsingLTO())
-    addLTOOptions(getToolChain(), Args, CmdArgs, Output, Inputs[0],
-                  C.getDriver().getLTOMode() == LTOK_Thin);
-  else if (Args.hasArg(options::OPT_mcpu_EQ))
-    CmdArgs.push_back(Args.MakeArgString(
-        "-plugin-opt=mcpu=" + Args.getLastArgValue(options::OPT_mcpu_EQ)));
+
   CmdArgs.push_back("-o");
   CmdArgs.push_back(Output.getFilename());
   C.addCommand(std::make_unique<Command>(
       JA, *this, ResponseFileSupport::AtFileCurCP(), Args.MakeArgString(Linker),
       CmdArgs, Inputs, Output));
+}
+
+static unsigned getFullLTOPartitions(const Driver &D, const ArgList &Args) {
+  int Value = 0;
+  StringRef A = Args.getLastArgValue(options::OPT_flto_partitions_EQ, "8");
+  if (A.getAsInteger(10, Value) || (Value < 1)) {
+    Arg *Arg = Args.getLastArg(options::OPT_flto_partitions_EQ);
+    D.Diag(diag::err_drv_invalid_int_value)
+        << Arg->getAsString(Args) << Arg->getValue();
+    return 1;
+  }
+
+  return Value;
+}
+
+void amdgpu::addFullLTOPartitionOption(const Driver &D,
+                                       const llvm::opt::ArgList &Args,
+                                       llvm::opt::ArgStringList &CmdArgs) {
+  CmdArgs.push_back(Args.MakeArgString("--lto-partitions=" +
+                                       Twine(getFullLTOPartitions(D, Args))));
 }
 
 void amdgpu::getAMDGPUTargetFeatures(const Driver &D,
@@ -648,7 +672,11 @@ void amdgpu::getAMDGPUTargetFeatures(const Driver &D,
                                      StringRef TcTargetID) {
   // Add target ID features to -target-feature options. No diagnostics should
   // be emitted here since invalid target ID is diagnosed at other places.
-  StringRef TargetID = Args.getLastArgValue(options::OPT_mcpu_EQ);
+  StringRef TargetID;
+  if (Args.hasArg(options::OPT_mcpu_EQ))
+    TargetID = Args.getLastArgValue(options::OPT_mcpu_EQ);
+  else if (Args.hasArg(options::OPT_march_EQ))
+    TargetID = Args.getLastArgValue(options::OPT_march_EQ);
 
   // Use this toolchain's TargetID if mcpu is not defined
   if (TargetID.empty() && !TcTargetID.empty())
@@ -1059,6 +1087,23 @@ RocmInstallationDetector::getCommonBitcodeLibs(
   return BCLibs;
 }
 
+bool AMDGPUToolChain::shouldSkipArgument(const llvm::opt::Arg *A) const {
+  Option O = A->getOption();
+  if (O.matches(options::OPT_fPIE) || O.matches(options::OPT_fpie))
+    return true;
+  return false;
+}
+
+llvm::SmallVector<std::string, 12>
+ROCMToolChain::getCommonDeviceLibNames(const llvm::opt::ArgList &DriverArgs,
+                                       const std::string &GPUArch,
+                                       bool isOpenMP) const {
+  RocmInstallationDetector RocmInstallation(getDriver(), getTriple(),
+                                            DriverArgs, true, true);
+  return amdgpu::dlr::getCommonDeviceLibNames(DriverArgs, getDriver(), GPUArch,
+                                              isOpenMP, RocmInstallation);
+}
+
 bool AMDGPUToolChain::shouldSkipSanitizeOption(
     const ToolChain &TC, const llvm::opt::ArgList &DriverArgs,
     StringRef TargetID, const llvm::opt::Arg *A) const {
@@ -1093,21 +1138,4 @@ bool AMDGPUToolChain::shouldSkipSanitizeOption(
     return true;
   }
   return false;
-}
-
-bool AMDGPUToolChain::shouldSkipArgument(const llvm::opt::Arg *A) const {
-  Option O = A->getOption();
-  if (O.matches(options::OPT_fPIE) || O.matches(options::OPT_fpie))
-    return true;
-  return false;
-}
-
-llvm::SmallVector<std::string, 12>
-ROCMToolChain::getCommonDeviceLibNames(const llvm::opt::ArgList &DriverArgs,
-                                       const std::string &GPUArch,
-                                       bool isOpenMP) const {
-  RocmInstallationDetector RocmInstallation(getDriver(), getTriple(),
-                                            DriverArgs, true, true);
-  return amdgpu::dlr::getCommonDeviceLibNames(DriverArgs, getDriver(), GPUArch,
-                                              isOpenMP, RocmInstallation);
 }

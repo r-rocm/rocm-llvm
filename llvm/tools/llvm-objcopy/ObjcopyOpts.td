@@ -239,6 +239,9 @@ defm dump_section
     : Eq<"dump-section",
          "Dump contents of section named <section> into file <file>">,
       MetaVarName<"section=file">;
+
+defm dump_offload_bundle : Eq<"dump-offload-bundle", "Dump the contents specified by URI">;
+
 defm prefix_symbols
     : Eq<"prefix-symbols", "Add <prefix> to the start of every symbol name">,
       MetaVarName<"prefix">;
@@ -267,6 +270,13 @@ defm change_section_lma
     : Eq<"change-section-lma", "Shift LMA of non-zero-sized sections in the program header by <val>">,
       MetaVarName<"*{+|-}val">;
 
+defm change_section_address
+    : Eq<"change-section-address", "Set the address of the <section> to, or adjust it by, <val>">,
+      MetaVarName<"sectionpattern{=|+|-}val">;
+def adjust_section_vma : JoinedOrSeparate<["--"], "adjust-section-vma">,
+                   Alias<change_section_address>,
+                   HelpText<"Alias for --change-section-address">;
+
 defm add_symbol
     : Eq<"add-symbol", "Add new symbol <name> to .symtab. Accepted flags: "
          "global, local, weak, default, hidden, protected, file, section, object, "
@@ -290,3 +300,7 @@ defm pad_to
                    "of zero or the value specified by the --gap-fill option. "
                    "This option is only supported for ELF input and binary output">,
       MetaVarName<"address">;
+
+defm remove_note
+    : Eq<"remove-note", "Remove note(s) with <type_id> and optional <name>">,
+      MetaVarName<"[name/]type_id">;

@@ -43,13 +43,6 @@
 #include <llvm/Support/MemoryBuffer.h>
 #include <llvm/Support/SHA256.h>
 
-namespace clang {
-class DiagnosticOptions;
-namespace driver {
-class Command;
-} // namespace driver
-} // namespace clang
-
 namespace llvm {
 class raw_ostream;
 }
@@ -73,7 +66,8 @@ public:
 
   // helper to work around the comgr-xxxxx string appearing in files
   static void addFileContents(HashAlgorithm &H, llvm::StringRef Buf);
-  static void addString(HashAlgorithm &H, llvm::StringRef Buf);
+  static void addString(HashAlgorithm &H, llvm::StringRef S);
+  static std::optional<size_t> searchComgrTmpModel(llvm::StringRef S);
 
   // helper since several command types just write to a single output file
   static llvm::Error writeUniqueExecuteOutput(llvm::StringRef OutputFilename,
@@ -85,38 +79,6 @@ protected:
   virtual ActionClass getClass() const = 0;
   virtual void addOptionsIdentifier(HashAlgorithm &) const = 0;
   virtual llvm::Error addInputIdentifier(HashAlgorithm &) const = 0;
-};
-
-class CachedCommand final : public CachedCommandAdaptor {
-public:
-  using ExecuteFnTy = std::function<amd_comgr_status_t(
-      clang::driver::Command &, llvm::raw_ostream &, clang::DiagnosticOptions &)>;
-
-private:
-  clang::driver::Command &Command;
-  clang::DiagnosticOptions &DiagOpts;
-  ExecuteFnTy ExecuteImpl;
-
-  // To avoid copies, store the output of execute, such that readExecuteOutput
-  // can return a reference.
-  std::unique_ptr<llvm::MemoryBuffer> Output;
-
-public:
-  CachedCommand(clang::driver::Command &Command,
-                clang::DiagnosticOptions &DiagOpts,
-                ExecuteFnTy &&ExecuteImpl);
-
-  bool canCache() const override;
-  llvm::Error writeExecuteOutput(llvm::StringRef CachedBuffer) override;
-  llvm::Expected<llvm::StringRef> readExecuteOutput() override;
-  amd_comgr_status_t execute(llvm::raw_ostream &LogS) override;
-
-  ~CachedCommand() override = default;
-
-protected:
-  ActionClass getClass() const override;
-  void addOptionsIdentifier(HashAlgorithm &) const override;
-  llvm::Error addInputIdentifier(HashAlgorithm &) const override;
 };
 } // namespace COMGR
 

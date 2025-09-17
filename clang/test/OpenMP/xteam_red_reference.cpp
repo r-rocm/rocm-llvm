@@ -50,6 +50,7 @@ void compute_reduced_sum(int n, int &x) {
 // CHECK-NEXT:    store ptr [[TMP1]], ptr [[DOTADDR1_ASCAST]], align 8
 // CHECK-NEXT:    [[TMP2:%.*]] = load ptr, ptr [[X_ADDR_ASCAST]], align 8
 // CHECK-NEXT:    store ptr [[TMP2]], ptr [[TMP_ASCAST]], align 8
+// CHECK-NEXT:    call void @__kmpc_specialized_kernel_init()
 // CHECK-NEXT:    [[TMP3:%.*]] = alloca i32, align 4, addrspace(5)
 // CHECK-NEXT:    store i32 0, ptr addrspace(5) [[TMP3]], align 4
 // CHECK-NEXT:    store i32 0, ptr [[I_ASCAST]], align 4

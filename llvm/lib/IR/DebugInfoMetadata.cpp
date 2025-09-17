@@ -663,14 +663,16 @@ DIEnumerator *DIEnumerator::getImpl(LLVMContext &Context, const APInt &Value,
 DIBasicType *DIBasicType::getImpl(LLVMContext &Context, unsigned Tag,
                                   MDString *Name, uint64_t SizeInBits,
                                   uint32_t AlignInBits, unsigned Encoding,
-                                  DIFlags Flags, StorageType Storage,
-                                  bool ShouldCreate) {
+                                  uint32_t NumExtraInhabitants, DIFlags Flags,
+                                  StorageType Storage, bool ShouldCreate) {
   assert(isCanonical(Name) && "Expected canonical MDString");
-  DEFINE_GETIMPL_LOOKUP(DIBasicType,
-                        (Tag, Name, SizeInBits, AlignInBits, Encoding, Flags));
+  DEFINE_GETIMPL_LOOKUP(DIBasicType, (Tag, Name, SizeInBits, AlignInBits,
+                                      Encoding, NumExtraInhabitants, Flags));
   Metadata *Ops[] = {nullptr, nullptr, Name};
-  DEFINE_GETIMPL_STORE(DIBasicType,
-                       (Tag, SizeInBits, AlignInBits, Encoding, Flags), Ops);
+  DEFINE_GETIMPL_STORE(
+      DIBasicType,
+      (Tag, SizeInBits, AlignInBits, Encoding, NumExtraInhabitants, Flags),
+      Ops);
 }
 
 std::optional<DIBasicType::Signedness> DIBasicType::getSignedness() const {
@@ -768,35 +770,36 @@ DICompositeType *DICompositeType::getImpl(
     Metadata *Elements, unsigned RuntimeLang, Metadata *VTableHolder,
     Metadata *TemplateParams, MDString *Identifier, Metadata *Discriminator,
     Metadata *DataLocation, Metadata *Associated, Metadata *Allocated,
-    Metadata *Rank, Metadata *Annotations, StorageType Storage,
-    bool ShouldCreate) {
+    Metadata *Rank, Metadata *Annotations, Metadata *Specification,
+    uint32_t NumExtraInhabitants, StorageType Storage, bool ShouldCreate) {
   assert(isCanonical(Name) && "Expected canonical MDString");
 
   // Keep this in sync with buildODRType.
-  DEFINE_GETIMPL_LOOKUP(DICompositeType,
-                        (Tag, Name, File, Line, Scope, BaseType, SizeInBits,
-                         AlignInBits, OffsetInBits, Flags, Elements,
-                         RuntimeLang, VTableHolder, TemplateParams, Identifier,
-                         Discriminator, DataLocation, Associated, Allocated,
-                         Rank, Annotations));
+  DEFINE_GETIMPL_LOOKUP(
+      DICompositeType,
+      (Tag, Name, File, Line, Scope, BaseType, SizeInBits, AlignInBits,
+       OffsetInBits, Flags, Elements, RuntimeLang, VTableHolder, TemplateParams,
+       Identifier, Discriminator, DataLocation, Associated, Allocated, Rank,
+       Annotations, Specification, NumExtraInhabitants));
   Metadata *Ops[] = {File,          Scope,        Name,           BaseType,
                      Elements,      VTableHolder, TemplateParams, Identifier,
                      Discriminator, DataLocation, Associated,     Allocated,
-                     Rank,          Annotations};
-  DEFINE_GETIMPL_STORE(
-      DICompositeType,
-      (Tag, Line, RuntimeLang, SizeInBits, AlignInBits, OffsetInBits, Flags),
-      Ops);
+                     Rank,          Annotations,  Specification};
+  DEFINE_GETIMPL_STORE(DICompositeType,
+                       (Tag, Line, RuntimeLang, SizeInBits, AlignInBits,
+                        OffsetInBits, NumExtraInhabitants, Flags),
+                       Ops);
 }
 
 DICompositeType *DICompositeType::buildODRType(
     LLVMContext &Context, MDString &Identifier, unsigned Tag, MDString *Name,
     Metadata *File, unsigned Line, Metadata *Scope, Metadata *BaseType,
     uint64_t SizeInBits, uint32_t AlignInBits, uint64_t OffsetInBits,
-    DIFlags Flags, Metadata *Elements, unsigned RuntimeLang,
-    Metadata *VTableHolder, Metadata *TemplateParams, Metadata *Discriminator,
-    Metadata *DataLocation, Metadata *Associated, Metadata *Allocated,
-    Metadata *Rank, Metadata *Annotations) {
+    Metadata *Specification, uint32_t NumExtraInhabitants, DIFlags Flags,
+    Metadata *Elements, unsigned RuntimeLang, Metadata *VTableHolder,
+    Metadata *TemplateParams, Metadata *Discriminator, Metadata *DataLocation,
+    Metadata *Associated, Metadata *Allocated, Metadata *Rank,
+    Metadata *Annotations) {
   assert(!Identifier.getString().empty() && "Expected valid identifier");
   if (!Context.isODRUniquingDebugTypes())
     return nullptr;
@@ -806,8 +809,8 @@ DICompositeType *DICompositeType::buildODRType(
                Context, Tag, Name, File, Line, Scope, BaseType, SizeInBits,
                AlignInBits, OffsetInBits, Flags, Elements, RuntimeLang,
                VTableHolder, TemplateParams, &Identifier, Discriminator,
-               DataLocation, Associated, Allocated, Rank, Annotations);
-
+               DataLocation, Associated, Allocated, Rank, Annotations,
+               Specification, NumExtraInhabitants);
   if (CT->getTag() != Tag)
     return nullptr;
 
@@ -818,11 +821,11 @@ DICompositeType *DICompositeType::buildODRType(
 
   // Mutate CT in place.  Keep this in sync with getImpl.
   CT->mutate(Tag, Line, RuntimeLang, SizeInBits, AlignInBits, OffsetInBits,
-             Flags);
+             NumExtraInhabitants, Flags);
   Metadata *Ops[] = {File,          Scope,        Name,           BaseType,
                      Elements,      VTableHolder, TemplateParams, &Identifier,
                      Discriminator, DataLocation, Associated,     Allocated,
-                     Rank,          Annotations};
+                     Rank,          Annotations,  Specification};
   assert((std::end(Ops) - std::begin(Ops)) == (int)CT->getNumOperands() &&
          "Mismatched number of operands");
   for (unsigned I = 0, E = CT->getNumOperands(); I != E; ++I)
@@ -835,10 +838,11 @@ DICompositeType *DICompositeType::getODRType(
     LLVMContext &Context, MDString &Identifier, unsigned Tag, MDString *Name,
     Metadata *File, unsigned Line, Metadata *Scope, Metadata *BaseType,
     uint64_t SizeInBits, uint32_t AlignInBits, uint64_t OffsetInBits,
-    DIFlags Flags, Metadata *Elements, unsigned RuntimeLang,
-    Metadata *VTableHolder, Metadata *TemplateParams, Metadata *Discriminator,
-    Metadata *DataLocation, Metadata *Associated, Metadata *Allocated,
-    Metadata *Rank, Metadata *Annotations) {
+    Metadata *Specification, uint32_t NumExtraInhabitants, DIFlags Flags,
+    Metadata *Elements, unsigned RuntimeLang, Metadata *VTableHolder,
+    Metadata *TemplateParams, Metadata *Discriminator, Metadata *DataLocation,
+    Metadata *Associated, Metadata *Allocated, Metadata *Rank,
+    Metadata *Annotations) {
   assert(!Identifier.getString().empty() && "Expected valid identifier");
   if (!Context.isODRUniquingDebugTypes())
     return nullptr;
@@ -848,7 +852,7 @@ DICompositeType *DICompositeType::getODRType(
         Context, Tag, Name, File, Line, Scope, BaseType, SizeInBits,
         AlignInBits, OffsetInBits, Flags, Elements, RuntimeLang, VTableHolder,
         TemplateParams, &Identifier, Discriminator, DataLocation, Associated,
-        Allocated, Rank, Annotations);
+        Allocated, Rank, Annotations, Specification, NumExtraInhabitants);
   } else {
     if (CT->getTag() != Tag)
       return nullptr;
@@ -867,7 +871,7 @@ DISubroutineType::DISubroutineType(LLVMContext &C, StorageType Storage,
                                    DIFlags Flags, uint8_t CC,
                                    ArrayRef<Metadata *> Ops)
     : DIType(C, DISubroutineTypeKind, Storage, dwarf::DW_TAG_subroutine_type, 0,
-             0, 0, 0, Flags, Ops),
+             0, 0, 0, 0, Flags, Ops),
       CC(CC) {}
 
 DISubroutineType *DISubroutineType::getImpl(LLVMContext &Context, DIFlags Flags,
@@ -1540,13 +1544,7 @@ public:
     if (!Env)
       return true;
     if (Op.getIndex() >= Env->Arguments.size())
-      // FIXME(diexpression-poison): A debug-intrinsic can end up with a "null"
-      // value op (represented as an empty MDNode `!{}`) which we will
-      // eventually lower to an undef location. We could either always use a
-      // DIArgList or make a location_ops-like adapter that papers over this,
-      // but for now it should be safe to just ignore it.
-      // return error("DIOpArg index out of range");
-      return true;
+      return error("DIOpArg index out of range");
     const Value *V = Env->Arguments[Op.getIndex()];
     return isa<PoisonValue>(V) ||
            expectSameSize(ResultType, V->getType(),
@@ -1946,6 +1944,14 @@ DIExpression::getFragmentInfo(expr_op_iterator Start, expr_op_iterator End) {
   return std::nullopt;
 }
 
+std::optional<DIExpression::FragmentInfo>
+DIExpression::getFragmentInfo(NewElementsRef E) {
+  for (auto Op : E)
+    if (auto *Fragment = std::get_if<DIOp::Fragment>(&Op))
+      return {{Fragment->getBitSize(), Fragment->getBitOffset()}};
+  return std::nullopt;
+}
+
 std::optional<uint64_t> DIExpression::getActiveBits(DIVariable *Var) {
   std::optional<uint64_t> InitialActiveBits = Var->getSizeInBits();
   std::optional<uint64_t> ActiveBits = InitialActiveBits;
@@ -1979,14 +1985,6 @@ std::optional<uint64_t> DIExpression::getActiveBits(DIVariable *Var) {
     }
   }
   return ActiveBits;
-}
-
-std::optional<DIExpression::FragmentInfo>
-DIExpression::getFragmentInfo(NewElementsRef E) {
-  for (auto Op : E)
-    if (auto *Fragment = std::get_if<DIOp::Fragment>(&Op))
-      return {{Fragment->getBitSize(), Fragment->getBitOffset()}};
-  return std::nullopt;
 }
 
 void DIExpression::appendOffset(SmallVectorImpl<uint64_t> &Ops,
@@ -2142,7 +2140,7 @@ DIExpression *DIExpression::appendOpsToArg(const DIExpression *Expr,
               [](auto Op) { return Op.getOp() == dwarf::DW_OP_LLVM_arg; })) {
     assert(ArgNo == 0 &&
            "Location Index must be 0 for a non-variadic expression.");
-    SmallVector<uint64_t, 8> NewOps(Ops.begin(), Ops.end());
+    SmallVector<uint64_t, 8> NewOps(Ops);
     return DIExpression::prependOpcodes(Expr, NewOps, StackValue);
   }
 
@@ -2260,7 +2258,7 @@ DIExpression *DIExpression::append(const DIExpression *Expr,
       NewOps.append(Ops.begin(), Ops.end());
 
       // Ensure that the new opcodes are only appended once.
-      Ops = std::nullopt;
+      Ops = {};
     }
     Op.appendToVector(NewOps);
   }
@@ -2342,7 +2340,8 @@ static bool canFragmentNewDIExpression(RIter &It, RIter Last) {
     return true;
 
   if (isDIOpVariantOneOf<DIOp::Add, DIOp::Sub, DIOp::Mul, DIOp::Div, DIOp::Shl,
-                         DIOp::LShr, DIOp::AShr>(Op))
+                         DIOp::LShr, DIOp::AShr, DIOp::And, DIOp::Or, DIOp::Xor,
+                         DIOp::Mod>(Op))
     return false;
 
   if (isDIOpVariantOneOf<DIOp::BitOffset, DIOp::ByteOffset>(Op)) {
@@ -2620,84 +2619,6 @@ bool DIExpression::isPoisoned() const {
   });
 }
 
-namespace {
-/// Visitor specialization to find the divergent address spaces a DIOp-based
-/// DIExpression produces, if any. See the header comment on
-/// DIExpression::getNewDivergentAddrSpace() for more information.
-class DIOpDivergentAddrSpaceFinder
-    : public DIExprConstVisitor<DIOpDivergentAddrSpaceFinder> {
-
-  // Stack of dwarf stack entries with divergent address spaces. If a stack
-  // entry doesn't have a divergent address space, this contains std::nullopt
-  // for that stack element. Kept in sync with DIExprConstVisitor::Stack.
-  SmallVector<std::optional<unsigned>, 8> AddrSpaceStack;
-  Type *ResultTy = nullptr;
-
-  DIOpDivergentAddrSpaceFinder(LLVMContext &Ctx, ArrayRef<DIOp::Variant> Ops)
-      : DIExprConstVisitor(Ctx, Ops) {}
-
-public:
-  template <class DIOpTy>
-  bool visit(DIOpTy Op, Type *Ty, ArrayRef<StackEntry> Inputs) {
-    assert(Stack.size() == AddrSpaceStack.size() &&
-           "stacks should never get out of sync!");
-
-    if (isDIOpVariantOneOf<DIOp::Reinterpret>(Op)) {
-      // Nothing to do, Reinterpret operations don't change the divergent
-      // address space on the top of the stack.
-    } else if (isDIOpVariantOneOf<DIOp::Convert>(Op)) {
-      // If this Convert is an address space conversion, push a divergent
-      // address space unless we're already converting from a divergent address
-      // space or the conversion is a no-op.
-      Type *FromTy = Inputs[0].ResultType;
-      assert(Ty && FromTy && "failed to get operation types?");
-      if (FromTy->isPointerTy() && Ty->isPointerTy()) {
-        if (AddrSpaceStack.back() == std::nullopt && FromTy != Ty)
-          AddrSpaceStack.back() = FromTy->getPointerAddressSpace();
-      } else
-        AddrSpaceStack.back() = std::nullopt;
-    } else {
-      // No other operation can produce or maintain a divergent address space.
-      AddrSpaceStack.erase(AddrSpaceStack.end() - getNumInputs(Op),
-                           AddrSpaceStack.end());
-      if (Ty)
-        AddrSpaceStack.push_back(std::nullopt);
-    }
-
-    return DIExprConstVisitor::visit(Op, Ty, Inputs);
-  }
-
-  bool visitResult(StackEntry SE) {
-    ResultTy = SE.ResultType;
-    return true;
-  }
-
-  static std::optional<unsigned> find(LLVMContext &C,
-                                      ArrayRef<DIOp::Variant> Ops) {
-    DIOpDivergentAddrSpaceFinder Finder{C, Ops};
-    if (!Finder.visitInOrder())
-      return std::nullopt;
-    assert(Finder.AddrSpaceStack.size() == 1 &&
-           "expected one element on stack after expression!");
-    if (!Finder.ResultTy || !Finder.ResultTy->isPointerTy())
-      return std::nullopt;
-    // Only return a divergent address space when the expression produces a
-    // generic pointer.
-    unsigned DeclaredAddrSpace = Finder.ResultTy->getPointerAddressSpace();
-    if (Finder.AddrSpaceStack.back() && DeclaredAddrSpace == 0)
-      return Finder.AddrSpaceStack.back();
-    return std::nullopt;
-  }
-};
-} // namespace
-
-std::optional<unsigned> DIExpression::getNewDivergentAddrSpace() const {
-  auto Elems = getNewElementsRef();
-  if (!Elems || Elems->empty())
-    return std::nullopt;
-  return DIOpDivergentAddrSpaceFinder::find(getContext(), *Elems);
-}
-
 std::optional<DIExpression::SignedOrUnsignedConstant>
 DIExpression::isConstant() const {
 
@@ -2772,6 +2693,10 @@ unsigned DIOp::getNumInputs(Variant V) {
       [](DIOp::Shl) -> R { return 2; },
       [](DIOp::LShr) -> R { return 2; },
       [](DIOp::AShr) -> R { return 2; },
+      [](DIOp::And) -> R { return 2; },
+      [](DIOp::Or) -> R { return 2; },
+      [](DIOp::Xor) -> R { return 2; },
+      [](DIOp::Mod) -> R { return 2; },
       [](DIOp::Sub) -> R { return 2; },
       [](DIOp::Select) -> R { return 3; },
       [](DIOp::Composite C) -> R { return C.getCount(); },

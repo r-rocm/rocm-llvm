@@ -123,6 +123,7 @@ struct OMPTaskDataTy final {
   bool IsReductionWithTaskMod = false;
   bool IsWorksharingReduction = false;
   bool HasNowaitClause = false;
+  bool HasModifier = false;
 };
 
 /// Class intended to support codegen of all kind of the reduction clauses.
@@ -313,12 +314,9 @@ protected:
   llvm::OpenMPIRBuilder OMPBuilder;
 
   /// Helper to determine the min/max number of threads/teams for \p D.
-  void computeMinAndMaxThreadsAndTeams(const OMPExecutableDirective &D,
-                                       CodeGenFunction &CGF,
-                                       int32_t &MinThreadsVal,
-                                       int32_t &MaxThreadsVal,
-                                       int32_t &MinTeamsVal,
-                                       int32_t &MaxTeamsVal);
+  void computeMinAndMaxThreadsAndTeams(
+      const OMPExecutableDirective &D, CodeGenFunction &CGF,
+      llvm::OpenMPIRBuilder::TargetKernelDefaultAttrs &Attrs);
 
   /// Helper to emit outlined function for 'target' directive.
   /// \param D Directive to emit.
@@ -353,7 +351,7 @@ protected:
   /// Emits \p Callee function call with arguments \p Args with location \p Loc.
   void emitCall(CodeGenFunction &CGF, SourceLocation Loc,
                 llvm::FunctionCallee Callee,
-                ArrayRef<llvm::Value *> Args = std::nullopt) const;
+                ArrayRef<llvm::Value *> Args = {}) const;
 
   /// Emits address of the word in a memory where current thread id is
   /// stored.
@@ -558,15 +556,6 @@ protected:
   void emitThreadPrivateVarInit(CodeGenFunction &CGF, Address VDAddr,
                                 llvm::Value *Ctor, llvm::Value *CopyCtor,
                                 llvm::Value *Dtor, SourceLocation Loc);
-
-  /// Emit the array initialization or deletion portion for user-defined mapper
-  /// code generation.
-  void emitUDMapperArrayInitOrDel(CodeGenFunction &MapperCGF,
-                                  llvm::Value *Handle, llvm::Value *BasePtr,
-                                  llvm::Value *Ptr, llvm::Value *Size,
-                                  llvm::Value *MapType, llvm::Value *MapName,
-                                  CharUnits ElementSize,
-                                  llvm::BasicBlock *ExitBB, bool IsInit);
 
   struct TaskResultTy {
     llvm::Value *NewTask = nullptr;
@@ -963,9 +952,15 @@ public:
     bool IVSigned = false;
     /// true if loop is ordered, false otherwise.
     bool Ordered = false;
-    /// Address of the output variable in which the flag of the last iteration
-    /// is returned.
+    /// true if kernel is multi-device
+    bool IsMultiDevice = false;
     Address IL = Address::invalid();
+    /// Address of the output variable in which the lower iteration number is
+    /// returned.
+    Address MultiDeviceLB = Address::invalid();
+    /// Address of the output variable in which the upper iteration number is
+    /// returned.
+    Address MultiDeviceUB = Address::invalid();
     /// Address of the output variable in which the lower iteration number is
     /// returned.
     Address LB = Address::invalid();
@@ -983,6 +978,11 @@ public:
                   llvm::Value *Chunk = nullptr)
         : IVSize(IVSize), IVSigned(IVSigned), Ordered(Ordered), IL(IL), LB(LB),
           UB(UB), ST(ST), Chunk(Chunk) {}
+    void setMultiDeviceLBUB(Address LB, Address UB) {
+      MultiDeviceLB = LB;
+      MultiDeviceUB = UB;
+      IsMultiDevice = true;
+    }
   };
   /// Call the appropriate runtime routine to initialize it before start
   /// of loop.
@@ -1013,7 +1013,8 @@ public:
   virtual void emitDistributeStaticInit(CodeGenFunction &CGF,
                                         SourceLocation Loc,
                                         OpenMPDistScheduleClauseKind SchedKind,
-                                        const StaticRTInput &Values);
+                                        const StaticRTInput &Values,
+                                        bool IsMultiDeviceKernel);
 
   /// Call the appropriate runtime routine to notify that we finished
   /// iteration of the ordered loop with the dynamic scheduling.
@@ -1544,7 +1545,7 @@ public:
   virtual void
   emitOutlinedFunctionCall(CodeGenFunction &CGF, SourceLocation Loc,
                            llvm::FunctionCallee OutlinedFn,
-                           ArrayRef<llvm::Value *> Args = std::nullopt) const;
+                           ArrayRef<llvm::Value *> Args = {}) const;
 
   /// Emits OpenMP-specific function prolog.
   /// Required for device constructs.
@@ -1905,7 +1906,8 @@ public:
   ///
   void emitDistributeStaticInit(CodeGenFunction &CGF, SourceLocation Loc,
                                 OpenMPDistScheduleClauseKind SchedKind,
-                                const StaticRTInput &Values) override;
+                                const StaticRTInput &Values,
+                                bool IsMultiDeviceKernel) override;
 
   /// Call the appropriate runtime routine to notify that we finished
   /// iteration of the ordered loop with the dynamic scheduling.

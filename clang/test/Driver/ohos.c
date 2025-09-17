@@ -7,7 +7,6 @@
 // RUN:     --sysroot=%S/Inputs/ohos_native_tree/sysroot -fuse-ld=ld -march=armv7-a -mcpu=cortex-a7 -mfloat-abi=soft 2>&1 \
 // RUN:     | FileCheck -check-prefixes=CHECK,CHECK-ARM-A7-SOFT %s
 // CHECK: {{.*}}clang{{.*}}" "-cc1"
-// CHECK-NOT: "--mrelax-relocations"
 // CHECK-NOT: "-munwind-tables"
 // CHECK: "-resource-dir" "[[RESOURCE_DIR:[^"]+]]"
 // CHECK: "-isysroot" "[[SYSROOT:[^"]+]]"
@@ -58,7 +57,6 @@
 // RUN:     | FileCheck %s -check-prefix=CHECK-RUNTIME
 // RUN: %clang %s -### --target=x86_64-linux-ohos -fuse-ld=ld 2>&1 \
 // RUN:     | FileCheck %s -check-prefix=CHECK-RUNTIME
-// CHECK-RUNTIME: "{{.*}}libclang_rt.builtins.a"
 // CHECK-RUNTIME: "-l:libunwind.a"
 // CHECK-LIBM: "-lm"
 

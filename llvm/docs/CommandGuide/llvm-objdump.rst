@@ -218,7 +218,6 @@ OPTIONS
 .. option:: --offloading
 
   Display the content of the LLVM offloading section.
-  Extract Clang offload binaries into code objects.
 
 .. option:: --prefix=<prefix>
 
@@ -273,7 +272,7 @@ OPTIONS
   When printing a PC-relative global symbol reference, print it as an offset from the leading symbol.
 
   When a bb-address-map section is present (i.e., the object file is built with
-  ``-fbasic-block-sections=labels``), labels are retrieved from that section
+  ``-fbasic-block-address-map``), labels are retrieved from that section
   instead. If a pgo-analysis-map is present alongside the bb-address-map, any
   available analyses are printed after the relevant block label. By default,
   any analysis with a special representation (i.e. BlockFrequency,

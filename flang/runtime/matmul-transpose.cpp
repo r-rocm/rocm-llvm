@@ -32,11 +32,6 @@
 namespace {
 using namespace Fortran::runtime;
 
-// Suppress the warnings about calling __host__-only std::complex operators,
-// defined in C++ STD header files, from __device__ code.
-RT_DIAG_PUSH
-RT_DIAG_DISABLE_CALL_HOST_FROM_DEVICE_WARN
-
 // Contiguous numeric TRANSPOSE(matrix)*matrix multiplication
 //   TRANSPOSE(matrix(n, rows)) * matrix(n,cols) ->
 //             matrix(rows, n)  * matrix(n,cols) -> matrix(rows,cols)
@@ -67,7 +62,7 @@ inline static RT_API_ATTRS void MatrixTransposedTimesMatrix(
     std::size_t yColumnByteStride = 0) {
   using ResultType = CppTypeFor<RCAT, RKIND>;
 
-  std::memset(product, 0, rows * cols * sizeof *product);
+  Fortran::runtime::memset(product, 0, rows * cols * sizeof *product);
   for (SubscriptValue j{0}; j < cols; ++j) {
     for (SubscriptValue i{0}; i < rows; ++i) {
       for (SubscriptValue k{0}; k < n; ++k) {
@@ -90,8 +85,6 @@ inline static RT_API_ATTRS void MatrixTransposedTimesMatrix(
     }
   }
 }
-
-RT_DIAG_POP
 
 template <TypeCategory RCAT, int RKIND, typename XT, typename YT>
 inline static RT_API_ATTRS void MatrixTransposedTimesMatrixHelper(
@@ -118,9 +111,6 @@ inline static RT_API_ATTRS void MatrixTransposedTimesMatrixHelper(
   }
 }
 
-RT_DIAG_PUSH
-RT_DIAG_DISABLE_CALL_HOST_FROM_DEVICE_WARN
-
 // Contiguous numeric matrix*vector multiplication
 //   matrix(rows,n) * column vector(n) -> column vector(rows)
 // Straightforward algorithm:
@@ -142,7 +132,7 @@ inline static RT_API_ATTRS void MatrixTransposedTimesVector(
     SubscriptValue n, const XT *RESTRICT x, const YT *RESTRICT y,
     std::size_t xColumnByteStride = 0) {
   using ResultType = CppTypeFor<RCAT, RKIND>;
-  std::memset(product, 0, rows * sizeof *product);
+  Fortran::runtime::memset(product, 0, rows * sizeof *product);
   for (SubscriptValue i{0}; i < rows; ++i) {
     for (SubscriptValue k{0}; k < n; ++k) {
       ResultType x_ki;
@@ -158,8 +148,6 @@ inline static RT_API_ATTRS void MatrixTransposedTimesVector(
   }
 }
 
-RT_DIAG_POP
-
 template <TypeCategory RCAT, int RKIND, typename XT, typename YT>
 inline static RT_API_ATTRS void MatrixTransposedTimesVectorHelper(
     CppTypeFor<RCAT, RKIND> *RESTRICT product, SubscriptValue rows,
@@ -173,9 +161,6 @@ inline static RT_API_ATTRS void MatrixTransposedTimesVectorHelper(
         product, rows, n, x, y, *xColumnByteStride);
   }
 }
-
-RT_DIAG_PUSH
-RT_DIAG_DISABLE_CALL_HOST_FROM_DEVICE_WARN
 
 // Implements an instance of MATMUL for given argument types.
 template <bool IS_ALLOCATING, TypeCategory RCAT, int RKIND, typename XT,
@@ -340,8 +325,6 @@ inline static RT_API_ATTRS void DoMatmulTranspose(
         static_cast<std::intmax_t>(y.GetDimension(1).Extent()));
   }
 }
-
-RT_DIAG_POP
 
 template <bool IS_ALLOCATING, TypeCategory XCAT, int XKIND, TypeCategory YCAT,
     int YKIND>

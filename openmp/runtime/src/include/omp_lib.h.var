@@ -251,6 +251,8 @@
       parameter(omp_pause_soft=1)
       integer(kind=omp_pause_resource_kind)omp_pause_hard
       parameter(omp_pause_hard=2)
+      integer(kind=omp_pause_resource_kind)omp_pause_stop_tool
+      parameter(omp_pause_stop_tool=3)
 
       integer(kind=omp_interop_fr_kind)omp_ifr_cuda
       parameter(omp_ifr_cuda=1)
@@ -483,7 +485,7 @@
         function omp_ext_get_active_threads_mask() bind(c)
           import
           integer (kind=omp_integer_kind) omp_ext_get_active_threads_mask
-        end function ompgetActiveThreadsMask
+        end function omp_ext_get_active_threads_mask
 
         function omp_is_initial_device() bind(c)
           import
@@ -494,11 +496,6 @@
           import
           integer (kind=omp_integer_kind) omp_get_initial_device
         end function omp_get_initial_device
-
-        function omp_get_device_num() bind(c)
-          import
-          integer (kind=omp_integer_kind) omp_get_device_num
-        end function omp_get_device_num
 
         function omp_pause_resource(kind, device_num) bind(c)
           import

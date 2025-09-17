@@ -36,43 +36,6 @@ using namespace llvm::opt;
 #define NULL_FILE "/dev/null"
 #endif
 
-static bool shouldSkipSanitizeOption(const ToolChain &TC,
-                                     const llvm::opt::ArgList &DriverArgs,
-                                     StringRef TargetID,
-                                     const llvm::opt::Arg *A) {
-  // For actions without targetID, do nothing.
-  if (TargetID.empty())
-    return false;
-  Option O = A->getOption();
-  if (!O.matches(options::OPT_fsanitize_EQ))
-    return false;
-
-  if (!DriverArgs.hasFlag(options::OPT_fgpu_sanitize,
-                          options::OPT_fno_gpu_sanitize, true))
-    return true;
-
-  auto &Diags = TC.getDriver().getDiags();
-
-  // For simplicity, we only allow -fsanitize=address
-  SanitizerMask K = parseSanitizerValue(A->getValue(), /*AllowGroups=*/false);
-  if (K != SanitizerKind::Address)
-    return true;
-
-  llvm::StringMap<bool> FeatureMap;
-  auto OptionalGpuArch = parseTargetID(TC.getTriple(), TargetID, &FeatureMap);
-
-  assert(OptionalGpuArch && "Invalid Target ID");
-  (void)OptionalGpuArch;
-  auto Loc = FeatureMap.find("xnack");
-  if (Loc == FeatureMap.end() || !Loc->second) {
-    Diags.Report(
-        clang::diag::warn_drv_unsupported_option_for_offload_arch_req_feature)
-        << A->getAsString(DriverArgs) << TargetID << "xnack+";
-    return true;
-  }
-  return false;
-}
-
 void AMDGCN::Linker::constructLlvmLinkCommand(Compilation &C,
                                          const JobAction &JA,
                                          const InputInfoList &Inputs,
@@ -122,7 +85,7 @@ void AMDGCN::Linker::constructLldCommand(Compilation &C, const JobAction &JA,
   auto &TC = getToolChain();
   auto &D = TC.getDriver();
   assert(!Inputs.empty() && "Must have at least one input.");
-  bool IsThinLTO = D.getLTOMode(/*IsOffload=*/true) == LTOK_Thin;
+  bool IsThinLTO = D.getOffloadLTOMode() == LTOK_Thin;
   addLTOOptions(TC, Args, LldArgs, Output, Inputs[0], IsThinLTO);
 
   // Extract all the -m options
@@ -222,7 +185,6 @@ void AMDGCN::Linker::constructLinkAndEmitSpirvCommand(
   llvm::opt::ArgStringList TrArgs{
       "--spirv-max-version=1.6",
       "--spirv-ext=+all",
-      "--spirv-allow-extra-diexpressions",
       "--spirv-allow-unknown-intrinsics",
       "--spirv-lower-const-expr",
       "--spirv-preserve-auxdata",
@@ -289,13 +251,14 @@ void HIPAMDToolChain::addClangTargetOptions(
   assert(DeviceOffloadingKind == Action::OFK_HIP &&
          "Only HIP offloading kinds are supported for GPUs.");
 
-  CC1Args.push_back("-fcuda-is-device");
+  CC1Args.append({"-fcuda-is-device", "-fno-threadsafe-statics"});
 
   if (!DriverArgs.hasFlag(options::OPT_fgpu_rdc, options::OPT_fno_gpu_rdc,
-                          false))
+                          false)) {
     CC1Args.append({"-mllvm", "-amdgpu-internalize-symbols"});
-  if (DriverArgs.hasArgNoClaim(options::OPT_hipstdpar))
-    CC1Args.append({"-mllvm", "-amdgpu-enable-hipstdpar"});
+    if (DriverArgs.hasArgNoClaim(options::OPT_hipstdpar))
+      CC1Args.append({"-mllvm", "-amdgpu-enable-hipstdpar"});
+  }
 
   StringRef MaxThreadsPerBlock =
       DriverArgs.getLastArgValue(options::OPT_gpu_max_threads_per_block_EQ);
@@ -352,6 +315,10 @@ HIPAMDToolChain::TranslateArgs(const llvm::opt::DerivedArgList &Args,
     DAL->AddJoinedArg(nullptr, Opts.getOption(options::OPT_mcpu_EQ), BoundArch);
     checkTargetID(*DAL);
   }
+
+  if (!Args.hasArg(options::OPT_flto_partitions_EQ))
+    DAL->AddJoinedArg(nullptr, Opts.getOption(options::OPT_flto_partitions_EQ),
+                      "8");
 
   return DAL;
 }

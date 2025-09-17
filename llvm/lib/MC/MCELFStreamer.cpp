@@ -11,7 +11,6 @@
 //===----------------------------------------------------------------------===//
 
 #include "llvm/MC/MCELFStreamer.h"
-#include "llvm/ADT/SmallString.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/BinaryFormat/ELF.h"
 #include "llvm/MC/MCAsmBackend.h"
@@ -19,6 +18,7 @@
 #include "llvm/MC/MCAssembler.h"
 #include "llvm/MC/MCCodeEmitter.h"
 #include "llvm/MC/MCContext.h"
+#include "llvm/MC/MCELFObjectWriter.h"
 #include "llvm/MC/MCExpr.h"
 #include "llvm/MC/MCFixup.h"
 #include "llvm/MC/MCFragment.h"
@@ -33,7 +33,6 @@
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/LEB128.h"
-#include "llvm/Support/raw_ostream.h"
 #include <cassert>
 #include <cstdint>
 
@@ -88,18 +87,6 @@ void MCELFStreamer::emitLabelAtPos(MCSymbol *S, SMLoc Loc, MCDataFragment &F,
 void MCELFStreamer::emitAssemblerFlag(MCAssemblerFlag Flag) {
   // Let the target do whatever target specific stuff it needs to do.
   getAssembler().getBackend().handleAssemblerFlag(Flag);
-  // Do any generic stuff we need to do.
-  switch (Flag) {
-  case MCAF_SyntaxUnified: return; // no-op here.
-  case MCAF_Code16: return; // Change parsing mode; no-op here.
-  case MCAF_Code32: return; // Change parsing mode; no-op here.
-  case MCAF_Code64: return; // Change parsing mode; no-op here.
-  case MCAF_SubsectionsViaSymbols:
-    getAssembler().setSubsectionsViaSymbols(true);
-    return;
-  }
-
-  llvm_unreachable("invalid assembler flag!");
 }
 
 // If bundle alignment is used and there are any instructions in the section, it
@@ -314,7 +301,7 @@ void MCELFStreamer::emitELFSize(MCSymbol *Symbol, const MCExpr *Value) {
 void MCELFStreamer::emitELFSymverDirective(const MCSymbol *OriginalSym,
                                            StringRef Name,
                                            bool KeepOriginalSym) {
-  getAssembler().Symvers.push_back(MCAssembler::Symver{
+  getWriter().Symvers.push_back(ELFObjectWriter::Symver{
       getStartTokLoc(), OriginalSym, Name, KeepOriginalSym});
 }
 
@@ -347,7 +334,7 @@ void MCELFStreamer::emitValueToAlignment(Align Alignment, int64_t Value,
 void MCELFStreamer::emitCGProfileEntry(const MCSymbolRefExpr *From,
                                        const MCSymbolRefExpr *To,
                                        uint64_t Count) {
-  getAssembler().CGProfile.push_back({From, To, Count});
+  getWriter().getCGProfile().push_back({From, To, Count});
 }
 
 void MCELFStreamer::emitIdent(StringRef IdentString) {
@@ -476,8 +463,8 @@ void MCELFStreamer::finalizeCGProfileEntry(const MCSymbolRefExpr *&SRE,
 }
 
 void MCELFStreamer::finalizeCGProfile() {
-  MCAssembler &Asm = getAssembler();
-  if (Asm.CGProfile.empty())
+  ELFObjectWriter &W = getWriter();
+  if (W.getCGProfile().empty())
     return;
   MCSection *CGProfile = getAssembler().getContext().getELFSection(
       ".llvm.call-graph-profile", ELF::SHT_LLVM_CALL_GRAPH_PROFILE,
@@ -485,7 +472,7 @@ void MCELFStreamer::finalizeCGProfile() {
   pushSection();
   switchSection(CGProfile);
   uint64_t Offset = 0;
-  for (MCAssembler::CGProfileEntry &E : Asm.CGProfile) {
+  for (auto &E : W.getCGProfile()) {
     finalizeCGProfileEntry(E.From, Offset);
     finalizeCGProfileEntry(E.To, Offset);
     emitIntValue(E.Count, sizeof(uint64_t));
@@ -709,8 +696,8 @@ MCELFStreamer::getAttributeItem(unsigned Attribute) {
   return nullptr;
 }
 
-size_t
-MCELFStreamer::calculateContentSize(SmallVector<AttributeItem, 64> &AttrsVec) {
+size_t MCELFStreamer::calculateContentSize(
+    SmallVector<AttributeItem, 64> &AttrsVec) const {
   size_t Result = 0;
   for (const AttributeItem &Item : AttrsVec) {
     switch (Item.Type) {
@@ -794,6 +781,67 @@ void MCELFStreamer::createAttributesSection(
   }
 
   AttrsVec.clear();
+}
+
+void MCELFStreamer::createAttributesWithSubsection(
+    MCSection *&AttributeSection, const Twine &Section, unsigned Type,
+    SmallVector<AttributeSubSection, 64> &SubSectionVec) {
+  // <format-version: 'A'>
+  // [ <uint32: subsection-length> NTBS: vendor-name
+  //   <bytes: vendor-data>
+  // ]*
+  // vendor-data expends to:
+  // <uint8: optional> <uint8: parameter type> <attribute>*
+  if (0 == SubSectionVec.size()) {
+    return;
+  }
+
+  // Switch section to AttributeSection or get/create the section.
+  if (AttributeSection) {
+    switchSection(AttributeSection);
+  } else {
+    AttributeSection = getContext().getELFSection(Section, Type, 0);
+    switchSection(AttributeSection);
+
+    // Format version
+    emitInt8(0x41);
+  }
+
+  for (AttributeSubSection &SubSection : SubSectionVec) {
+    // subsection-length + vendor-name + '\0'
+    const size_t VendorHeaderSize = 4 + SubSection.VendorName.size() + 1;
+    // optional + parameter-type
+    const size_t VendorParameters = 1 + 1;
+    const size_t ContentsSize = calculateContentSize(SubSection.Content);
+
+    emitInt32(VendorHeaderSize + VendorParameters + ContentsSize);
+    emitBytes(SubSection.VendorName);
+    emitInt8(0); // '\0'
+    emitInt8(SubSection.IsOptional);
+    emitInt8(SubSection.ParameterType);
+
+    for (AttributeItem &Item : SubSection.Content) {
+      emitULEB128IntValue(Item.Tag);
+      switch (Item.Type) {
+      default:
+        assert(0 && "Invalid attribute type");
+        break;
+      case AttributeItem::NumericAttribute:
+        emitULEB128IntValue(Item.IntValue);
+        break;
+      case AttributeItem::TextAttribute:
+        emitBytes(Item.StringValue);
+        emitInt8(0); // '\0'
+        break;
+      case AttributeItem::NumericAndTextAttributes:
+        emitULEB128IntValue(Item.IntValue);
+        emitBytes(Item.StringValue);
+        emitInt8(0); // '\0'
+        break;
+      }
+    }
+  }
+  SubSectionVec.clear();
 }
 
 MCStreamer *llvm::createELFStreamer(MCContext &Context,

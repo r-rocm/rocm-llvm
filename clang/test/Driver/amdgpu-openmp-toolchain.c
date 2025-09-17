@@ -94,7 +94,7 @@
 
 // RUN: %clang -### -target x86_64-pc-linux-gnu -fopenmp --offload-arch=gfx90a:sramecc-:xnack+ \
 // RUN:   -nogpulib %s 2>&1 | FileCheck %s --check-prefix=CHECK-TARGET-ID
-// CHECK-TARGET-ID: "-cc1" "-triple" "amdgcn-amd-amdhsa" {{.*}} "-target-cpu" "gfx90a:sramecc-:xnack+" "-target-feature" "-sramecc" "-target-feature" "+xnack"
+// CHECK-TARGET-ID: "-cc1" "-triple" "amdgcn-amd-amdhsa" {{.*}} "-target-cpu" "gfx90a" "-target-feature" "-sramecc" "-target-feature" "+xnack"
 // CHECK-TARGET-ID: clang-offload-packager{{.*}}arch=gfx90a:sramecc-:xnack+,kind=openmp
 
 // RUN: not %clang -### -target x86_64-pc-linux-gnu -fopenmp --offload-arch=gfx90a,gfx90a:xnack+ \
@@ -114,10 +114,34 @@
 // LIBCXX-NOT: include/amdgcn-amd-amdhsa/c++/v1
 
 // RUN: %clang -### --save-temps -target x86_64-pc-linux-gnu -fopenmp --offload-arch=gfx90a:xnack+ -mamdgpu-precise-memory-op \
-// RUN:   -nogpulib %s 2>&1 | FileCheck %s --check-prefix=CHECK-TARGET-FEATURES
+// RUN:   -nogpulib %s --opaque-offload-linker 2>&1 | FileCheck %s --check-prefix=CHECK-TARGET-FEATURES
 // CHECK-TARGET-FEATURES: clang-offload-packager{{.*}} "-o" {{.*}}.out" "--image=file={{.*}}.bc,triple=amdgcn-amd-amdhsa,arch=gfx90a:xnack+,kind=openmp"
 // CHECK-TARGET-FEATURES: clang-offload-packager"{{.*}}.o" "--image=file={{.*}}.bc,triple=amdgcn-amd-amdhsa,arch=gfx90a:xnack+,kind=openmp"
 // CHECK-TARGET-FEATURES: opt{{.*}} "-mtriple=amdgcn-amd-amdhsa" "-o" {{.*}}.bc" "-mcpu=gfx90a" "-mattr=+xnack,+precise-memory"
 // CHECK-TARGET-FEATURES: llc{{.*}} "-mtriple=amdgcn-amd-amdhsa" "-filetype=asm" "-o" {{.*}}.s" "{{.*}}.bc" "-mcpu=gfx90a" "-mattr=+xnack,+precise-memory"
 // CHECK-TARGET-FEATURES: llc{{.*}} "-mtriple=amdgcn-amd-amdhsa" "-filetype=obj" "-o" {{.*}}.o" "{{.*}}.bc" "-mcpu=gfx90a" "-mattr=+xnack,+precise-memory"
 // CHECK-TARGET-FEATURES: lld{{.*}} "-flavor" "gnu" "--no-undefined" "-shared" {{.*}}.o" "-plugin-opt=mcpu=gfx90a" "-plugin-opt=-mattr=+xnack,+precise-memory" "-o" {{.*}}.out"
+
+// RUN: %clang -### --save-temps -target x86_64-pc-linux-gnu -fopenmp --offload-arch=gfx90a:xnack+ -mamdgpu-precise-memory-op \
+// RUN:   -nogpulib %s 2>&1 | FileCheck %s --check-prefix=CHECK-TARGET-FEATURES-LW
+// CHECK-TARGET-FEATURES-LW: clang-linker-wrapper
+
+// RUN: %clang -### --save-temps -target x86_64-pc-linux-gnu -fopenmp --offload-arch=gfx90a:xnack+ -mamdgpu-precise-memory-op \
+// RUN:   -nogpulib %s -O3 2>&1 | FileCheck %s --check-prefix=CHECK-TARGET-FEATURES-LW3
+// CHECK-TARGET-FEATURES-LW3: clang-linker-wrapper{{.*}} "--device-linker=--lto-newpm-passes=default<O3>"
+
+// RUN: %clang -### --save-temps -target x86_64-pc-linux-gnu -fopenmp --offload-arch=gfx90a:xnack+ -mamdgpu-precise-memory-op \
+// RUN:   -nogpulib %s -O2 2>&1 | FileCheck %s --check-prefix=CHECK-TARGET-FEATURES-LW2
+// CHECK-TARGET-FEATURES-LW2: clang-linker-wrapper{{.*}} "--device-linker=--lto-newpm-passes=default<O2>"
+
+// RUN: %clang -### --save-temps -target x86_64-pc-linux-gnu -fopenmp --offload-arch=gfx90a:xnack+ -mamdgpu-precise-memory-op \
+// RUN:   -nogpulib %s -O1 2>&1 | FileCheck %s --check-prefix=CHECK-TARGET-FEATURES-LW1
+// CHECK-TARGET-FEATURES-LW1: clang-linker-wrapper{{.*}} "--device-linker=--lto-newpm-passes=default<O1>"
+
+// RUN: %clang -### --save-temps -target x86_64-pc-linux-gnu -fopenmp --offload-arch=gfx90a:xnack+ -mamdgpu-precise-memory-op \
+// RUN:   -nogpulib %s -O0 2>&1 | FileCheck %s --check-prefix=CHECK-TARGET-FEATURES-LW0
+// CHECK-TARGET-FEATURES-LW0-NOT: clang-linker-wrapper{{.*}} "--device-linker=--lto-newpm-passes=default<O0>"
+
+// RUN: %clang -### -target x86_64-pc-linux-gnu -nogpulib  -fopenmp --offload-arch=gfx90a \
+// RUN:   -ftime-report %s 2>&1 | FileCheck %s --check-prefix=CHECK-TIME-REPORT
+// CHECK-TIME-REPORT: clang-linker-wrapper{{.*}}"--device-compiler=-ftime-report"

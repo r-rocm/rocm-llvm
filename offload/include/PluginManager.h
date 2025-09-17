@@ -13,6 +13,7 @@
 #ifndef OMPTARGET_PLUGIN_MANAGER_H
 #define OMPTARGET_PLUGIN_MANAGER_H
 
+#include "OpenMP/OMPT/OmptTracingBuffer.h"
 #include "PluginInterface.h"
 
 #include "DeviceImage.h"
@@ -46,7 +47,7 @@ struct PluginManager {
   /// Exclusive accessor type for the device container.
   using ExclusiveDevicesAccessorTy = Accessor<DeviceContainerTy>;
 
-  PluginManager() {}
+  PluginManager() : TraceRecordManager(nullptr) {}
 
   void init();
 
@@ -81,7 +82,8 @@ struct PluginManager {
   HostEntriesBeginToTransTableTy HostEntriesBeginToTransTable;
   std::mutex TrlTblMtx; ///< For Translation Table
   /// Host offload entries in order of image registration
-  std::vector<__tgt_offload_entry *> HostEntriesBeginRegistrationOrder;
+  llvm::SmallVector<llvm::offloading::EntryTy *>
+      HostEntriesBeginRegistrationOrder;
 
   /// Map from ptrs on the host to an entry in the Translation Table
   HostPtrToTableMapTy HostPtrToTableMap;
@@ -113,8 +115,14 @@ struct PluginManager {
     return Devices.getExclusiveAccessor();
   }
 
-  // Initialize all plugins.
-  void initAllPlugins();
+  /// Initialize \p Plugin. Returns true on success.
+  bool initializePlugin(GenericPluginTy &Plugin);
+
+  /// Initialize device \p DeviceNo of \p Plugin. Returns true on success.
+  bool initializeDevice(GenericPluginTy &Plugin, int32_t DeviceId);
+
+  /// Eagerly initialize all plugins and their devices.
+  void initializeAllDevices();
 
   /// Iterator range for all plugins (in use or not, but always valid).
   auto plugins() { return llvm::make_pointee_range(Plugins); }
@@ -136,6 +144,13 @@ struct PluginManager {
         ++count;
 
     return count;
+  }
+
+  auto getTraceRecordManager() const {
+    // Must be called after runtime is initialized. Since the runtime init
+    // allocates TraceRecordManager, we assert below.
+    assert(TraceRecordManager && "Trace record manager not initialized");
+    return TraceRecordManager;
   }
 
 private:
@@ -163,6 +178,14 @@ private:
 
   /// Devices associated with plugins, accesses to the container are exclusive.
   ProtectedObj<DeviceContainerTy> Devices;
+
+  OmptTracingBufferMgr *TraceRecordManager;
+
+  /// References to upgraded legacy offloading entires.
+  std::list<llvm::SmallVector<llvm::offloading::EntryTy, 0>> LegacyEntries;
+  std::list<llvm::SmallVector<__tgt_device_image, 0>> LegacyImages;
+  llvm::DenseMap<__tgt_bin_desc *, __tgt_bin_desc> UpgradedDescriptors;
+  __tgt_bin_desc *upgradeLegacyEntries(__tgt_bin_desc *Desc);
 };
 
 /// Initialize the plugin manager and OpenMP runtime.

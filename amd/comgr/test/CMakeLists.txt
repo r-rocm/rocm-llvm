@@ -45,7 +45,7 @@ macro(add_test_input_bitcode_bundle name input output)
   add_custom_command(
     OUTPUT "${output}"
     COMMAND "$<TARGET_FILE:clang>" -c --offload-arch=gfx900 -emit-llvm -fgpu-rdc
-    --gpu-bundle-output ${ARGN} "${CMAKE_CURRENT_SOURCE_DIR}/${input}"
+    --gpu-bundle-output ${ARGN} "${CMAKE_CURRENT_SOURCE_DIR}/${input}" -nogpulib
     -o "${output}"
     VERBATIM
     DEPENDS clang lld "${input}")
@@ -62,7 +62,7 @@ macro(add_test_input_object_file_bundle name input output)
   add_custom_command(
     OUTPUT "${output}"
     COMMAND "$<TARGET_FILE:clang>" -c --offload-arch=gfx900 --gpu-bundle-output
-    --offload-device-only ${ARGN} "${CMAKE_CURRENT_SOURCE_DIR}/${input}"
+    --offload-device-only ${ARGN} "${CMAKE_CURRENT_SOURCE_DIR}/${input}" -nogpulib
     -o "${output}"
     VERBATIM
     DEPENDS clang lld "${input}")
@@ -109,7 +109,7 @@ add_test_input_binary(reloc1 source/reloc1.cl source/reloc1.o -c -mcode-object-v
 add_test_input_binary(reloc2 source/reloc2.cl source/reloc2.o -c -mcode-object-version=4)
 add_test_input_binary(reloc-asm source/reloc-asm.s source/reloc-asm.o -c -mcode-object-version=4)
 add_test_input_binary(shared source/shared.cl source/shared.so -mcode-object-version=4)
-add_test_input_binary(shared-debug source/shared.cl source/shared-debug.so -g -mcode-object-version=4)
+add_test_input_binary(symbolize-debug source/symbolize.cl source/symbolize-debug.so -c -g -O3 -mcode-object-version=4)
 add_test_input_bitcode(source1 source/source1.cl source/source1.bc)
 
 add_test_input_binary(linking-kernel0 source/linking/kernel0.cl source/linking/kernel0.o -c -mcode-object-version=4)
@@ -133,6 +133,7 @@ configure_file("source/source2.cl" "source/source2.cl" COPYONLY)
 configure_file("source/nested-kernel1.cl" "source/nested-kernel1.cl" COPYONLY)
 configure_file("source/nested-kernel2.cl" "source/nested-kernel2.cl" COPYONLY)
 configure_file("source/shared.cl" "source/shared.cl" COPYONLY)
+configure_file("source/symbolize.cl" "source/symbolize.cl" COPYONLY)
 configure_file("source/device_libs.cl" "source/device_libs.cl" COPYONLY)
 configure_file("source/include-macro.h" "source/include-macro.h" COPYONLY)
 configure_file("source/include-nested.h" "source/include-nested.h" COPYONLY)
@@ -194,10 +195,10 @@ endif()
   # include the .lib/.dll directory.
   if (UNIX)
     set_tests_properties(${test_name}
-      PROPERTIES ENVIRONMENT "AMD_COMGR_CACHE_DIR=;")
+      PROPERTIES ENVIRONMENT "AMD_COMGR_CACHE=0;")
   else()
     set_tests_properties(${test_name}
-      PROPERTIES ENVIRONMENT "PATH=$<TARGET_LINKER_FILE_DIR:amd_comgr>;AMD_COMGR_CACHE_DIR=;")
+      PROPERTIES ENVIRONMENT "PATH=$<TARGET_LINKER_FILE_DIR:amd_comgr>;AMD_COMGR_CACHE=0;")
   endif()
 endmacro()
 
@@ -220,6 +221,7 @@ add_comgr_test(compile_minimal_test c)
 add_comgr_test(compile_log_test c)
 add_comgr_test(compile_log_remarks_test c)
 add_comgr_test(compile_source_with_device_libs_to_bc_test c)
+add_comgr_test(compile_source_with_device_libs_to_bc_with_vfs_test c)
 add_comgr_test(assemble_test c)
 add_comgr_test(link_test c)
 add_comgr_test(isa_name_parsing_test c)
