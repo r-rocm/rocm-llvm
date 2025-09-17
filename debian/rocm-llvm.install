@@ -48,10 +48,10 @@ opt/rocm-@ROCM_VERSION@/include/mlir-c/
 opt/rocm-@ROCM_VERSION@/libexec/
 
 opt/rocm-@ROCM_VERSION@/lib/libc++.modules.json
-opt/rocm-@ROCM_VERSION@/lib/clang/19/bin/
-opt/rocm-@ROCM_VERSION@/lib/clang/19/include/
-opt/rocm-@ROCM_VERSION@/lib/clang/19/lib/linux/
-opt/rocm-@ROCM_VERSION@/lib/clang/19/share/
+opt/rocm-@ROCM_VERSION@/lib/clang/20/bin/
+opt/rocm-@ROCM_VERSION@/lib/clang/20/include/
+opt/rocm-@ROCM_VERSION@/lib/clang/20/lib/linux/
+opt/rocm-@ROCM_VERSION@/lib/clang/20/share/
 opt/rocm-@ROCM_VERSION@/lib/cmake/clang/
 opt/rocm-@ROCM_VERSION@/lib/cmake/flang/
 opt/rocm-@ROCM_VERSION@/lib/cmake/lld/

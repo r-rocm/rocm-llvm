@@ -105,10 +105,10 @@ MaintFunc/RemoveOcaml:
 	rm -rf $(DEB_INST_DIR)/usr
 
 MaintFunc/InstallMissingLibs:
-	install $(BUILD_PATH)/lib/libMLIRPdllLspServerLib.so.19.0git $(DEB_INST_DIR)/$(ROCM_PATH)/lib/libMLIRPdllLspServerLib.so.19.0git
-	ln -s libMLIRPdllLspServerLib.so.19.0git $(DEB_INST_DIR)/$(ROCM_PATH)/lib/libMLIRPdllLspServerLib.so
-	install $(BUILD_PATH)/lib/libTableGenLspServerLib.so.19.0git $(DEB_INST_DIR)/$(ROCM_PATH)/lib/libTableGenLspServerLib.so.19.0git
-	ln -s libTableGenLspServerLib.so.19.0git $(DEB_INST_DIR)/$(ROCM_PATH)/lib/libTableGenLspServerLib.so
+	install $(BUILD_PATH)/lib/libMLIRPdllLspServerLib.so.20.0git $(DEB_INST_DIR)/$(ROCM_PATH)/lib/libMLIRPdllLspServerLib.so.20.0git
+	ln -s libMLIRPdllLspServerLib.so.20.0git $(DEB_INST_DIR)/$(ROCM_PATH)/lib/libMLIRPdllLspServerLib.so
+	install $(BUILD_PATH)/lib/libTableGenLspServerLib.so.20.0git $(DEB_INST_DIR)/$(ROCM_PATH)/lib/libTableGenLspServerLib.so.20.0git
+	ln -s libTableGenLspServerLib.so.20.0git $(DEB_INST_DIR)/$(ROCM_PATH)/lib/libTableGenLspServerLib.so
 
 override_dh_install: MaintFunc/RemoveOcaml MaintFunc/InstallMissingLibs
 	sed -i "s,@ROCM_VERSION@,${ROCM_VERSION},g" debian/*.install
