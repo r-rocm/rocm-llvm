@@ -94,7 +94,7 @@ __device__ void func1(int Arg) {
 // CHECK-DIEXPRESSION: DW_AT_location (DW_OP_lit0, DW_OP_stack_value, DW_OP_deref_size 0x8, DW_OP_lit0, DW_OP_LLVM_user DW_OP_LLVM_form_aspace_address)
 
 // CHECK: DW_TAG_subprogram
-// CHECK-LABEL: DW_AT_linkage_name ("_Z7kernel1i")
+// CHECK: DW_AT_linkage_name ("_Z7kernel1i")
 // CHECK: DW_AT_name ("kernel1")
 // CHECK: DW_AT_external (true)
 
@@ -173,7 +173,7 @@ __device__ void func1(int Arg) {
 
 // CHECK: DW_TAG_subprogram
 // CHECK-DIEXPR: DW_AT_frame_base (DW_OP_regx 0x40)
-// CHECK-LABEL: DW_AT_linkage_name ("_Z5func1i")
+// CHECK: DW_AT_linkage_name ("_Z5func1i")
 // CHECK: DW_AT_name ("func1")
 // CHECK: DW_AT_external (true)
 

@@ -37,10 +37,6 @@
 #include "llvm/ADT/Twine.h"
 #include "llvm/Support/VirtualFileSystem.h"
 
-#include <fstream>
-#include <memory>
-#include <stdlib.h>
-
 using namespace llvm;
 
 namespace COMGR {
@@ -49,6 +45,26 @@ namespace env {
 bool shouldSaveTemps() {
   static char *SaveTemps = getenv("AMD_COMGR_SAVE_TEMPS");
   return SaveTemps && StringRef(SaveTemps) != "0";
+}
+
+bool shouldSaveLLVMTemps() {
+  static char *SaveTemps = getenv("AMD_COMGR_SAVE_LLVM_TEMPS");
+  return SaveTemps && StringRef(SaveTemps) != "0";
+}
+
+std::optional<bool> shouldUseVFS() {
+  if (shouldSaveTemps())
+    return false;
+
+  static char *UseVFS = getenv("AMD_COMGR_USE_VFS");
+  if (UseVFS) {
+    if (StringRef(UseVFS) == "0")
+      return false;
+    else if (StringRef(UseVFS) == "1")
+      return true;
+  }
+
+  return std::nullopt;
 }
 
 std::optional<StringRef> getRedirectLogs() {
@@ -72,17 +88,16 @@ bool shouldEmitVerboseLogs() {
 StringRef StripGNUInstallLibDir(StringRef Path) {
   // Comgr library may be installed under lib or lib64 or
   // lib/<multiarch-tuple> on Debian.
-  StringRef ParentDir = llvm::sys::path::parent_path(Path);
-  StringRef ParentName = llvm::sys::path::filename(ParentDir);
+  StringRef ParentDir = sys::path::parent_path(Path);
+  StringRef ParentName = sys::path::filename(ParentDir);
 
-  StringRef SecondLevelParentDir = llvm::sys::path::parent_path(ParentDir);
-  StringRef SecondLevelParentName =
-      llvm::sys::path::filename(SecondLevelParentDir);
+  StringRef SecondLevelParentDir = sys::path::parent_path(ParentDir);
+  StringRef SecondLevelParentName = sys::path::filename(SecondLevelParentDir);
 
   if (ParentName == "lib" || ParentName == "lib64") {
-    ParentDir = llvm::sys::path::parent_path(ParentDir);
+    ParentDir = sys::path::parent_path(ParentDir);
   } else if (SecondLevelParentName == "lib") {
-    ParentDir = llvm::sys::path::parent_path(SecondLevelParentDir);
+    ParentDir = sys::path::parent_path(SecondLevelParentDir);
   }
 
   return ParentDir;
@@ -102,12 +117,12 @@ std::string getComgrInstallPathFromExecutable() {
   // TODO: switch POSIX getline() to C++-based getline() once Pytorch resolves
   // build issues with libstdc++ ABI
   while (getline(&Line, &len, ProcMaps) != -1) {
-    llvm::SmallVector<StringRef, 6> Tokens;
+    SmallVector<StringRef, 6> Tokens;
     StringRef(Line).split(Tokens, ' ', -1 /* MaxSplit */,
                           false /* KeepEmpty */);
 
     unsigned long long LowAddress, HighAddress;
-    if (llvm::consumeUnsignedInteger(Tokens[0], 16 /* Radix */, LowAddress)) {
+    if (consumeUnsignedInteger(Tokens[0], 16 /* Radix */, LowAddress)) {
       fclose(ProcMaps);
       free(Line);
       return "";
@@ -119,7 +134,7 @@ std::string getComgrInstallPathFromExecutable() {
       return "";
     }
 
-    if (llvm::consumeUnsignedInteger(Tokens[0], 16 /* Radix */, HighAddress)) {
+    if (consumeUnsignedInteger(Tokens[0], 16 /* Radix */, HighAddress)) {
       fclose(ProcMaps);
       free(Line);
       return "";
@@ -199,12 +214,12 @@ public:
 
   SmallString<128> getSiblingDirWithPrefix(StringRef DirName,
                                            StringRef Prefix) {
-    StringRef ParentDir = llvm::sys::path::parent_path(DirName);
+    StringRef ParentDir = sys::path::parent_path(DirName);
     std::error_code EC;
 
     for (sys::fs::directory_iterator Dir(ParentDir, EC), DirEnd;
          Dir != DirEnd && !EC; Dir.increment(EC)) {
-      const StringRef Path = llvm::sys::path::filename(Dir->path());
+      const StringRef Path = sys::path::filename(Dir->path());
       if (Path.starts_with(Prefix)) {
         return StringRef(Dir->path());
       }
@@ -244,7 +259,7 @@ public:
 
 std::shared_ptr<InstallationDetector>
 CreatePathDetector(StringRef Path, bool isComgrPath = false) {
-  StringRef DirName = llvm::sys::path::filename(Path);
+  StringRef DirName = sys::path::filename(Path);
   if ((!isComgrPath && DirName.starts_with("rocm-cmake-")) ||
       (isComgrPath && DirName.starts_with("comgr-"))) {
     return std::make_shared<SpackInstallationDetector>(Path, isComgrPath);
@@ -273,11 +288,11 @@ InstallationDetector *getDetector() {
   return Detector.get();
 }
 
-llvm::StringRef getROCMPath() { return getDetector()->getROCmPath(); }
+StringRef getROCMPath() { return getDetector()->getROCmPath(); }
 
-llvm::StringRef getHIPPath() { return getDetector()->getHIPPath(); }
+StringRef getHIPPath() { return getDetector()->getHIPPath(); }
 
-llvm::StringRef getLLVMPath() { return getDetector()->getLLVMPath(); }
+StringRef getLLVMPath() { return getDetector()->getLLVMPath(); }
 
 StringRef getCachePolicy() {
   static const char *EnvCachePolicy = std::getenv("AMD_COMGR_CACHE_POLICY");
@@ -285,15 +300,14 @@ StringRef getCachePolicy() {
 }
 
 StringRef getCacheDirectory() {
-  // By default the cache is deactivated. We hope to remove this variable in the
-  // future.
+  // By default the cache is enabled
   static const char *Enable = std::getenv("AMD_COMGR_CACHE");
-  bool CacheDisabled = !Enable || StringRef(Enable) == "0";
+  bool CacheDisabled = StringRef(Enable) == "0";
   if (CacheDisabled)
     return "";
 
-  static const char *EnvCacheDirectory = std::getenv("AMD_COMGR_CACHE_DIR");
-  if (EnvCacheDirectory)
+  StringRef EnvCacheDirectory = std::getenv("AMD_COMGR_CACHE_DIR");
+  if (!EnvCacheDirectory.empty())
     return EnvCacheDirectory;
 
   // mark Result as static to keep it cached across calls
@@ -302,7 +316,7 @@ StringRef getCacheDirectory() {
     return Result;
 
   if (sys::path::cache_directory(Result)) {
-    sys::path::append(Result, Twine("comgr_cache"));
+    sys::path::append(Result, "comgr");
     return Result;
   }
 

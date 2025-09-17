@@ -165,6 +165,9 @@ public:
   /// Get the number of blocks on the GPU
   llvm::Value *getGPUNumBlocks(CodeGenFunction &CGF);
 
+  /// Initialization for a specialized kernel.
+  llvm::Value *initSpecializedKernel(CodeGenFunction &CGF);
+
   std::pair<llvm::Value *, llvm::Value *>
   getXteamRedFunctionPtrs(CodeGenFunction &CGF, llvm::Type *RedVarType);
 
@@ -175,6 +178,22 @@ public:
                               llvm::Value *ThreadStartIndex,
                               llvm::Value *NumTeams, int BlockSize,
                               bool IsFast);
+
+  /// Emit call to Cross-team scan entry points
+  llvm::Value *
+  getXteamScanSum(CodeGenFunction &CGF, llvm::Value *Val, llvm::Value *SumPtr,
+                  llvm::Value *DTeamVals, llvm::Value *DTeamsDonePtr,
+                  llvm::Value *DScanStorage, llvm::Value *ThreadStartIndex,
+                  llvm::Value *NumTeams, int BlockSize, bool IsFast);
+
+  /// Emit calls to Cross-team scan Phase 2 entry points
+  llvm::Value *getXteamScanPhaseTwo(CodeGenFunction &CGF, llvm::Value *Val,
+                                    llvm::Value *SegmentSize,
+                                    llvm::Value *DTeamVals,
+                                    llvm::Value *DScanStorage,
+                                    llvm::Value *DSegmentVals,
+                                    llvm::Value *ThreadStartIndex,
+                                    int BlockSize, bool IsInclusiveScan);
 
   // Returns whether the hint expressions for an architecture should be
   // evaluated to decide which kind of atomic ops should be generated.
@@ -337,9 +356,10 @@ public:
 
   /// Emits call of the outlined function with the provided arguments,
   /// translating these arguments to correct target-specific arguments.
-  void emitOutlinedFunctionCall(
-      CodeGenFunction &CGF, SourceLocation Loc, llvm::FunctionCallee OutlinedFn,
-      ArrayRef<llvm::Value *> Args = std::nullopt) const override;
+  void
+  emitOutlinedFunctionCall(CodeGenFunction &CGF, SourceLocation Loc,
+                           llvm::FunctionCallee OutlinedFn,
+                           ArrayRef<llvm::Value *> Args = {}) const override;
 
   /// Emits OpenMP-specific function prolog.
   /// Required for device constructs.

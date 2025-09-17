@@ -11,7 +11,7 @@ target triple = "x86_64-unknown-linux-gnu"
 declare void @use_i32(i32)
 declare void @use_i64(i32)
 declare void @use_ptr(ptr)
-declare void @use_ptr1(ptr addrspace(1))
+declare void @llvm.dbg.value(metadata, metadata, metadata) #0
 
 define void @test_int_ptr_int(i64 %A) !dbg !5 {
 ; CHECK-LABEL: define void @test_int_ptr_int(
@@ -21,7 +21,7 @@ define void @test_int_ptr_int(i64 %A) !dbg !5 {
 ; CHECK-NEXT:    ret void
 ;
   %1 = inttoptr i64 %A to ptr
-  #dbg_value(ptr %1, !9, !DIExpression(DIOpArg(0, ptr)), !12)
+  tail call void @llvm.dbg.value(metadata ptr %1, metadata !9, metadata !DIExpression(DIOpArg(0, ptr))), !dbg !12
   %2 = ptrtoint ptr %1 to i64
   call void @use_i64(i64 %2)
   ret void
@@ -35,7 +35,7 @@ define void @test_ptr_int_ptr(ptr %A) !dbg !13 {
 ; CHECK-NEXT:    ret void
 ;
   %1 = ptrtoint ptr %A to i64
-  #dbg_value(i64 %1, !15, !DIExpression(DIOpArg(0, i64)), !17)
+  tail call void @llvm.dbg.value(metadata i64 %1, metadata !15, metadata !DIExpression(DIOpArg(0, i64))), !dbg !17
   %2 = inttoptr i64 %1 to ptr
   call void @use_ptr(ptr %2)
   ret void
@@ -49,7 +49,7 @@ define void @test_zext_trunc(i32 %A) !dbg !18 {
 ; CHECK-NEXT:    ret void
 ;
   %1 = zext i32 %A to i64
-  #dbg_value(i64 %1, !20, !DIExpression(DIOpArg(0, i64)), !23)
+  tail call void @llvm.dbg.value(metadata i64 %1, metadata !20, metadata !DIExpression(DIOpArg(0, i64))), !dbg !23
   %2 = trunc i64 %1 to i32
   call void @use_i32(i32 %2)
   ret void
@@ -64,7 +64,7 @@ define void @test_trunc_zext(i64 %A) !dbg !24 {
 ; CHECK-NEXT:    ret void
 ;
   %1 = trunc i64 %A to i32
-  #dbg_value(i32 %1, !26, !DIExpression(DIOpArg(0, i32)), !28)
+  tail call void @llvm.dbg.value(metadata i32 %1, metadata !26, metadata !DIExpression(DIOpArg(0, i32))), !dbg !28
   %2 = zext i32 %1 to i64
   call void @use_i64(i64 %2)
   ret void
@@ -78,31 +78,9 @@ define void @test_sext_trunc(i32 %A) !dbg !29 {
 ; CHECK-NEXT:    ret void
 ;
   %1 = sext i32 %A to i64
-  #dbg_value(i64 %1, !31, !DIExpression(DIOpArg(0, i64)), !33)
+  tail call void @llvm.dbg.value(metadata i64 %1, metadata !31, metadata !DIExpression(DIOpArg(0, i64))), !dbg !33
   %2 = trunc i64 %1 to i32
   call void @use_i32(i32 %2)
-  ret void
-}
-
-define void @test_asc_asc(ptr addrspace(1) %A, ptr %B) !dbg !34 {
-; CHECK-LABEL: define void @test_asc_asc(
-; CHECK-SAME: ptr addrspace(1) [[A:%.*]], ptr [[B:%.*]]) !dbg [[DBG34:![0-9]+]] {
-; CHECK-NEXT:      #dbg_value(ptr addrspace(1) [[A]], [[META36:![0-9]+]], !DIExpression(DIOpArg(0, ptr addrspace(1)), DIOpConvert(ptr addrspace(4))), [[META38:![0-9]+]])
-; CHECK-NEXT:    call void @use_ptr1(ptr addrspace(1) [[A]])
-; CHECK-NEXT:      #dbg_value(ptr [[B]], [[META39:![0-9]+]], !DIExpression(DIOpArg(0, ptr), DIOpConvert(ptr addrspace(3))), [[META38]])
-; CHECK-NEXT:    call void @use_ptr(ptr [[B]])
-; CHECK-NEXT:    ret void
-;
-  %1 = addrspacecast ptr addrspace(1) %A to ptr addrspace(4)
-  #dbg_value(ptr addrspace(4) %1, !36, !DIExpression(DIOpArg(0, ptr addrspace(4))), !38)
-  %2 = addrspacecast ptr addrspace(4) %1 to ptr addrspace(1)
-  call void @use_ptr1(ptr addrspace(1) %2)
-
-  %3 = addrspacecast ptr %B to ptr addrspace(3)
-  #dbg_value(ptr addrspace(3) %3, !39, !DIExpression(DIOpArg(0, ptr addrspace(3))), !38)
-  %4 = addrspacecast ptr addrspace(3) %3 to ptr
-  call void @use_ptr(ptr %4)
-
   ret void
 }
 
@@ -144,12 +122,6 @@ define void @test_asc_asc(ptr addrspace(1) %A, ptr %B) !dbg !34 {
 !31 = !DILocalVariable(name: "9", scope: !29, file: !1, line: 13, type: !32)
 !32 = !DIBasicType(name: "tys32", size: 32, encoding: DW_ATE_signed)
 !33 = !DILocation(line: 13, column: 1, scope: !29)
-!34 = distinct !DISubprogram(name: "test_asc_asc", linkageName: "test_asc_asc", scope: null, file: !1, line: 13, type: !6, scopeLine: 13, spFlags: DISPFlagDefinition | DISPFlagOptimized, unit: !0, retainedNodes: !35)
-!35 = !{!36}
-!36 = !DILocalVariable(name: "10", scope: !34, file: !1, line: 13, type: !37)
-!37 = !DIDerivedType(tag: DW_TAG_pointer_type, baseType: null, size: 64)
-!38 = !DILocation(line: 13, column: 1, scope: !34)
-!39 = !DILocalVariable(name: "11", scope: !34, file: !1, line: 13, type: !37)
 ;.
 ; CHECK: [[META0:![0-9]+]] = distinct !DICompileUnit(language: DW_LANG_C, file: [[META1:![0-9]+]], producer: "debugify", isOptimized: true, runtimeVersion: 0, emissionKind: FullDebug)
 ; CHECK: [[META1]] = !DIFile(filename: "t.c", directory: {{.*}})
@@ -182,10 +154,4 @@ define void @test_asc_asc(ptr addrspace(1) %A, ptr %B) !dbg !34 {
 ; CHECK: [[META31]] = !DILocalVariable(name: "9", scope: [[DBG29]], file: [[META1]], line: 13, type: [[META32:![0-9]+]])
 ; CHECK: [[META32]] = !DIBasicType(name: "tys32", size: 32, encoding: DW_ATE_signed)
 ; CHECK: [[META33]] = !DILocation(line: 13, column: 1, scope: [[DBG29]])
-; CHECK: [[DBG34]] = distinct !DISubprogram(name: "test_asc_asc", linkageName: "test_asc_asc", scope: null, file: [[META1]], line: 13, type: [[META6]], scopeLine: 13, spFlags: DISPFlagDefinition | DISPFlagOptimized, unit: [[META0]], retainedNodes: [[META35:![0-9]+]])
-; CHECK: [[META35]] = !{[[META36]]}
-; CHECK: [[META36]] = !DILocalVariable(name: "10", scope: [[DBG34]], file: [[META1]], line: 13, type: [[META37:![0-9]+]])
-; CHECK: [[META37]] = !DIDerivedType(tag: DW_TAG_pointer_type, baseType: null, size: 64)
-; CHECK: [[META38]] = !DILocation(line: 13, column: 1, scope: [[DBG34]])
-; CHECK: [[META39]] = !DILocalVariable(name: "11", scope: [[DBG34]], file: [[META1]], line: 13, type: [[META37]])
 ;.

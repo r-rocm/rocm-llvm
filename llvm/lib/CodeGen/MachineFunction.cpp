@@ -45,7 +45,6 @@
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/Constant.h"
 #include "llvm/IR/DataLayout.h"
-#include "llvm/IR/DebugInfoMetadata.h"
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/EHPersonalities.h"
 #include "llvm/IR/Function.h"
@@ -73,7 +72,6 @@
 #include <cstdint>
 #include <iterator>
 #include <string>
-#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -104,6 +102,7 @@ static const char *getPropertyName(MachineFunctionProperties::Property Prop) {
   case P::TracksLiveness: return "TracksLiveness";
   case P::TiedOpsRewritten: return "TiedOpsRewritten";
   case P::FailsVerification: return "FailsVerification";
+  case P::FailedRegAlloc: return "FailedRegAlloc";
   case P::TracksDebugUserValues: return "TracksDebugUserValues";
   }
   // clang-format on
@@ -162,10 +161,10 @@ static inline Align getFnStackAlignment(const TargetSubtargetInfo *STI,
   return STI->getFrameLowering()->getStackAlign();
 }
 
-MachineFunction::MachineFunction(Function &F, const LLVMTargetMachine &Target,
-                                 const TargetSubtargetInfo &STI,
-                                 unsigned FunctionNum, MachineModuleInfo &mmi)
-    : F(F), Target(Target), STI(&STI), Ctx(mmi.getContext()), MMI(mmi) {
+MachineFunction::MachineFunction(Function &F, const TargetMachine &Target,
+                                 const TargetSubtargetInfo &STI, MCContext &Ctx,
+                                 unsigned FunctionNum)
+    : F(F), Target(Target), STI(&STI), Ctx(Ctx) {
   FunctionNumber = FunctionNum;
   init();
 }
@@ -339,7 +338,7 @@ MachineFunction::addFrameInst(const MCCFIInstruction &Inst) {
 
 void MachineFunction::replaceFrameInstRegister(Register FromReg,
                                                Register ToReg) {
-  const MCRegisterInfo *MCRI = getMMI().getContext().getRegisterInfo();
+  const MCRegisterInfo *MCRI = Ctx.getRegisterInfo();
   unsigned DwarfFromReg = MCRI->getDwarfRegNum(FromReg, false);
   unsigned DwarfToReg = MCRI->getDwarfRegNum(ToReg, false);
 
@@ -386,6 +385,38 @@ void MachineFunction::RenumberBlocks(MachineBasicBlock *MBB) {
   // numbering, shrink MBBNumbering now.
   assert(BlockNo <= MBBNumbering.size() && "Mismatch!");
   MBBNumbering.resize(BlockNo);
+  MBBNumberingEpoch++;
+}
+
+int64_t MachineFunction::estimateFunctionSizeInBytes() {
+  const TargetInstrInfo &TII = *getSubtarget().getInstrInfo();
+  const Align FunctionAlignment = getAlignment();
+  MachineFunction::iterator MBBI = begin(), E = end();
+  /// Offset - Distance from the beginning of the function to the end
+  /// of the basic block.
+  int64_t Offset = 0;
+
+  for (; MBBI != E; ++MBBI) {
+    const Align Alignment = MBBI->getAlignment();
+    int64_t BlockSize = 0;
+
+    for (auto &MI : *MBBI) {
+      BlockSize += TII.getInstSizeInBytes(MI);
+    }
+
+    int64_t OffsetBB;
+    if (Alignment <= FunctionAlignment) {
+      OffsetBB = alignTo(Offset, Alignment);
+    } else {
+      // The alignment of this MBB is larger than the function's alignment, so
+      // we can't tell whether or not it will insert nops. Assume that it will.
+      OffsetBB = alignTo(Offset, Alignment) + Alignment.value() -
+                 FunctionAlignment.value();
+    }
+    Offset = OffsetBB + BlockSize;
+  }
+
+  return Offset;
 }
 
 /// This method iterates over the basic blocks and assigns their IsBeginSection
@@ -438,11 +469,11 @@ MachineInstr &MachineFunction::cloneMachineInstrBundle(
       break;
     ++I;
   }
-  // Copy over call site info to the cloned instruction if needed. If Orig is in
-  // a bundle, copyCallSiteInfo takes care of finding the call instruction in
-  // the bundle.
-  if (Orig.shouldUpdateCallSiteInfo())
-    copyCallSiteInfo(&Orig, FirstClone);
+  // Copy over call info to the cloned instruction if needed. If Orig is in
+  // a bundle, copyAdditionalCallInfo takes care of finding the call instruction
+  // in the bundle.
+  if (Orig.shouldUpdateAdditionalCallInfo())
+    copyAdditionalCallInfo(&Orig, FirstClone);
   return *FirstClone;
 }
 
@@ -455,8 +486,13 @@ void MachineFunction::deleteMachineInstr(MachineInstr *MI) {
   // be triggered during the implementation of support for the
   // call site info of a new architecture. If the assertion is triggered,
   // back trace will tell where to insert a call to updateCallSiteInfo().
-  assert((!MI->isCandidateForCallSiteEntry() || !CallSitesInfo.contains(MI)) &&
+  assert((!MI->isCandidateForAdditionalCallInfo() ||
+          !CallSitesInfo.contains(MI)) &&
          "Call site info was not updated!");
+  // Verify that the "called globals" info is in a valid state.
+  assert((!MI->isCandidateForAdditionalCallInfo() ||
+          !CalledGlobalsInfo.contains(MI)) &&
+         "Called globals info was not updated!");
   // Strip it for parts. The operand array and the MI object itself are
   // independently recyclable.
   if (MI->Operands)
@@ -475,11 +511,9 @@ MachineFunction::CreateMachineBasicBlock(const BasicBlock *BB,
   MachineBasicBlock *MBB =
       new (BasicBlockRecycler.Allocate<MachineBasicBlock>(Allocator))
           MachineBasicBlock(*this, BB);
-  // Set BBID for `-basic-block=sections=labels` and
-  // `-basic-block-sections=list` to allow robust mapping of profiles to basic
-  // blocks.
-  if (Target.getBBSectionsType() == BasicBlockSection::Labels ||
-      Target.Options.BBAddrMap ||
+  // Set BBID for `-basic-block-sections=list` and `-basic-block-address-map` to
+  // allow robust mapping of profiles to basic blocks.
+  if (Target.Options.BBAddrMap ||
       Target.getBBSectionsType() == BasicBlockSection::List)
     MBB->setBBID(BBID.has_value() ? *BBID : UniqueBBID{NextBBID++, 0});
   return MBB;
@@ -665,9 +699,14 @@ void MachineFunction::print(raw_ostream &OS, const SlotIndexes *Indexes) const {
 
 /// True if this function needs frame moves for debug or exceptions.
 bool MachineFunction::needsFrameMoves() const {
-  return getMMI().hasDebugInfo() ||
-         getTarget().Options.ForceDwarfFrameSection ||
-         F.needsUnwindTableEntry();
+  // TODO: Ideally, what we'd like is to have a switch that allows emitting
+  // synchronous (precise at call-sites only) CFA into .eh_frame. However, even
+  // under this switch, we'd like .debug_frame to be precise when using -g. At
+  // this moment, there's no way to specify that some CFI directives go into
+  // .eh_frame only, while others go into .debug_frame only.
+  return getTarget().Options.ForceDwarfFrameSection ||
+         F.needsUnwindTableEntry() ||
+         !F.getParent()->debug_compile_units().empty();
 }
 
 namespace llvm {
@@ -804,7 +843,8 @@ MCSymbol *MachineFunction::addLandingPad(MachineBasicBlock *LandingPad) {
   LandingPadInfo &LP = getOrCreateLandingPadInfo(LandingPad);
   LP.LandingPadLabel = LandingPadLabel;
 
-  const Instruction *FirstI = LandingPad->getBasicBlock()->getFirstNonPHI();
+  BasicBlock::const_iterator FirstI =
+      LandingPad->getBasicBlock()->getFirstNonPHIIt();
   if (const auto *LPI = dyn_cast<LandingPadInst>(FirstI)) {
     // If there's no typeid list specified, then "cleanup" is implicit.
     // Otherwise, id 0 is reserved for the cleanup action.
@@ -887,7 +927,7 @@ try_next:;
 
 MachineFunction::CallSiteInfoMap::iterator
 MachineFunction::getCallSiteInfo(const MachineInstr *MI) {
-  assert(MI->isCandidateForCallSiteEntry() &&
+  assert(MI->isCandidateForAdditionalCallInfo() &&
          "Call site info refers only to call (MI) candidates");
 
   if (!Target.Options.EmitCallSiteInfo)
@@ -902,59 +942,74 @@ static const MachineInstr *getCallInstr(const MachineInstr *MI) {
 
   for (const auto &BMI : make_range(getBundleStart(MI->getIterator()),
                                     getBundleEnd(MI->getIterator())))
-    if (BMI.isCandidateForCallSiteEntry())
+    if (BMI.isCandidateForAdditionalCallInfo())
       return &BMI;
 
   llvm_unreachable("Unexpected bundle without a call site candidate");
 }
 
-void MachineFunction::eraseCallSiteInfo(const MachineInstr *MI) {
-  assert(MI->shouldUpdateCallSiteInfo() &&
-         "Call site info refers only to call (MI) candidates or "
+void MachineFunction::eraseAdditionalCallInfo(const MachineInstr *MI) {
+  assert(MI->shouldUpdateAdditionalCallInfo() &&
+         "Call info refers only to call (MI) candidates or "
          "candidates inside bundles");
 
   const MachineInstr *CallMI = getCallInstr(MI);
+
   CallSiteInfoMap::iterator CSIt = getCallSiteInfo(CallMI);
-  if (CSIt == CallSitesInfo.end())
-    return;
-  CallSitesInfo.erase(CSIt);
+  if (CSIt != CallSitesInfo.end())
+    CallSitesInfo.erase(CSIt);
+
+  CalledGlobalsMap::iterator CGIt = CalledGlobalsInfo.find(CallMI);
+  if (CGIt != CalledGlobalsInfo.end())
+    CalledGlobalsInfo.erase(CGIt);
 }
 
-void MachineFunction::copyCallSiteInfo(const MachineInstr *Old,
-                                       const MachineInstr *New) {
-  assert(Old->shouldUpdateCallSiteInfo() &&
-         "Call site info refers only to call (MI) candidates or "
+void MachineFunction::copyAdditionalCallInfo(const MachineInstr *Old,
+                                             const MachineInstr *New) {
+  assert(Old->shouldUpdateAdditionalCallInfo() &&
+         "Call info refers only to call (MI) candidates or "
          "candidates inside bundles");
 
-  if (!New->isCandidateForCallSiteEntry())
-    return eraseCallSiteInfo(Old);
+  if (!New->isCandidateForAdditionalCallInfo())
+    return eraseAdditionalCallInfo(Old);
 
   const MachineInstr *OldCallMI = getCallInstr(Old);
   CallSiteInfoMap::iterator CSIt = getCallSiteInfo(OldCallMI);
-  if (CSIt == CallSitesInfo.end())
-    return;
+  if (CSIt != CallSitesInfo.end()) {
+    CallSiteInfo CSInfo = CSIt->second;
+    CallSitesInfo[New] = CSInfo;
+  }
 
-  CallSiteInfo CSInfo = CSIt->second;
-  CallSitesInfo[New] = CSInfo;
+  CalledGlobalsMap::iterator CGIt = CalledGlobalsInfo.find(OldCallMI);
+  if (CGIt != CalledGlobalsInfo.end()) {
+    CalledGlobalInfo CGInfo = CGIt->second;
+    CalledGlobalsInfo[New] = CGInfo;
+  }
 }
 
-void MachineFunction::moveCallSiteInfo(const MachineInstr *Old,
-                                       const MachineInstr *New) {
-  assert(Old->shouldUpdateCallSiteInfo() &&
-         "Call site info refers only to call (MI) candidates or "
+void MachineFunction::moveAdditionalCallInfo(const MachineInstr *Old,
+                                             const MachineInstr *New) {
+  assert(Old->shouldUpdateAdditionalCallInfo() &&
+         "Call info refers only to call (MI) candidates or "
          "candidates inside bundles");
 
-  if (!New->isCandidateForCallSiteEntry())
-    return eraseCallSiteInfo(Old);
+  if (!New->isCandidateForAdditionalCallInfo())
+    return eraseAdditionalCallInfo(Old);
 
   const MachineInstr *OldCallMI = getCallInstr(Old);
   CallSiteInfoMap::iterator CSIt = getCallSiteInfo(OldCallMI);
-  if (CSIt == CallSitesInfo.end())
-    return;
+  if (CSIt != CallSitesInfo.end()) {
+    CallSiteInfo CSInfo = std::move(CSIt->second);
+    CallSitesInfo.erase(CSIt);
+    CallSitesInfo[New] = CSInfo;
+  }
 
-  CallSiteInfo CSInfo = std::move(CSIt->second);
-  CallSitesInfo.erase(CSIt);
-  CallSitesInfo[New] = CSInfo;
+  CalledGlobalsMap::iterator CGIt = CalledGlobalsInfo.find(OldCallMI);
+  if (CGIt != CalledGlobalsInfo.end()) {
+    CalledGlobalInfo CGInfo = std::move(CGIt->second);
+    CalledGlobalsInfo.erase(CGIt);
+    CalledGlobalsInfo[New] = CGInfo;
+  }
 }
 
 void MachineFunction::setDebugInstrNumberingCount(unsigned Num) {
@@ -1002,14 +1057,14 @@ void MachineFunction::substituteDebugValuesForInst(const MachineInstr &Old,
 }
 
 auto MachineFunction::salvageCopySSA(
-    MachineInstr &MI, DenseMap<Register, SalvageCopySSAResult> &DbgPHICache)
-    -> SalvageCopySSAResult {
+    MachineInstr &MI, DenseMap<Register, DebugInstrOperandPair> &DbgPHICache)
+    -> DebugInstrOperandPair {
   const TargetInstrInfo &TII = *getSubtarget().getInstrInfo();
 
   // Check whether this copy-like instruction has already been salvaged into
   // an operand pair.
   Register Dest;
-  if (auto CopyDstSrc = TII.isCopyInstr(MI)) {
+  if (auto CopyDstSrc = TII.isCopyLikeInstr(MI)) {
     Dest = CopyDstSrc->Destination->getReg();
   } else {
     assert(MI.isSubregToReg());
@@ -1027,7 +1082,7 @@ auto MachineFunction::salvageCopySSA(
 }
 
 auto MachineFunction::salvageCopySSAImpl(MachineInstr &MI)
-    -> SalvageCopySSAResult {
+    -> DebugInstrOperandPair {
   MachineRegisterInfo &MRI = getRegInfo();
   const TargetRegisterInfo &TRI = *MRI.getTargetRegisterInfo();
   const TargetInstrInfo &TII = *getSubtarget().getInstrInfo();
@@ -1093,7 +1148,7 @@ auto MachineFunction::salvageCopySSAImpl(MachineInstr &MI)
     CurInst = Inst.getIterator();
 
     // Any non-copy instruction is the defining instruction we're seeking.
-    if (!Inst.isCopyLike() && !TII.isCopyInstr(Inst))
+    if (!Inst.isCopyLike() && !TII.isCopyLikeInstr(Inst))
       break;
     State = GetRegAndSubreg(Inst);
   };
@@ -1125,8 +1180,7 @@ auto MachineFunction::salvageCopySSAImpl(MachineInstr &MI)
     for (auto &MO : Inst->all_defs()) {
       if (MO.getReg() != State.first)
         continue;
-      return {ApplySubregisters({Inst->getDebugInstrNum(), MO.getOperandNo()}),
-              Inst};
+      return ApplySubregisters({Inst->getDebugInstrNum(), MO.getOperandNo()});
     }
 
     llvm_unreachable("Vreg def with no corresponding operand?");
@@ -1146,9 +1200,8 @@ auto MachineFunction::salvageCopySSAImpl(MachineInstr &MI)
       if (!TRI.regsOverlap(RegToSeek, MO.getReg()))
         continue;
 
-      return {
-          ApplySubregisters({ToExamine.getDebugInstrNum(), MO.getOperandNo()}),
-          &ToExamine};
+      return ApplySubregisters(
+          {ToExamine.getDebugInstrNum(), MO.getOperandNo()});
     }
   }
 
@@ -1169,131 +1222,7 @@ auto MachineFunction::salvageCopySSAImpl(MachineInstr &MI)
   Builder.addReg(State.first);
   unsigned NewNum = getNewDebugInstrNum();
   Builder.addImm(NewNum);
-  return {ApplySubregisters({NewNum, 0u}), nullptr};
-}
-
-/// The Op operand to the DBG_INSTR_REF instruction DbgInstr is a virtual
-/// register defined by the REG_SEQUENCE instruction RegSeq. In order to
-/// finalize DbgInstr to use instruction references, find the defining
-/// instruction for each register in the sequence and compose them with a
-/// DIOpComposite.
-static bool finalizeInstrRefRegSequenceNew(
-    MachineInstr &DbgInstr, MachineOperand &Op, MachineInstr &RegSeq,
-    DenseMap<Register, MachineFunction::SalvageCopySSAResult> &DbgPHICache) {
-
-  const DIExpression *Expr = DbgInstr.getDebugExpression();
-  if (Expr->holdsOldElements())
-    return false;
-
-  auto &MF = *DbgInstr.getParent()->getParent();
-  auto &Ctx = Expr->getContext();
-  auto &TRI = *MF.getSubtarget().getRegisterInfo();
-  auto &TII = *MF.getSubtarget().getInstrInfo();
-  auto &DL = MF.getDataLayout();
-
-  struct Part {
-    MachineFunction::DebugInstrOperandPair DbgInstrNum;
-    unsigned Size;
-    unsigned Offset;
-  };
-  SmallVector<Part> Parts;
-
-  // Walk through the reg sequence, collecting debug-instr-numbers and
-  // subregister piece sizes and offsets into Parts.
-  for (unsigned I = 1; I < RegSeq.getNumOperands(); I += 2) {
-    Register RegOp = RegSeq.getOperand(I).getReg();
-    if (!RegOp.isVirtual())
-      return false;
-
-    unsigned SubReg = RegSeq.getOperand(I + 1).getImm();
-    unsigned SubSize = TRI.getSubRegIdxSize(SubReg);
-    unsigned SubOffset = TRI.getSubRegIdxOffset(SubReg);
-    MachineInstr &DefMI = *MF.getRegInfo().def_instr_begin(RegOp);
-
-    if (DefMI.isCopyLike() || TII.isCopyInstr(DefMI)) {
-      auto P = MF.salvageCopySSA(DefMI, DbgPHICache);
-      Parts.push_back({P.first, SubSize, SubOffset});
-      continue;
-    }
-
-    // Otherwise, identify the operand number that the VReg refers to.
-    unsigned OperandIdx = 0;
-    for (const auto &DefMO : DefMI.operands()) {
-      if (DefMO.isReg() && DefMO.isDef() && DefMO.getReg() == RegOp)
-        break;
-      ++OperandIdx;
-    }
-    assert(OperandIdx < DefMI.getNumOperands());
-
-    // Morph this instr ref to point at the given instruction and operand.
-    unsigned ID = DefMI.getDebugInstrNum();
-    MachineFunction::DebugInstrOperandPair P{ID, OperandIdx};
-    Parts.push_back({P, SubSize, SubOffset});
-  }
-
-  // Line up the Parts and make sure there aren't any gaps, DIOpComposite can't
-  // handle that easily.
-  std::sort(Parts.begin(), Parts.end(),
-            [](auto &LHS, auto &RHS) { return LHS.Offset < RHS.Offset; });
-  for (unsigned I = 1, E = Parts.size(); I < E; ++I)
-    if (Parts[I - 1].Offset + Parts[I - 1].Size != Parts[I].Offset)
-      return false;
-  if (Parts.empty() || Parts[0].Offset)
-    return false;
-
-  unsigned ArgNoToReplace = 0;
-  unsigned NumArgs = DbgInstr.getNumDebugOperands();
-  assert(NumArgs == Expr->getNewNumLocationOperands());
-  for (; ArgNoToReplace != NumArgs; ++ArgNoToReplace)
-    if (&DbgInstr.getDebugOperand(ArgNoToReplace) == &Op)
-      break;
-  if (ArgNoToReplace == NumArgs)
-    return false;
-
-  auto Elems = Expr->getNewElementsRef();
-  auto NewSize = TypeSize::getFixed(Parts.back().Offset + Parts.back().Size);
-  for (DIOp::Variant Elem : *Elems) {
-    // Only replace the argument with a composite if it has the same size as the
-    // parts.
-    if (auto *Arg = std::get_if<DIOp::Arg>(&Elem))
-      if (Arg->getIndex() == ArgNoToReplace &&
-          DL.getTypeSizeInBits(Arg->getResultType()) != NewSize)
-        return false;
-  }
-
-  Op.ChangeToDbgInstrRef(Parts[0].DbgInstrNum.first,
-                         Parts[0].DbgInstrNum.second);
-  if (Parts.size() == 1)
-    return true;
-
-  // Split up the DIOpArg using a DIOpComposite.
-  DIExprBuilder B{Ctx};
-  for (DIOp::Variant Elem : *Elems) {
-    auto *Arg = std::get_if<DIOp::Arg>(&Elem);
-    if (!Arg || Arg->getIndex() != ArgNoToReplace) {
-      B.append(Elem);
-      continue;
-    }
-    bool FirstPart = true;
-    for (const Part &P : Parts) {
-      // Since these arguments have to line up with the order of the operands on
-      // the DBG_INSTR_REF, recycle Arg's index first, it lines up with the Op
-      // that was ChangeToDbgInstrRef'd above.
-      unsigned ArgNo = FirstPart ? Arg->getIndex() : NumArgs++;
-      FirstPart = false;
-      B.append<DIOp::Arg>(ArgNo, IntegerType::get(Ctx, P.Size));
-    }
-    B.append<DIOp::Composite>(Parts.size(), Arg->getResultType());
-  }
-
-  auto *NewExpr = B.intoExpression();
-  for (const Part &P : drop_begin(Parts, 1))
-    DbgInstr.addOperand(MachineOperand::CreateDbgInstrRef(
-        P.DbgInstrNum.first, P.DbgInstrNum.second));
-  DbgInstr.getDebugExpressionOp().setMetadata(NewExpr);
-  assert(NewExpr->getNewNumLocationOperands() ==
-         DbgInstr.getNumDebugOperands());
-  return true;
+  return ApplySubregisters({NewNum, 0u});
 }
 
 void MachineFunction::finalizeDebugInstrRefs() {
@@ -1305,7 +1234,7 @@ void MachineFunction::finalizeDebugInstrRefs() {
     MI.setDebugValueUndef();
   };
 
-  DenseMap<Register, SalvageCopySSAResult> ArgDbgPHIs;
+  DenseMap<Register, DebugInstrOperandPair> ArgDbgPHIs;
   for (auto &MBB : *this) {
     for (auto &MI : MBB) {
       if (!MI.isDebugRef())
@@ -1313,8 +1242,7 @@ void MachineFunction::finalizeDebugInstrRefs() {
 
       bool IsValidRef = true;
 
-      for (unsigned I = 0; I < MI.getNumDebugOperands(); ++I) {
-        MachineOperand &MO = MI.getDebugOperand(I);
+      for (MachineOperand &MO : MI.debug_operands()) {
         if (!MO.isReg())
           continue;
 
@@ -1336,12 +1264,7 @@ void MachineFunction::finalizeDebugInstrRefs() {
         // for why this is important.
         if (DefMI.isCopyLike() || TII->isCopyInstr(DefMI)) {
           auto Result = salvageCopySSA(DefMI, ArgDbgPHIs);
-          if (!Result.second || !Result.second->isRegSequence() ||
-              !finalizeInstrRefRegSequenceNew(MI, MO, *Result.second,
-                                              ArgDbgPHIs))
-            MO.ChangeToDbgInstrRef(Result.first.first, Result.first.second);
-        } else if (DefMI.isRegSequence() &&
-                   finalizeInstrRefRegSequenceNew(MI, MO, DefMI, ArgDbgPHIs)) {
+          MO.ChangeToDbgInstrRef(Result.first, Result.second);
         } else {
           // Otherwise, identify the operand number that the VReg refers to.
           unsigned OperandIdx = 0;
@@ -1399,6 +1322,10 @@ const unsigned MachineFunction::DebugOperandMemNumber = 1000000;
 //  MachineJumpTableInfo implementation
 //===----------------------------------------------------------------------===//
 
+MachineJumpTableEntry::MachineJumpTableEntry(
+    const std::vector<MachineBasicBlock *> &MBBs)
+    : MBBs(MBBs), Hotness(MachineFunctionDataHotness::Unknown) {}
+
 /// Return the size of each entry in the jump table.
 unsigned MachineJumpTableInfo::getEntrySize(const DataLayout &TD) const {
   // The size of a jump table entry is 4 bytes unless the entry is just the
@@ -1446,6 +1373,17 @@ unsigned MachineJumpTableInfo::createJumpTableIndex(
   assert(!DestBBs.empty() && "Cannot create an empty jump table!");
   JumpTables.push_back(MachineJumpTableEntry(DestBBs));
   return JumpTables.size()-1;
+}
+
+bool MachineJumpTableInfo::updateJumpTableEntryHotness(
+    size_t JTI, MachineFunctionDataHotness Hotness) {
+  assert(JTI < JumpTables.size() && "Invalid JTI!");
+  // Record the largest hotness value.
+  if (Hotness <= JumpTables[JTI].Hotness)
+    return false;
+
+  JumpTables[JTI].Hotness = Hotness;
+  return true;
 }
 
 /// If Old is the target of any jump tables, update the jump tables to branch

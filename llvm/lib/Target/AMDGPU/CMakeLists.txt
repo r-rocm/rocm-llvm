@@ -51,10 +51,10 @@ add_llvm_target(AMDGPUCodeGen
   AMDGPUAtomicOptimizer.cpp
   AMDGPUAttributor.cpp
   AMDGPUCallLowering.cpp
-  AMDGPUCodeGenPassBuilder.cpp
   AMDGPUCodeGenPrepare.cpp
   AMDGPUCombinerHelper.cpp
   AMDGPUCtorDtorLowering.cpp
+  AMDGPUExpandFeaturePredicates.cpp
   AMDGPUExportClustering.cpp
   AMDGPUFrameLowering.cpp
   AMDGPUGlobalISelDivergenceLowering.cpp
@@ -75,9 +75,7 @@ add_llvm_target(AMDGPUCodeGen
   AMDGPULowerKernelArguments.cpp
   AMDGPULowerKernelAttributes.cpp
   AMDGPULowerKernelCalls.cpp
-  AMDGPUSwLowerLDS.cpp
   AMDGPULowerModuleLDSPass.cpp
-  AMDGPUMachineCFGStructurizer.cpp
   AMDGPUSwLowerLDS.cpp
   AMDGPUMachineFunction.cpp
   AMDGPUMachineModuleInfo.cpp
@@ -85,17 +83,22 @@ add_llvm_target(AMDGPUCodeGen
   AMDGPUMCInstLower.cpp
   AMDGPUMemoryUtils.cpp
   AMDGPUIGroupLP.cpp
-  AMDGPUInsertSingleUseVDST.cpp
+  AMDGPUMCResourceInfo.cpp
   AMDGPUMarkLastScratchLoad.cpp
   AMDGPUMIRFormatter.cpp
   AMDGPUOpenCLEnqueuedBlockLowering.cpp
   AMDGPUPerfHintAnalysis.cpp
   AMDGPUPostLegalizerCombiner.cpp
   AMDGPUPreLegalizerCombiner.cpp
+  AMDGPUPreloadKernArgProlog.cpp
+  AMDGPUPreloadKernelArguments.cpp
   AMDGPUPrintfRuntimeBinding.cpp
   AMDGPUPromoteAlloca.cpp
   AMDGPUPromoteKernelArguments.cpp
   AMDGPURegBankCombiner.cpp
+  AMDGPURegBankLegalize.cpp
+  AMDGPURegBankLegalizeHelper.cpp
+  AMDGPURegBankLegalizeRules.cpp
   AMDGPURegBankSelect.cpp
   AMDGPURegisterBankInfo.cpp
   AMDGPURemoveIncompatibleFunctions.cpp
@@ -103,6 +106,7 @@ add_llvm_target(AMDGPUCodeGen
   AMDGPUResourceUsageAnalysis.cpp
   AMDGPURewriteOutArguments.cpp
   AMDGPURewriteUndefForPHI.cpp
+  AMDGPUSelectionDAGInfo.cpp
   AMDGPUSetWavePriority.cpp
   AMDGPUSplitModule.cpp
   AMDGPUSubtarget.cpp
@@ -129,7 +133,6 @@ add_llvm_target(AMDGPUCodeGen
   GCNVOPDUtils.cpp
   R600AsmPrinter.cpp
   R600ClauseMergePass.cpp
-  R600CodeGenPassBuilder.cpp
   R600ControlFlowFinalizer.cpp
   R600EmitClauseMarkers.cpp
   R600ExpandSpecialInstrs.cpp

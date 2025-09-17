@@ -57,7 +57,6 @@ GCNHazardRecognizer::GCNHazardRecognizer(const MachineFunction &MF)
       TRI(TII.getRegisterInfo()), TSchedModel(TII.getSchedModel()),
       ClauseUses(TRI.getNumRegUnits()), ClauseDefs(TRI.getNumRegUnits()) {
   MaxLookAhead = MF.getRegInfo().isPhysRegUsed(AMDGPU::AGPR0) ? 19 : 5;
-  TSchedModel.init(&ST);
   RunLdsBranchVmemWARHazardFixup = shouldRunLdsBranchVmemWARHazardFixup(MF, ST);
 }
 
@@ -853,9 +852,12 @@ int GCNHazardRecognizer::createsVALUHazard(const MachineInstr &MI) {
   }
 
   if (TII->isFLAT(MI)) {
-    int DataIdx = AMDGPU::getNamedOperandIdx(Opcode, AMDGPU::OpName::vdata);
-    if (AMDGPU::getRegBitWidth(Desc.operands()[DataIdx].RegClass) > 64)
-      return DataIdx;
+    // There is no hazard if the instruction does not use vector regs
+    if (VDataIdx == -1)
+      return -1;
+
+    if (AMDGPU::getRegBitWidth(VDataRCID) > 64)
+      return VDataIdx;
   }
 
   return -1;
@@ -911,21 +913,30 @@ getDstSelForwardingOperand(const MachineInstr &MI, const GCNSubtarget &ST) {
   if (SIInstrInfo::isSDWA(MI)) {
     // Type 1: SDWA with dst_sel != DWORD
     if (auto *DstSel = TII->getNamedOperand(MI, AMDGPU::OpName::dst_sel))
-      if (DstSel->getImm() == AMDGPU::SDWA::DWORD)
-        return nullptr;
-  } else {
-    // Type 2 && Type 3: (VOP3 which write the hi bits) || (FP8DstSelInst
-    // with op_sel[3:2] != 0)
-    if (!AMDGPU::hasNamedOperand(Opcode, AMDGPU::OpName::op_sel) ||
-        !(TII->getNamedOperand(MI, AMDGPU::OpName::src0_modifiers)->getImm() &
-              SISrcMods::DST_OP_SEL ||
-          (AMDGPU::isFP8DstSelInst(Opcode) &&
-           (TII->getNamedOperand(MI, AMDGPU::OpName::src2_modifiers)->getImm() &
-            SISrcMods::OP_SEL_0))))
-      return nullptr;
+      if (DstSel->getImm() != AMDGPU::SDWA::DWORD)
+        return TII->getNamedOperand(MI, AMDGPU::OpName::vdst);
   }
 
-  return TII->getNamedOperand(MI, AMDGPU::OpName::vdst);
+  AMDGPU::FPType IsFP4OrFP8ConvOpc = AMDGPU::getFPDstSelType(Opcode);
+  if (AMDGPU::hasNamedOperand(Opcode, AMDGPU::OpName::op_sel)) {
+    // Type 2: VOP3 which write the hi bits
+    if (TII->getNamedImmOperand(MI, AMDGPU::OpName::src0_modifiers) &
+        SISrcMods::DST_OP_SEL)
+      return TII->getNamedOperand(MI, AMDGPU::OpName::vdst);
+
+    // Type 3: FP8DstSelInst with op_sel[3:2] != 0)
+    if (IsFP4OrFP8ConvOpc == AMDGPU::FPType::FP8 &&
+        (TII->getNamedImmOperand(MI, AMDGPU::OpName::src2_modifiers) &
+         SISrcMods::OP_SEL_0))
+      return TII->getNamedOperand(MI, AMDGPU::OpName::vdst);
+  }
+
+  // Special case: nop is required for all the opsel values for fp4 sr variant
+  // cvt scale instructions
+  if (IsFP4OrFP8ConvOpc == AMDGPU::FPType::FP4)
+    return TII->getNamedOperand(MI, AMDGPU::OpName::vdst);
+
+  return nullptr;
 }
 
 /// Checks whether the provided \p MI "consumes" the operand with a Dest sel
@@ -2585,20 +2596,24 @@ static int GFX940_SMFMA_N_PassWriteVgprVALUWawWaitStates(int NumPasses) {
   return NumPasses + 2;
 }
 
-static int GFX940_XDL_N_PassWriteVgprVALUWawWaitStates(int NumPasses) {
-  // 2 pass -> 5
-  // 4 pass -> 7
-  // 8 pass -> 11
-  // 16 pass -> 19
-  return NumPasses + 3;
+static int GFX940_XDL_N_PassWriteVgprVALUWawWaitStates(int NumPasses,
+                                                       bool IsGFX950) {
+  // xdl def cycles | gfx940 | gfx950
+  // 2 pass         |  5        5
+  // 4 pass         |  7        8
+  // 8 pass         |  11       12
+  // 16 pass        |  19       20
+  return NumPasses + 3 + (NumPasses != 2 && IsGFX950);
 }
 
-static int GFX940_XDL_N_PassWriteVgprVALUMemExpReadWaitStates(int NumPasses) {
-  // 2 pass -> 5
-  // 4 pass -> 7
-  // 8 pass -> 11
-  // 16 pass -> 19
-  return NumPasses + 3;
+static int GFX940_XDL_N_PassWriteVgprVALUMemExpReadWaitStates(int NumPasses,
+                                                              bool IsGFX950) {
+  // xdl def cycles | gfx940 | gfx950
+  // 2 pass         |  5        5
+  // 4 pass         |  7        8
+  // 8 pass         |  11       12
+  // 16 pass        |  19       20
+  return NumPasses + 3 + (NumPasses != 2 && IsGFX950);
 }
 
 static int GFX940_SMFMA_N_PassWriteVgprVALUMemExpReadWaitStates(int NumPasses) {
@@ -2749,7 +2764,8 @@ int GCNHazardRecognizer::checkMAIVALUHazards(MachineInstr *MI) {
       } else if (ST.hasGFX940Insts()) {
         NeedWaitStates =
             isXDL(ST, *MFMA)
-                ? GFX940_XDL_N_PassWriteVgprVALUMemExpReadWaitStates(NumPasses)
+                ? GFX940_XDL_N_PassWriteVgprVALUMemExpReadWaitStates(
+                      NumPasses, ST.hasGFX950Insts())
                 : GFX940_SMFMA_N_PassWriteVgprVALUMemExpReadWaitStates(
                       NumPasses);
       } else {
@@ -2835,7 +2851,8 @@ int GCNHazardRecognizer::checkMAIVALUHazards(MachineInstr *MI) {
       } else if (ST.hasGFX940Insts()) {
         NeedWaitStates =
             isXDL(ST, *MFMA)
-                ? GFX940_XDL_N_PassWriteVgprVALUWawWaitStates(NumPasses)
+                ? GFX940_XDL_N_PassWriteVgprVALUWawWaitStates(
+                      NumPasses, ST.hasGFX950Insts())
                 : GFX940_SMFMA_N_PassWriteVgprVALUWawWaitStates(NumPasses);
       } else {
         switch (NumPasses) {
@@ -2992,8 +3009,8 @@ bool GCNHazardRecognizer::fixVALUMaskWriteHazard(MachineInstr *MI) {
     switch (I.getOpcode()) {
     case AMDGPU::V_ADDC_U32_e32:
     case AMDGPU::V_ADDC_U32_dpp:
-    case AMDGPU::V_CNDMASK_B16_e32:
-    case AMDGPU::V_CNDMASK_B16_dpp:
+    case AMDGPU::V_CNDMASK_B16_fake16_e32:
+    case AMDGPU::V_CNDMASK_B16_fake16_dpp:
     case AMDGPU::V_CNDMASK_B32_e32:
     case AMDGPU::V_CNDMASK_B32_dpp:
     case AMDGPU::V_DIV_FMAS_F32_e64:
@@ -3008,8 +3025,8 @@ bool GCNHazardRecognizer::fixVALUMaskWriteHazard(MachineInstr *MI) {
              HazardReg == AMDGPU::VCC_HI;
     case AMDGPU::V_ADDC_U32_e64:
     case AMDGPU::V_ADDC_U32_e64_dpp:
-    case AMDGPU::V_CNDMASK_B16_e64:
-    case AMDGPU::V_CNDMASK_B16_e64_dpp:
+    case AMDGPU::V_CNDMASK_B16_fake16_e64:
+    case AMDGPU::V_CNDMASK_B16_fake16_e64_dpp:
     case AMDGPU::V_CNDMASK_B32_e64:
     case AMDGPU::V_CNDMASK_B32_e64_dpp:
     case AMDGPU::V_SUBB_U32_e64:

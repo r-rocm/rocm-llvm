@@ -58,14 +58,33 @@ extern "C" {
 
 namespace Fortran::runtime {
 
+gid_t RTNAME(GetGID)() {
+#ifdef _WIN32
+  // Group IDs don't exist on Windows, return 1 to avoid errors
+  return 1;
+#else
+  return getgid();
+#endif
+}
+
+uid_t RTNAME(GetUID)() {
+#ifdef _WIN32
+  // User IDs don't exist on Windows, return 1 to avoid errors
+  return 1;
+#else
+  return getuid();
+#endif
+}
+
 void GetUsernameEnvVar(const char *envName, char *arg, std::int64_t length) {
   Descriptor name{*Descriptor::Create(
-      1, std::strlen(envName) + 1, const_cast<char *>(envName), 0)};
+      1, Fortran::runtime::strlen(envName) + 1, const_cast<char *>(envName), 0)};
   Descriptor value{*Descriptor::Create(1, length, arg, 0)};
 
   RTNAME(GetEnvVariable)
   (name, &value, nullptr, false, nullptr, __FILE__, __LINE__);
 }
+
 namespace io {
 // SUBROUTINE FLUSH(N)
 //   FLUSH N
@@ -83,7 +102,7 @@ void FORTRAN_PROCEDURE_NAME(fdate)(char *arg, std::int64_t length) {
   char str[26];
   // Insufficient space, fill with spaces and return.
   if (length < 24) {
-    std::memset(arg, ' ', length);
+    Fortran::runtime::memset(arg, ' ', length);
     return;
   }
 
@@ -94,6 +113,10 @@ void FORTRAN_PROCEDURE_NAME(fdate)(char *arg, std::int64_t length) {
 
   // Pad space on the last two byte `\n\0`, start at index 24 included.
   CopyAndPad(arg, str, length, 24);
+}
+
+std::intptr_t RTNAME(Malloc)(std::size_t size) {
+  return reinterpret_cast<std::intptr_t>(std::malloc(size));
 }
 
 // RESULT = IARGC()
@@ -111,8 +134,8 @@ void FORTRAN_PROCEDURE_NAME(getarg)(
 void FORTRAN_PROCEDURE_NAME(getlog)(char *arg, std::int64_t length) {
 #if _REENTRANT || _POSIX_C_SOURCE >= 199506L
   if (length >= 1 && getlogin_r(arg, length) == 0) {
-    auto loginLen{std::strlen(arg)};
-    std::memset(
+    auto loginLen{Fortran::runtime::strlen(arg)};
+    Fortran::runtime::memset(
         arg + loginLen, ' ', static_cast<std::size_t>(length) - loginLen);
     return;
   }
@@ -122,6 +145,10 @@ void FORTRAN_PROCEDURE_NAME(getlog)(char *arg, std::int64_t length) {
 #else
   GetUsernameEnvVar("LOGNAME", arg, length);
 #endif
+}
+
+void RTNAME(Free)(std::intptr_t ptr) {
+  std::free(reinterpret_cast<void *>(ptr));
 }
 
 std::int64_t RTNAME(Signal)(std::int64_t number, void (*handler)(int)) {
@@ -162,7 +189,7 @@ std::int64_t FORTRAN_PROCEDURE_NAME(access)(const char *name,
   char *newName{nullptr};
   if (name[nameLength - 1] != '\0') {
     newName = static_cast<char *>(std::malloc(nameLength + 1));
-    std::memcpy(newName, name, nameLength);
+    Fortran::runtime::memcpy(newName, name, nameLength);
     newName[nameLength] = '\0';
     name = newName;
   }

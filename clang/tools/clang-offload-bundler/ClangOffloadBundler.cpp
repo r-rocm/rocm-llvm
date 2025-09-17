@@ -354,7 +354,6 @@ int main(int argc, const char **argv) {
       return reportError(createStringError(
           errc::invalid_argument, "Duplicate targets are not allowed"));
     }
-    ParsedTargets.insert(Target);
 
     if (!checkOffloadBundleID(Target)) {
       return reportError(createStringError(

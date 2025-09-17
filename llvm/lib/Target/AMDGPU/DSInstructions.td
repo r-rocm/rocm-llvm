@@ -73,6 +73,7 @@ class DS_Real <DS_Pseudo ps, string opName = ps.Mnemonic> :
   let IsAtomicNoRet      = ps.IsAtomicNoRet;
   let Uses               = ps.Uses;
   let Defs               = ps.Defs;
+  let isConvergent       = ps.isConvergent;
 
   let Constraints = ps.Constraints;
   let DisableEncoding = ps.DisableEncoding;
@@ -193,7 +194,6 @@ class DS_1A1D_RET <string opName, RegisterClass rc = VGPR_32,
   (ins VGPR_32:$addr, data_op:$data0, Offset:$offset, gds:$gds),
   " $vdst, $addr, $data0$offset$gds"> {
 
-  let hasPostISelHook = 1;
   let has_data1 = 0;
   let IsAtomicRet = 1;
 }
@@ -222,7 +222,6 @@ class DS_1A2D_RET<string opName,
   (ins VGPR_32:$addr, src_op:$data0, src_op:$data1, Offset:$offset, gds:$gds),
   " $vdst, $addr, $data0, $data1$offset$gds"> {
 
-  let hasPostISelHook = 1;
   let IsAtomicRet = 1;
 }
 
@@ -247,7 +246,6 @@ class DS_1A2D_Off8_RET<string opName,
   " $vdst, $addr, $data0, $data1$offset0$offset1$gds"> {
 
   let has_offset = 0;
-  let hasPostISelHook = 1;
 }
 
 multiclass DS_1A2D_Off8_RET_mc<string opName,
@@ -260,10 +258,13 @@ multiclass DS_1A2D_Off8_RET_mc<string opName,
   }
 }
 
-class DS_BVH_STACK<string opName>
+class DS_BVH_STACK<string opName,
+                   RegisterClass vdst_rc,
+                   RegisterClass data1_rc>
 : DS_Pseudo<opName,
-  (outs getLdStRegisterOperand<VGPR_32>.ret:$vdst, VGPR_32:$addr),
-  (ins VGPR_32:$addr_in, getLdStRegisterOperand<VGPR_32>.ret:$data0, VReg_128:$data1, Offset:$offset),
+  (outs getLdStRegisterOperand<vdst_rc>.ret:$vdst, VGPR_32:$addr),
+  (ins VGPR_32:$addr_in, getLdStRegisterOperand<VGPR_32>.ret:$data0,
+   data1_rc:$data1, Offset:$offset),
   " $vdst, $addr, $data0, $data1$offset"> {
   let Constraints = "$addr = $addr_in";
   let DisableEncoding = "$addr_in";
@@ -701,6 +702,7 @@ def DS_PERMUTE_B32  : DS_1A1D_PERMUTE <"ds_permute_b32",
                                        int_amdgcn_ds_permute>;
 def DS_BPERMUTE_B32 : DS_1A1D_PERMUTE <"ds_bpermute_b32",
                                        int_amdgcn_ds_bpermute>;
+def DS_BPERMUTE_FI_B32 : DS_1A1D_PERMUTE <"ds_bpermute_fi_b32">;
 }
 
 } // let SubtargetPredicate = isGFX8Plus
@@ -724,7 +726,8 @@ def DS_SUB_GS_REG_RTN : DS_0A1D_RET_GDS<"ds_sub_gs_reg_rtn", VReg_64, VGPR_32>;
 let SubtargetPredicate = isGFX11Plus in {
 
 let OtherPredicates = [HasImageInsts] in
-def DS_BVH_STACK_RTN_B32 : DS_BVH_STACK<"ds_bvh_stack_rtn_b32">;
+def DS_BVH_STACK_RTN_B32 : DS_BVH_STACK<"ds_bvh_stack_rtn_b32",
+                                        VGPR_32, VReg_128> ;
 
 } // let SubtargetPredicate = isGFX11Plus
 
@@ -733,6 +736,13 @@ def DS_BVH_STACK_RTN_B32 : DS_BVH_STACK<"ds_bvh_stack_rtn_b32">;
 //===----------------------------------------------------------------------===//
 
 let SubtargetPredicate = isGFX12Plus in {
+
+let OtherPredicates = [HasImageInsts] in {
+def DS_BVH_STACK_PUSH8_POP1_RTN_B32 : DS_BVH_STACK<
+  "ds_bvh_stack_push8_pop1_rtn_b32", VGPR_32, VReg_256>;
+def DS_BVH_STACK_PUSH8_POP2_RTN_B64 : DS_BVH_STACK<
+  "ds_bvh_stack_push8_pop2_rtn_b64", VReg_64, VReg_256>;
+} // End OtherPredicates = [HasImageInsts].
 
 defm DS_COND_SUB_U32      : DS_1A1D_NORET_mc<"ds_cond_sub_u32">;
 defm DS_COND_SUB_RTN_U32  : DS_1A1D_RET_mc<"ds_cond_sub_rtn_u32", VGPR_32>;
@@ -807,12 +817,19 @@ defm : DSReadPat_mc <DS_READ_B32, vt, "load_local">;
 
 defm : DSReadPat_mc <DS_READ_U8, i16, "atomic_load_8_local">;
 defm : DSReadPat_mc <DS_READ_U8, i32, "atomic_load_8_local">;
+defm : DSReadPat_mc <DS_READ_U8, i16, "atomic_load_zext_8_local">;
+defm : DSReadPat_mc <DS_READ_U8, i32, "atomic_load_zext_8_local">;
+defm : DSReadPat_mc <DS_READ_I8, i16, "atomic_load_sext_8_local">;
+defm : DSReadPat_mc <DS_READ_I8, i32, "atomic_load_sext_8_local">;
 defm : DSReadPat_mc <DS_READ_U16, i16, "atomic_load_16_local">;
 defm : DSReadPat_mc <DS_READ_U16, i32, "atomic_load_16_local">;
+defm : DSReadPat_mc <DS_READ_U16, i32, "atomic_load_zext_16_local">;
+defm : DSReadPat_mc <DS_READ_I16, i32, "atomic_load_sext_16_local">;
 defm : DSReadPat_mc <DS_READ_B32, i32, "atomic_load_32_local">;
 defm : DSReadPat_mc <DS_READ_B64, i64, "atomic_load_64_local">;
 
 let OtherPredicates = [D16PreservesUnusedBits] in {
+// TODO: Atomic loads
 def : DSReadPat_D16<DS_READ_U16_D16_HI, load_d16_hi_local, v2i16>;
 def : DSReadPat_D16<DS_READ_U16_D16_HI, load_d16_hi_local, v2f16>;
 def : DSReadPat_D16<DS_READ_U8_D16_HI, az_extloadi8_d16_hi_local, v2i16>;
@@ -865,24 +882,24 @@ def : DSWritePat <DS_WRITE_B8_D16_HI, i32, truncstorei8_hi16_local>;
 }
 
 class DS64Bit4ByteAlignedReadPat<DS_Pseudo inst, ValueType vt, PatFrag frag> : GCNPat <
-  (vt:$value (frag (DS64Bit4ByteAligned i32:$ptr, i8:$offset0, i8:$offset1))),
+  (vt:$value (frag (DS64Bit4ByteAligned i32:$ptr, i32:$offset0, i32:$offset1))),
   (inst $ptr, $offset0, $offset1, (i1 0))
 >;
 
 class DS64Bit4ByteAlignedWritePat<DS_Pseudo inst, ValueType vt, PatFrag frag> : GCNPat<
-  (frag vt:$value, (DS64Bit4ByteAligned i32:$ptr, i8:$offset0, i8:$offset1)),
+  (frag vt:$value, (DS64Bit4ByteAligned i32:$ptr, i32:$offset0, i32:$offset1)),
   (inst $ptr, (i32 (EXTRACT_SUBREG VReg_64:$value, sub0)),
               (i32 (EXTRACT_SUBREG VReg_64:$value, sub1)), $offset0, $offset1,
               (i1 0))
 >;
 
 class DS128Bit8ByteAlignedReadPat<DS_Pseudo inst, ValueType vt, PatFrag frag> : GCNPat <
-  (vt:$value (frag (DS128Bit8ByteAligned i32:$ptr, i8:$offset0, i8:$offset1))),
+  (vt:$value (frag (DS128Bit8ByteAligned i32:$ptr, i32:$offset0, i32:$offset1))),
   (inst $ptr, $offset0, $offset1, (i1 0))
 >;
 
 class DS128Bit8ByteAlignedWritePat<DS_Pseudo inst, ValueType vt, PatFrag frag> : GCNPat<
-  (frag vt:$value, (DS128Bit8ByteAligned i32:$ptr, i8:$offset0, i8:$offset1)),
+  (frag vt:$value, (DS128Bit8ByteAligned i32:$ptr, i32:$offset0, i32:$offset1)),
   (inst $ptr, (i64 (EXTRACT_SUBREG VReg_128:$value, sub0_sub1)),
               (i64 (EXTRACT_SUBREG VReg_128:$value, sub2_sub3)), $offset0, $offset1,
               (i1 0))
@@ -1147,11 +1164,7 @@ class DSAtomicRetPatIntrinsic<DS_Pseudo inst, ValueType vt, PatFrag frag,
   (vt (frag (DS1Addr1Offset i32:$ptr, i32:$offset), vt:$value)),
   (inst $ptr, getVregSrcForVT<vt>.ret:$value, Offset:$offset, (i1 gds))> {
 }
-
-def : DSAtomicRetPatIntrinsic<DS_ADD_RTN_F64, f64, int_amdgcn_flat_atomic_fadd_local_addrspace>;
-let AddedComplexity = 1 in
-def : DSAtomicRetPatIntrinsic<DS_ADD_F64, f64, int_amdgcn_flat_atomic_fadd_noret_local_addrspace>;
-}
+} // End SubtargetPredicate = HasLdsAtomicAddF64
 
 let SubtargetPredicate = HasAtomicDsPkAdd16Insts in {
 defm : DSAtomicRetNoRetPat_mc<DS_PK_ADD_RTN_F16, DS_PK_ADD_F16, v2f16, "atomic_load_fadd">;
@@ -1263,6 +1276,12 @@ defm DS_PK_ADD_F16        : DS_Real_gfx12<0x09a>;
 defm DS_PK_ADD_RTN_F16    : DS_Real_gfx12<0x0aa>;
 defm DS_PK_ADD_BF16       : DS_Real_gfx12<0x09b>;
 defm DS_PK_ADD_RTN_BF16   : DS_Real_gfx12<0x0ab>;
+defm DS_BPERMUTE_FI_B32   : DS_Real_gfx12<0x0cd>;
+
+defm DS_BVH_STACK_RTN_B32             : DS_Real_gfx12<0x0e0,
+  "ds_bvh_stack_push4_pop1_rtn_b32", true>;
+defm DS_BVH_STACK_PUSH8_POP1_RTN_B32  : DS_Real_gfx12<0x0e1>;
+defm DS_BVH_STACK_PUSH8_POP2_RTN_B64  : DS_Real_gfx12<0x0e2>;
 
 // New aliases added in GFX12 without renaming the instructions.
 let AssemblerPredicate = isGFX12Plus in {

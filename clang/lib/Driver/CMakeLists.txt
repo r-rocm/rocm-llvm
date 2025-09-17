@@ -49,6 +49,7 @@ add_clang_library(clangDriver
   ToolChains/AVR.cpp
   ToolChains/BareMetal.cpp
   ToolChains/Clang.cpp
+  ToolChains/OpaqueOffloadLinker.cpp
   ToolChains/CommonArgs.cpp
   ToolChains/CrossWindows.cpp
   ToolChains/CSKYToolChain.cpp
@@ -79,7 +80,10 @@ add_clang_library(clangDriver
   ToolChains/RISCVToolchain.cpp
   ToolChains/Solaris.cpp
   ToolChains/SPIRV.cpp
+  ToolChains/SPIRVOpenMP.cpp
+  ToolChains/SYCL.cpp
   ToolChains/TCE.cpp
+  ToolChains/UEFI.cpp
   ToolChains/VEToolchain.cpp
   ToolChains/WebAssembly.cpp
   ToolChains/XCore.cpp

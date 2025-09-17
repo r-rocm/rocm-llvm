@@ -131,6 +131,7 @@ struct DataObject {
   DataSymbol *DataSym;
   std::vector<std::string> MangledNames;
   std::map<std::string, std::string> NameExpressionMap;
+  llvm::SmallVector<const char *, 128> SpirvFlags;
 
 private:
   std::unique_ptr<llvm::MemoryBuffer> Buffer;
@@ -230,6 +231,7 @@ struct DataAction {
   amd_comgr_language_t Language;
   bool Logging;
   bool ShouldLinkDeviceLibs = false;
+  bool ShouldUseVFS = true;
 
   std::vector<std::string> BundleEntryIDs;
 

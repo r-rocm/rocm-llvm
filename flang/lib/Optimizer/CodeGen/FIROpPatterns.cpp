@@ -102,9 +102,11 @@ mlir::Value ConvertFIRToLLVMPattern::getValueFromBox(
     auto p = rewriter.create<mlir::LLVM::GEPOp>(
         loc, pty, boxTy.llvm, box,
         llvm::ArrayRef<mlir::LLVM::GEPArg>{0, boxValue});
-    auto loadOp = rewriter.create<mlir::LLVM::LoadOp>(loc, resultTy, p);
+    auto fldTy = getBoxEleTy(boxTy.llvm, {boxValue});
+    auto loadOp = rewriter.create<mlir::LLVM::LoadOp>(loc, fldTy, p);
+    auto castOp = integerCast(loc, rewriter, resultTy, loadOp);
     attachTBAATag(loadOp, boxTy.fir, nullptr, p);
-    return loadOp;
+    return castOp;
   }
   return rewriter.create<mlir::LLVM::ExtractValueOp>(loc, box, boxValue);
 }
@@ -191,6 +193,14 @@ mlir::Value ConvertFIRToLLVMPattern::getRankFromBox(
     mlir::ConversionPatternRewriter &rewriter) const {
   mlir::Type resultTy = getBoxEleTy(boxTy.llvm, {kRankPosInBox});
   return getValueFromBox(loc, boxTy, box, resultTy, rewriter, kRankPosInBox);
+}
+
+/// Read the extra field from a fir.box.
+mlir::Value ConvertFIRToLLVMPattern::getExtraFromBox(
+    mlir::Location loc, TypePair boxTy, mlir::Value box,
+    mlir::ConversionPatternRewriter &rewriter) const {
+  mlir::Type resultTy = getBoxEleTy(boxTy.llvm, {kExtraPosInBox});
+  return getValueFromBox(loc, boxTy, box, resultTy, rewriter, kExtraPosInBox);
 }
 
 // Get the element type given an LLVM type that is of the form
@@ -336,7 +346,10 @@ unsigned ConvertFIRToLLVMPattern::getAllocaAddressSpace(
   mlir::Operation *parentOp = rewriter.getInsertionBlock()->getParentOp();
   assert(parentOp != nullptr &&
          "expected insertion block to have parent operation");
-  if (auto module = parentOp->getParentOfType<mlir::ModuleOp>())
+  auto module = mlir::isa<mlir::ModuleOp>(parentOp)
+                    ? mlir::cast<mlir::ModuleOp>(parentOp)
+                    : parentOp->getParentOfType<mlir::ModuleOp>();
+  if (module)
     if (mlir::Attribute addrSpace =
             mlir::DataLayout(module).getAllocaMemorySpace())
       return llvm::cast<mlir::IntegerAttr>(addrSpace).getUInt();
@@ -348,9 +361,27 @@ unsigned ConvertFIRToLLVMPattern::getProgramAddressSpace(
   mlir::Operation *parentOp = rewriter.getInsertionBlock()->getParentOp();
   assert(parentOp != nullptr &&
          "expected insertion block to have parent operation");
-  if (auto module = parentOp->getParentOfType<mlir::ModuleOp>())
+  auto module = mlir::isa<mlir::ModuleOp>(parentOp)
+                    ? mlir::cast<mlir::ModuleOp>(parentOp)
+                    : parentOp->getParentOfType<mlir::ModuleOp>();
+  if (module)
     if (mlir::Attribute addrSpace =
             mlir::DataLayout(module).getProgramMemorySpace())
+      return llvm::cast<mlir::IntegerAttr>(addrSpace).getUInt();
+  return defaultAddressSpace;
+}
+
+unsigned ConvertFIRToLLVMPattern::getGlobalAddressSpace(
+    mlir::ConversionPatternRewriter &rewriter) const {
+  mlir::Operation *parentOp = rewriter.getInsertionBlock()->getParentOp();
+  assert(parentOp != nullptr &&
+         "expected insertion block to have parent operation");
+  auto module = mlir::isa<mlir::ModuleOp>(parentOp)
+                    ? mlir::cast<mlir::ModuleOp>(parentOp)
+                    : parentOp->getParentOfType<mlir::ModuleOp>();
+  if (module)
+    if (mlir::Attribute addrSpace =
+            mlir::DataLayout(module).getGlobalMemorySpace())
       return llvm::cast<mlir::IntegerAttr>(addrSpace).getUInt();
   return defaultAddressSpace;
 }

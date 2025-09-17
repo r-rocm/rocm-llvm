@@ -155,7 +155,7 @@ void UnbundleCommand::addOptionsIdentifier(HashAlgorithm &H) const {
 Error UnbundleCommand::addInputIdentifier(HashAlgorithm &H) const {
   StringRef InputFilename = Config.InputFileNames.front();
 
-  constexpr size_t LargestHeaderSize = CompressedOffloadBundle::V2HeaderSize;
+  constexpr size_t LargestHeaderSize = CompressedOffloadBundle::V3HeaderSize;
 
   ErrorOr<std::unique_ptr<MemoryBuffer>> MaybeInputBuffer =
       MemoryBuffer::getFileSlice(InputFilename, LargestHeaderSize, 0);

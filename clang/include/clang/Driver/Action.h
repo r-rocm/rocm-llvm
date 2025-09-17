@@ -73,7 +73,6 @@ public:
     VerifyPCHJobClass,
     OffloadBundlingJobClass,
     OffloadUnbundlingJobClass,
-    OffloadWrapperJobClass,
     OffloadPackagerJobClass,
     LinkerWrapperJobClass,
     StaticLibJobClass,
@@ -96,6 +95,7 @@ public:
     OFK_Cuda = 0x02,
     OFK_OpenMP = 0x04,
     OFK_HIP = 0x08,
+    OFK_SYCL = 0x10,
   };
 
   static const char *getClassName(ActionClass AC);
@@ -652,17 +652,6 @@ public:
 
   static bool classof(const Action *A) {
     return A->getKind() == OffloadUnbundlingJobClass;
-  }
-};
-
-class OffloadWrapperJobAction : public JobAction {
-  void anchor() override;
-
-public:
-  OffloadWrapperJobAction(ActionList &Inputs, types::ID Type);
-
-  static bool classof(const Action *A) {
-    return A->getKind() == OffloadWrapperJobClass;
   }
 };
 

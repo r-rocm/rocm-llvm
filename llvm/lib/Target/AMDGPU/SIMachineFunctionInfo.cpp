@@ -8,7 +8,6 @@
 
 #include "SIMachineFunctionInfo.h"
 #include "AMDGPUSubtarget.h"
-#include "AMDGPUTargetMachine.h"
 #include "GCNSubtarget.h"
 #include "MCTargetDesc/AMDGPUMCTargetDesc.h"
 #include "SIRegisterInfo.h"
@@ -49,7 +48,7 @@ SIMachineFunctionInfo::SIMachineFunctionInfo(const Function &F,
   MaxNumWorkGroups = ST.getMaxNumWorkGroups(F);
   assert(MaxNumWorkGroups.size() == 3);
 
-  Occupancy = ST.computeOccupancy(F, getLDSSize());
+  Occupancy = ST.computeOccupancy(F, getLDSSize()).second;
   CallingConv::ID CC = F.getCallingConv();
 
   VRegFlags.reserve(1024);
@@ -164,6 +163,9 @@ SIMachineFunctionInfo::SIMachineFunctionInfo(const Function &F,
   if (!S.empty())
     S.consumeInteger(0, HighBitsOf32BitAddress);
 
+  MaxMemoryClusterDWords = F.getFnAttributeAsParsedInteger(
+      "amdgpu-max-memory-cluster-dwords", DefaultMemoryClusterDWordsLimit);
+
   // On GFX908, in order to guarantee copying between AGPRs, we need a scratch
   // VGPR available at all times. For now, reserve highest available VGPR. After
   // RA, shift it to the lowest available unused VGPR if the one exist.
@@ -183,8 +185,7 @@ MachineFunctionInfo *SIMachineFunctionInfo::clone(
 void SIMachineFunctionInfo::limitOccupancy(const MachineFunction &MF) {
   limitOccupancy(getMaxWavesPerEU());
   const GCNSubtarget& ST = MF.getSubtarget<GCNSubtarget>();
-  limitOccupancy(ST.getOccupancyWithLocalMemSize(getLDSSize(),
-                 MF.getFunction()));
+  limitOccupancy(ST.getOccupancyWithWorkGroupSizes(MF).second);
 }
 
 Register SIMachineFunctionInfo::addPrivateSegmentBuffer(
@@ -260,6 +261,8 @@ SmallVectorImpl<MCRegister> *SIMachineFunctionInfo::addPreloadedKernArg(
   // If the available register tuples are aligned with the kernarg to be
   // preloaded use that register, otherwise we need to use a set of SGPRs and
   // merge them.
+  if (!ArgInfo.FirstKernArgPreloadReg)
+    ArgInfo.FirstKernArgPreloadReg = getNextUserSGPR();
   Register PreloadReg =
       TRI.getMatchingSuperReg(getNextUserSGPR(), AMDGPU::sub0, RC);
   if (PreloadReg &&
@@ -289,9 +292,13 @@ void SIMachineFunctionInfo::allocateWWMSpill(MachineFunction &MF, Register VGPR,
   // We never need to allocate a spill for these because we don't even need to
   // restore the inactive lanes for them (they're scratchier than the usual
   // scratch registers). We only need to do this if we have calls to
-  // llvm.amdgcn.cs.chain.
-  if (isChainFunction() && (SIRegisterInfo::isChainScratchRegister(VGPR) ||
-                            !MF.getFrameInfo().hasTailCall()))
+  // llvm.amdgcn.cs.chain (otherwise there's no one to save them for, since
+  // chain functions do not return) and the function did not contain a call to
+  // llvm.amdgcn.init.whole.wave (since in that case there are no inactive lanes
+  // when entering the function).
+  if (isChainFunction() &&
+      (SIRegisterInfo::isChainScratchRegister(VGPR) ||
+       !MF.getFrameInfo().hasTailCall() || hasInitWholeWave()))
     return;
 
   WWMSpills.insert(std::make_pair(
@@ -344,7 +351,7 @@ void SIMachineFunctionInfo::shiftWwmVGPRsToLowestRange(
 
     // Replace the register in SpillPhysVGPRs. This is needed to look for free
     // lanes while spilling special SGPRs like FP, BP, etc. during PEI.
-    auto RegItr = std::find(SpillPhysVGPRs.begin(), SpillPhysVGPRs.end(), Reg);
+    auto *RegItr = std::find(SpillPhysVGPRs.begin(), SpillPhysVGPRs.end(), Reg);
     if (RegItr != SpillPhysVGPRs.end()) {
       unsigned Idx = std::distance(SpillPhysVGPRs.begin(), RegItr);
       SpillPhysVGPRs[Idx] = NewReg;
@@ -695,8 +702,8 @@ yaml::SIMachineFunctionInfo::SIMachineFunctionInfo(
     const llvm::MachineFunction &MF)
     : ExplicitKernArgSize(MFI.getExplicitKernArgSize()),
       MaxKernArgAlign(MFI.getMaxKernArgAlign()), LDSSize(MFI.getLDSSize()),
-      GDSSize(MFI.getGDSSize()),
-      DynLDSAlign(MFI.getDynLDSAlign()), IsEntryFunction(MFI.isEntryFunction()),
+      GDSSize(MFI.getGDSSize()), DynLDSAlign(MFI.getDynLDSAlign()),
+      IsEntryFunction(MFI.isEntryFunction()),
       NoSignedZerosFPMath(MFI.hasNoSignedZerosFPMath()),
       MemoryBound(MFI.isMemoryBound()), WaveLimiter(MFI.needsWaveLimiter()),
       HasSpilledSGPRs(MFI.hasSpilledSGPRs()),
@@ -709,9 +716,12 @@ yaml::SIMachineFunctionInfo::SIMachineFunctionInfo(
       BytesInStackArgArea(MFI.getBytesInStackArgArea()),
       ReturnsVoid(MFI.returnsVoid()),
       ArgInfo(convertArgumentInfo(MFI.getArgInfo(), TRI)),
-      PSInputAddr(MFI.getPSInputAddr()),
-      PSInputEnable(MFI.getPSInputEnable()),
-      Mode(MFI.getMode()) {
+      PSInputAddr(MFI.getPSInputAddr()), PSInputEnable(MFI.getPSInputEnable()),
+      MaxMemoryClusterDWords(MFI.getMaxMemoryClusterDWords()),
+      Mode(MFI.getMode()), HasInitWholeWave(MFI.hasInitWholeWave()) {
+  for (Register Reg : MFI.getSGPRSpillPhysVGPRs())
+    SpillPhysVGPRS.push_back(regToString(Reg, TRI));
+
   for (Register Reg : MFI.getWWMReservedRegs())
     WWMReservedRegs.push_back(regToString(Reg, TRI));
 
@@ -742,6 +752,7 @@ bool SIMachineFunctionInfo::initializeBaseYamlFields(
   DynLDSAlign = YamlMFI.DynLDSAlign;
   PSInputAddr = YamlMFI.PSInputAddr;
   PSInputEnable = YamlMFI.PSInputEnable;
+  MaxMemoryClusterDWords = YamlMFI.MaxMemoryClusterDWords;
   HighBitsOf32BitAddress = YamlMFI.HighBitsOf32BitAddress;
   Occupancy = YamlMFI.Occupancy;
   IsEntryFunction = YamlMFI.IsEntryFunction;
@@ -762,7 +773,7 @@ bool SIMachineFunctionInfo::initializeBaseYamlFields(
 
       Error = SMDiagnostic(*PFS.SM, SMLoc(), Buffer.getBufferIdentifier(), 1, 1,
                            SourceMgr::DK_Error, toString(FIOrErr.takeError()),
-                           "", std::nullopt, std::nullopt);
+                           "", {}, {});
       SourceRange = YamlMFI.ScavengeFI->SourceRange;
       return true;
     }

@@ -30,6 +30,8 @@ const char *Action::getClassName(ActionClass AC) {
   case AnalyzeJobClass: return "analyzer";
   case MigrateJobClass: return "migrator";
   case CompileJobClass: return "compiler";
+  case FortranFrontendJobClass:
+    return "fortranfrontend";
   case BackendJobClass: return "backend";
   case AssembleJobClass: return "assembler";
   case IfsMergeJobClass: return "interface-stub-merger";
@@ -42,8 +44,6 @@ const char *Action::getClassName(ActionClass AC) {
     return "clang-offload-bundler";
   case OffloadUnbundlingJobClass:
     return "clang-offload-unbundler";
-  case OffloadWrapperJobClass:
-    return "clang-offload-wrapper";
   case OffloadPackagerJobClass:
     return "clang-offload-packager";
   case LinkerWrapperJobClass:
@@ -124,6 +124,8 @@ std::string Action::getOffloadingKindPrefix() const {
     return "device-openmp";
   case OFK_HIP:
     return "device-hip";
+  case OFK_SYCL:
+    return "device-sycl";
 
     // TODO: Add other programming models here.
   }
@@ -141,6 +143,8 @@ std::string Action::getOffloadingKindPrefix() const {
     Res += "-hip";
   if (ActiveOffloadKindMask & OFK_OpenMP)
     Res += "-openmp";
+  if (ActiveOffloadKindMask & OFK_SYCL)
+    Res += "-sycl";
 
   // TODO: Add other programming models here.
 
@@ -177,6 +181,8 @@ StringRef Action::GetOffloadKindName(OffloadKind Kind) {
     return "openmp";
   case OFK_HIP:
     return "hip";
+  case OFK_SYCL:
+    return "sycl";
 
     // TODO: Add other programming models here.
   }
@@ -345,7 +351,7 @@ void OffloadAction::DeviceDependences::add(Action &A, const ToolChain &TC,
   DeviceBoundArchs.push_back(BoundArch);
 
   // Add each active offloading kind from a mask.
-  for (OffloadKind OKind : {OFK_OpenMP, OFK_Cuda, OFK_HIP})
+  for (OffloadKind OKind : {OFK_OpenMP, OFK_Cuda, OFK_HIP, OFK_SYCL})
     if (OKind & OffloadKindMask)
       DeviceOffloadKinds.push_back(OKind);
 }
@@ -461,12 +467,6 @@ void OffloadUnbundlingJobAction::anchor() {}
 
 OffloadUnbundlingJobAction::OffloadUnbundlingJobAction(Action *Input)
     : JobAction(OffloadUnbundlingJobClass, Input, Input->getType()) {}
-
-void OffloadWrapperJobAction::anchor() {}
-
-OffloadWrapperJobAction::OffloadWrapperJobAction(ActionList &Inputs,
-                                                 types::ID Type)
-  : JobAction(OffloadWrapperJobClass, Inputs, Type) {}
 
 void OffloadPackagerJobAction::anchor() {}
 

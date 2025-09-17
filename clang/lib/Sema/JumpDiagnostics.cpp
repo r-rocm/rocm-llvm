@@ -19,6 +19,7 @@
 #include "clang/AST/StmtOpenACC.h"
 #include "clang/AST/StmtOpenMP.h"
 #include "clang/Basic/SourceLocation.h"
+#include "clang/Sema/SemaAMDGPU.h"
 #include "clang/Sema/SemaInternal.h"
 #include "llvm/ADT/BitVector.h"
 using namespace clang;
@@ -179,9 +180,9 @@ static ScopePair GetDiagForGotoScopeDecl(Sema &S, const Decl *D) {
       }
     }
 
-    const Expr *Init = VD->getInit();
-    if (S.Context.getLangOpts().CPlusPlus && VD->hasLocalStorage() && Init &&
-        !Init->containsErrors()) {
+    if (const Expr *Init = VD->getInit(); S.Context.getLangOpts().CPlusPlus &&
+                                          VD->hasLocalStorage() && Init &&
+                                          !Init->containsErrors()) {
       // C++11 [stmt.dcl]p3:
       //   A program that jumps from a point where a variable with automatic
       //   storage duration is not in scope to a point where it is in scope
@@ -368,8 +369,10 @@ void JumpScopeChecker::BuildScopeInformation(Stmt *S,
 
   case Stmt::IfStmtClass: {
     IfStmt *IS = cast<IfStmt>(S);
+    bool AMDGPUPredicate = false;
     if (!(IS->isConstexpr() || IS->isConsteval() ||
-          IS->isObjCAvailabilityCheck()))
+          IS->isObjCAvailabilityCheck() ||
+          (AMDGPUPredicate = this->S.AMDGPU().IsPredicate(IS->getCond()))))
       break;
 
     unsigned Diag = diag::note_protected_by_if_available;
@@ -377,6 +380,8 @@ void JumpScopeChecker::BuildScopeInformation(Stmt *S,
       Diag = diag::note_protected_by_constexpr_if;
     else if (IS->isConsteval())
       Diag = diag::note_protected_by_consteval_if;
+    else if (AMDGPUPredicate)
+      Diag = diag::note_amdgcn_protected_by_predicate;
 
     if (VarDecl *Var = IS->getConditionVariable())
       BuildScopeInformation(Var, ParentScope);
@@ -561,12 +566,12 @@ void JumpScopeChecker::BuildScopeInformation(Stmt *S,
     // implementable but a lot of work which we haven't felt up to doing.
     ExprWithCleanups *EWC = cast<ExprWithCleanups>(S);
     for (unsigned i = 0, e = EWC->getNumObjects(); i != e; ++i) {
-      if (auto *BDecl = EWC->getObject(i).dyn_cast<BlockDecl *>())
+      if (auto *BDecl = dyn_cast<BlockDecl *>(EWC->getObject(i)))
         for (const auto &CI : BDecl->captures()) {
           VarDecl *variable = CI.getVariable();
           BuildScopeInformation(variable, BDecl, origParentScope);
         }
-      else if (auto *CLE = EWC->getObject(i).dyn_cast<CompoundLiteralExpr *>())
+      else if (auto *CLE = dyn_cast<CompoundLiteralExpr *>(EWC->getObject(i)))
         BuildScopeInformation(CLE, origParentScope);
       else
         llvm_unreachable("unexpected cleanup object type");
@@ -613,6 +618,16 @@ void JumpScopeChecker::BuildScopeInformation(Stmt *S,
         ParentScope, diag::note_acc_branch_into_compute_construct,
         diag::note_acc_branch_out_of_compute_construct, CC->getBeginLoc()));
     BuildScopeInformation(CC->getStructuredBlock(), NewParentScope);
+    return;
+  }
+
+  case Stmt::OpenACCCombinedConstructClass: {
+    unsigned NewParentScope = Scopes.size();
+    OpenACCCombinedConstruct *CC = cast<OpenACCCombinedConstruct>(S);
+    Scopes.push_back(GotoScope(
+        ParentScope, diag::note_acc_branch_into_compute_construct,
+        diag::note_acc_branch_out_of_compute_construct, CC->getBeginLoc()));
+    BuildScopeInformation(CC->getLoop(), NewParentScope);
     return;
   }
 
@@ -761,8 +776,7 @@ void JumpScopeChecker::VerifyIndirectJumps() {
       if (CHECK_PERMISSIVE(!LabelAndGotoScopes.count(IG)))
         continue;
       unsigned IGScope = LabelAndGotoScopes[IG];
-      if (!JumpScopesMap.contains(IGScope))
-        JumpScopesMap[IGScope] = IG;
+      JumpScopesMap.try_emplace(IGScope, IG);
     }
     JumpScopes.reserve(JumpScopesMap.size());
     for (auto &Pair : JumpScopesMap)

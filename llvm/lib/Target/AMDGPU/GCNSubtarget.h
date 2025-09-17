@@ -21,7 +21,6 @@
 #include "SIISelLowering.h"
 #include "SIInstrInfo.h"
 #include "Utils/AMDGPUBaseInfo.h"
-#include "llvm/CodeGen/SelectionDAGTargetInfo.h"
 #include "llvm/Support/ErrorHandling.h"
 
 #define GET_SUBTARGETINFO_HEADER
@@ -49,6 +48,9 @@ public:
   };
 
 private:
+  /// SelectionDAGISel related APIs.
+  std::unique_ptr<const SelectionDAGTargetInfo> TSInfo;
+
   /// GlobalISel related APIs.
   std::unique_ptr<AMDGPUCallLowering> CallLoweringInfo;
   std::unique_ptr<InlineAsmLowering> InlineAsmLoweringInfo;
@@ -188,6 +190,7 @@ protected:
   /// indicates a lack of S_CLAUSE support.
   unsigned MaxHardClauseLength = 0;
   bool SupportsSRAMECC = false;
+  bool HasVMemToLDSLoad = false;
 
   // This should not be used directly. 'TargetID' tracks the dynamic settings
   // for SRAMECC.
@@ -220,11 +223,11 @@ protected:
   bool HasPackedTID = false;
   bool ScalarizeGlobal = false;
   bool HasSALUFloatInsts = false;
-  bool HasVGPRSingleUseHintInsts = false;
   bool HasPseudoScalarTrans = false;
   bool HasRestrictedSOffset = false;
   bool HasBitOp3Insts = false;
   bool HasPrngInst = false;
+  bool HasBVHDualAndBVH8Insts = false;
   bool HasPermlane16Swap = false;
   bool HasPermlane32Swap = false;
   bool HasVcmpxPermlaneHazard = false;
@@ -258,7 +261,6 @@ protected:
   // Dummy feature to use for assembler in tablegen.
   bool FeatureDisable = false;
 
-  SelectionDAGTargetInfo TSInfo;
   bool ShouldCoerceIllegalTypes = false;
 
 private:
@@ -294,6 +296,8 @@ public:
     return &InstrInfo.getRegisterInfo();
   }
 
+  const SelectionDAGTargetInfo *getSelectionDAGInfo() const override;
+
   const CallLowering *getCallLowering() const override {
     return CallLoweringInfo.get();
   }
@@ -316,11 +320,6 @@ public:
 
   const AMDGPU::IsaInfo::AMDGPUTargetID &getTargetID() const {
     return TargetID;
-  }
-
-  // Nothing implemented, just prevent crashes on use.
-  const SelectionDAGTargetInfo *getSelectionDAGInfo() const override {
-    return &TSInfo;
   }
 
   const InstrItineraryData *getInstrItineraryData() const override {
@@ -1317,15 +1316,17 @@ public:
     return hasGFX950Insts();
   }
 
-  bool hasSALUFloatInsts() const { return HasSALUFloatInsts; }
+  bool hasVMemToLDSLoad() const { return HasVMemToLDSLoad; }
 
-  bool hasVGPRSingleUseHintInsts() const { return HasVGPRSingleUseHintInsts; }
+  bool hasSALUFloatInsts() const { return HasSALUFloatInsts; }
 
   bool hasPseudoScalarTrans() const { return HasPseudoScalarTrans; }
 
   bool hasRestrictedSOffset() const { return HasRestrictedSOffset; }
 
   bool hasRequiredExportPriority() const { return HasRequiredExportPriority; }
+
+  bool hasVmemWriteVgprInOrder() const { return HasVmemWriteVgprInOrder; }
 
   /// \returns true if the target uses LOADcnt/SAMPLEcnt/BVHcnt, DScnt/KMcnt
   /// and STOREcnt rather than VMcnt, LGKMcnt and VScnt respectively.
@@ -1365,6 +1366,8 @@ public:
 
   bool hasPrngInst() const { return HasPrngInst; }
 
+  bool hasBVHDualAndBVH8Insts() const { return HasBVHDualAndBVH8Insts; }
+
   /// Return the maximum number of waves per SIMD for kernels using \p SGPRs
   /// SGPRs
   unsigned getOccupancyWithNumSGPRs(unsigned SGPRs) const;
@@ -1373,12 +1376,18 @@ public:
   /// VGPRs
   unsigned getOccupancyWithNumVGPRs(unsigned VGPRs) const;
 
-  /// Return occupancy for the given function. Used LDS and a number of
-  /// registers if provided.
-  /// Note, occupancy can be affected by the scratch allocation as well, but
+  /// Subtarget's minimum/maximum occupancy, in number of waves per EU, that can
+  /// be achieved when the only function running on a CU is \p F, each workgroup
+  /// uses \p LDSSize bytes of LDS, and each wave uses \p NumSGPRs SGPRs and \p
+  /// NumVGPRs VGPRs. The flat workgroup sizes associated to the function are a
+  /// range, so this returns a range as well.
+  ///
+  /// Note that occupancy can be affected by the scratch allocation as well, but
   /// we do not have enough information to compute it.
-  unsigned computeOccupancy(const Function &F, unsigned LDSSize = 0,
-                            unsigned NumSGPRs = 0, unsigned NumVGPRs = 0) const;
+  std::pair<unsigned, unsigned> computeOccupancy(const Function &F,
+                                                 unsigned LDSSize = 0,
+                                                 unsigned NumSGPRs = 0,
+                                                 unsigned NumVGPRs = 0) const;
 
   /// \returns true if the flat_scratch register should be initialized with the
   /// pointer to the wave's scratch memory rather than a size and offset.
@@ -1584,19 +1593,20 @@ public:
   /// unit requirement.
   unsigned getMaxNumVGPRs(const MachineFunction &MF) const;
 
-  void getPostRAMutations(
-      std::vector<std::unique_ptr<ScheduleDAGMutation>> &Mutations)
-      const override;
-
-  std::unique_ptr<ScheduleDAGMutation>
-  createFillMFMAShadowMutation(const TargetInstrInfo *TII) const;
-
   bool isWave32() const {
     return getWavefrontSize() == 32;
   }
 
   bool isWave64() const {
     return getWavefrontSize() == 64;
+  }
+
+  /// Returns if the wavesize of this subtarget is known reliable. This is false
+  /// only for the a default target-cpu that does not have an explicit
+  /// +wavefrontsize target feature.
+  bool isWaveSizeKnown() const {
+    return hasFeature(AMDGPU::FeatureWavefrontSize32) ||
+           hasFeature(AMDGPU::FeatureWavefrontSize64);
   }
 
   const TargetRegisterClass *getBoolRC() const {
@@ -1650,6 +1660,12 @@ public:
     // Currently all targets that support the dealloc VGPRs message also require
     // the nop.
     return true;
+  }
+
+  bool requiresDisjointEarlyClobberAndUndef() const override {
+    // AMDGPU doesn't care if early-clobber and undef operands are allocated
+    // to the same register.
+    return false;
   }
 };
 

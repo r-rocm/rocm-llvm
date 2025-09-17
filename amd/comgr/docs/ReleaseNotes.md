@@ -18,12 +18,29 @@ code bases.
 
 New Features
 ------------
+- Added a Comgr Caching infrastructure, currently covering the following
+behaviors:
+  - caching unbundling of compressed clang offload bundles
+  - caching SPIR-V to LLVM IR translations
+  - caching clang driver invocations
+  More information about the Comgr Caching infrastructure and how to use it can
+  be found in amd/comgr/README.md.
+- Updated the license used for Comgr from Illinois to Apache 2.0 with LLVM
+Extensions (the same license used by LLVM).
+- Added Image Support to Comgr's handling of ISA metadata. Support for images
+can now be queried with Comgr's metadata APIs.
+- Added support for linking device library files through the use of a Virtual 
+File System (VFS).
 
 Bug Fixes
 ---------
 
 New APIs
 --------
+- amd\_comgr\_info\_set\_vfs\_() (v3.1)
+    - By setting this ActionInfo property, users can explicitly dictate if
+    device libraries should be linked using the real file system or a
+    Virtual File System (VFS).
 
 Deprecated APIs
 ---------------
@@ -42,8 +59,6 @@ Removed Comgr Actions and Data Types
 
 Comgr Testing, Debugging, and Logging Updates
 ---------------------------------------------
-- Removed HIP\_PATH and ROCM\_PATH environment variables. These were used for
-now-removed Comgr actions, such as \*COMPILE\_SOURCE\_TO\_FATBIN.
 
 New Targets
 -----------

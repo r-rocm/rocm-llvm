@@ -65,9 +65,13 @@ ExternalFileUnit *ExternalFileUnit::LookUpOrCreateAnonymous(int unit,
   bool exists{false};
   ExternalFileUnit *result{GetUnitMap().LookUpOrCreate(unit, handler, exists)};
   if (result && !exists) {
+    common::optional<Action> action;
+    if (dir == Direction::Output) {
+      action = Action::ReadWrite;
+    }
     if (!result->OpenAnonymousUnit(
             dir == Direction::Input ? OpenStatus::Unknown : OpenStatus::Replace,
-            Action::ReadWrite, Position::Rewind, Convert::Unknown, handler)) {
+            action, Position::Rewind, Convert::Unknown, handler)) {
       // fort.N isn't a writable file
       if (ExternalFileUnit * closed{LookUpForClose(result->unitNumber())}) {
         closed->DestroyClosed();
@@ -118,7 +122,7 @@ bool ExternalFileUnit::OpenUnit(Fortran::common::optional<OpenStatus> status,
   bool impliedClose{false};
   if (IsConnected()) {
     bool isSamePath{newPath.get() && path() && pathLength() == newPathLength &&
-        std::memcmp(path(), newPath.get(), newPathLength) == 0};
+        Fortran::runtime::memcmp(path(), newPath.get(), newPathLength) == 0};
     if (status && *status != OpenStatus::Old && isSamePath) {
       handler.SignalError("OPEN statement for connected unit may not have "
                           "explicit STATUS= other than 'OLD'");
@@ -198,7 +202,7 @@ bool ExternalFileUnit::OpenAnonymousUnit(
   std::size_t pathMaxLen{32};
   auto path{SizedNew<char>{handler}(pathMaxLen)};
   std::snprintf(path.get(), pathMaxLen, "fort.%d", unitNumber_);
-  OpenUnit(status, action, position, std::move(path), std::strlen(path.get()),
+  OpenUnit(status, action, position, std::move(path), Fortran::runtime::strlen(path.get()),
       convert, handler);
   return IsConnected();
 }

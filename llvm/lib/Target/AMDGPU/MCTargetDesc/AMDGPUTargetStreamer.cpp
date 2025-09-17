@@ -11,6 +11,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "AMDGPUTargetStreamer.h"
+#include "AMDGPUMCExpr.h"
 #include "AMDGPUMCKernelDescriptor.h"
 #include "AMDGPUPTNote.h"
 #include "Utils/AMDGPUBaseInfo.h"
@@ -19,9 +20,8 @@
 #include "llvm/BinaryFormat/ELF.h"
 #include "llvm/MC/MCAssembler.h"
 #include "llvm/MC/MCContext.h"
+#include "llvm/MC/MCELFObjectWriter.h"
 #include "llvm/MC/MCELFStreamer.h"
-#include "llvm/MC/MCObjectWriter.h"
-#include "llvm/MC/MCSectionELF.h"
 #include "llvm/MC/MCSubtargetInfo.h"
 #include "llvm/Support/AMDGPUMetadata.h"
 #include "llvm/Support/AMDHSAKernelDescriptor.h"
@@ -250,8 +250,13 @@ void AMDGPUTargetAsmStreamer::EmitDirectiveAMDHSACodeObjectVersion(
 }
 
 void AMDGPUTargetAsmStreamer::EmitAMDKernelCodeT(AMDGPUMCKernelCodeT &Header) {
+  auto FoldAndPrint = [&](const MCExpr *Expr, raw_ostream &OS,
+                          const MCAsmInfo *MAI) {
+    printAMDGPUMCExpr(foldAMDGPUMCExpr(Expr, getContext()), OS, MAI);
+  };
+
   OS << "\t.amd_kernel_code_t\n";
-  Header.EmitKernelCodeT(OS, getContext());
+  Header.EmitKernelCodeT(OS, getContext(), FoldAndPrint);
   OS << "\t.end_amd_kernel_code_t\n";
 }
 
@@ -269,6 +274,47 @@ void AMDGPUTargetAsmStreamer::emitAMDGPULDS(MCSymbol *Symbol, unsigned Size,
                                             Align Alignment) {
   OS << "\t.amdgpu_lds " << Symbol->getName() << ", " << Size << ", "
      << Alignment.value() << '\n';
+}
+
+void AMDGPUTargetAsmStreamer::EmitMCResourceInfo(
+    const MCSymbol *NumVGPR, const MCSymbol *NumAGPR,
+    const MCSymbol *NumExplicitSGPR, const MCSymbol *PrivateSegmentSize,
+    const MCSymbol *UsesVCC, const MCSymbol *UsesFlatScratch,
+    const MCSymbol *HasDynamicallySizedStack, const MCSymbol *HasRecursion,
+    const MCSymbol *HasIndirectCall) {
+#define PRINT_RES_INFO(ARG)                                                    \
+  OS << "\t.set ";                                                             \
+  ARG->print(OS, getContext().getAsmInfo());                                   \
+  OS << ", ";                                                                  \
+  ARG->getVariableValue()->print(OS, getContext().getAsmInfo());               \
+  Streamer.addBlankLine();
+
+  PRINT_RES_INFO(NumVGPR);
+  PRINT_RES_INFO(NumAGPR);
+  PRINT_RES_INFO(NumExplicitSGPR);
+  PRINT_RES_INFO(PrivateSegmentSize);
+  PRINT_RES_INFO(UsesVCC);
+  PRINT_RES_INFO(UsesFlatScratch);
+  PRINT_RES_INFO(HasDynamicallySizedStack);
+  PRINT_RES_INFO(HasRecursion);
+  PRINT_RES_INFO(HasIndirectCall);
+#undef PRINT_RES_INFO
+}
+
+void AMDGPUTargetAsmStreamer::EmitMCResourceMaximums(const MCSymbol *MaxVGPR,
+                                                     const MCSymbol *MaxAGPR,
+                                                     const MCSymbol *MaxSGPR) {
+#define PRINT_RES_INFO(ARG)                                                    \
+  OS << "\t.set ";                                                             \
+  ARG->print(OS, getContext().getAsmInfo());                                   \
+  OS << ", ";                                                                  \
+  ARG->getVariableValue()->print(OS, getContext().getAsmInfo());               \
+  Streamer.addBlankLine();
+
+  PRINT_RES_INFO(MaxVGPR);
+  PRINT_RES_INFO(MaxAGPR);
+  PRINT_RES_INFO(MaxSGPR);
+#undef PRINT_RES_INFO
 }
 
 bool AMDGPUTargetAsmStreamer::EmitISAVersion() {
@@ -289,15 +335,6 @@ bool AMDGPUTargetAsmStreamer::EmitHSAMetadata(
   OS << '\t' << HSAMD::V3::AssemblerDirectiveBegin << '\n';
   OS << StrOS.str() << '\n';
   OS << '\t' << HSAMD::V3::AssemblerDirectiveEnd << '\n';
-  return true;
-}
-
-bool AMDGPUTargetAsmStreamer::EmitKernargPreloadHeader(
-    const MCSubtargetInfo &STI, bool TrapEnabled) {
-  OS << (TrapEnabled ? "\ts_trap 2" : "\ts_endpgm")
-     << " ; Kernarg preload header. Trap with incompatible firmware that "
-        "doesn't support preloading kernel arguments.\n";
-  OS << "\t.fill 63, 4, 0xbf800000 ; s_nop 0\n";
   return true;
 }
 
@@ -335,24 +372,17 @@ void AMDGPUTargetAsmStreamer::EmitAmdhsaKernelDescriptor(
 
   auto PrintField = [&](const MCExpr *Expr, uint32_t Shift, uint32_t Mask,
                         StringRef Directive) {
-    int64_t IVal;
     OS << "\t\t" << Directive << ' ';
-    const MCExpr *pgm_rsrc1_bits =
+    const MCExpr *ShiftedAndMaskedExpr =
         MCKernelDescriptor::bits_get(Expr, Shift, Mask, getContext());
-    if (pgm_rsrc1_bits->evaluateAsAbsolute(IVal))
-      OS << static_cast<uint64_t>(IVal);
-    else
-      pgm_rsrc1_bits->print(OS, MAI);
+    const MCExpr *New = foldAMDGPUMCExpr(ShiftedAndMaskedExpr, getContext());
+    printAMDGPUMCExpr(New, OS, MAI);
     OS << '\n';
   };
 
   auto EmitMCExpr = [&](const MCExpr *Value) {
-    int64_t evaluatableValue;
-    if (Value->evaluateAsAbsolute(evaluatableValue)) {
-      OS << static_cast<uint64_t>(evaluatableValue);
-    } else {
-      Value->print(OS, MAI);
-    }
+    const MCExpr *NewExpr = foldAMDGPUMCExpr(Value, getContext());
+    printAMDGPUMCExpr(NewExpr, OS, MAI);
   };
 
   OS << "\t\t.amdhsa_group_segment_fixed_size ";
@@ -468,7 +498,8 @@ void AMDGPUTargetAsmStreamer::EmitAmdhsaKernelDescriptor(
     accum_bits = MCBinaryExpr::createMul(
         accum_bits, MCConstantExpr::create(4, getContext()), getContext());
     OS << "\t\t.amdhsa_accum_offset ";
-    EmitMCExpr(accum_bits);
+    const MCExpr *New = foldAMDGPUMCExpr(accum_bits, getContext());
+    printAMDGPUMCExpr(New, OS, MAI);
     OS << '\n';
   }
 
@@ -611,9 +642,9 @@ MCELFStreamer &AMDGPUTargetELFStreamer::getStreamer() {
 // We use it for emitting the accumulated PAL metadata as a .note record.
 // The PAL metadata is reset after it is emitted.
 void AMDGPUTargetELFStreamer::finish() {
-  MCAssembler &MCA = getStreamer().getAssembler();
-  MCA.setELFHeaderEFlags(getEFlags());
-  getStreamer().getWriter().setOverrideABIVersion(
+  ELFObjectWriter &W = getStreamer().getWriter();
+  W.setELFHeaderEFlags(getEFlags());
+  W.setOverrideABIVersion(
       getELFABIVersion(STI.getTargetTriple(), CodeObjectVersion));
 
   std::string Blob;
@@ -892,20 +923,6 @@ bool AMDGPUTargetELFStreamer::EmitHSAMetadata(msgpack::Document &HSAMetadataDoc,
              OS.emitBytes(HSAMetadataString);
              OS.emitLabel(DescEnd);
            });
-  return true;
-}
-
-bool AMDGPUTargetELFStreamer::EmitKernargPreloadHeader(
-    const MCSubtargetInfo &STI, bool TrapEnabled) {
-  const uint32_t Encoded_s_nop = 0xbf800000;
-  const uint32_t Encoded_s_trap = 0xbf920002;
-  const uint32_t Encoded_s_endpgm = 0xbf810000;
-  const uint32_t TrapInstr = TrapEnabled ? Encoded_s_trap : Encoded_s_endpgm;
-  MCStreamer &OS = getStreamer();
-  OS.emitInt32(TrapInstr);
-  for (int i = 0; i < 63; ++i) {
-    OS.emitInt32(Encoded_s_nop);
-  }
   return true;
 }
 

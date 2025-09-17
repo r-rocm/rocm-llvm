@@ -11,8 +11,8 @@ define amdgpu_kernel void @widget(ptr addrspace(1) %arg, i1 %arg1, ptr addrspace
 ; CHECK-LABEL: widget:
 ; CHECK:       ; %bb.0: ; %bb
 ; CHECK-NEXT:    s_clause 0x1
-; CHECK-NEXT:    s_load_dwordx2 s[0:1], s[4:5], 0x0
-; CHECK-NEXT:    s_load_dword s2, s[4:5], 0x8
+; CHECK-NEXT:    s_load_dwordx2 s[0:1], s[8:9], 0x0
+; CHECK-NEXT:    s_load_dword s2, s[8:9], 0x8
 ; CHECK-NEXT:    v_mov_b32_e32 v2, 8
 ; CHECK-NEXT:    s_waitcnt lgkmcnt(0)
 ; CHECK-NEXT:    s_clause 0x1

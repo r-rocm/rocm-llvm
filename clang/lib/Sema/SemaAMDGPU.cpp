@@ -13,6 +13,7 @@
 #include "clang/Sema/SemaAMDGPU.h"
 #include "clang/Basic/DiagnosticSema.h"
 #include "clang/Basic/TargetBuiltins.h"
+#include "clang/Basic/TargetInfo.h"
 #include "clang/Sema/Ownership.h"
 #include "clang/Sema/Sema.h"
 #include "llvm/Support/AtomicOrdering.h"
@@ -35,6 +36,8 @@ bool SemaAMDGPU::CheckAMDGCNBuiltinFunctionCall(unsigned BuiltinID,
       Builtin::evaluateRequiredTargetFeatures("gfx950-insts", CallerFeatureMap);
 
   switch (BuiltinID) {
+  case AMDGPU::BI__builtin_amdgcn_raw_ptr_buffer_load_lds:
+  case AMDGPU::BI__builtin_amdgcn_struct_ptr_buffer_load_lds:
   case AMDGPU::BI__builtin_amdgcn_global_load_lds: {
     constexpr const int SizeIdx = 2;
     llvm::APSInt Size;
@@ -54,11 +57,9 @@ bool SemaAMDGPU::CheckAMDGCNBuiltinFunctionCall(unsigned BuiltinID,
       [[fallthrough]];
     }
     default:
-      Diag(ArgExpr->getExprLoc(),
-           diag::err_amdgcn_global_load_lds_size_invalid_value)
+      Diag(ArgExpr->getExprLoc(), diag::err_amdgcn_load_lds_size_invalid_value)
           << ArgExpr->getSourceRange();
-      Diag(ArgExpr->getExprLoc(),
-           diag::note_amdgcn_global_load_lds_size_valid_value)
+      Diag(ArgExpr->getExprLoc(), diag::note_amdgcn_load_lds_size_valid_value)
           << HasGFX950Insts << ArgExpr->getSourceRange();
       return true;
     }
@@ -77,6 +78,13 @@ bool SemaAMDGPU::CheckAMDGCNBuiltinFunctionCall(unsigned BuiltinID,
     OrderIndex = 0;
     ScopeIndex = 1;
     break;
+  case AMDGPU::BI__builtin_amdgcn_mov_dpp:
+    return checkMovDPPFunctionCall(TheCall, 5, 1);
+  case AMDGPU::BI__builtin_amdgcn_mov_dpp8:
+    return checkMovDPPFunctionCall(TheCall, 2, 1);
+  case AMDGPU::BI__builtin_amdgcn_update_dpp: {
+    return checkMovDPPFunctionCall(TheCall, 6, 2);
+  }
   default:
     return false;
   }
@@ -120,6 +128,44 @@ bool SemaAMDGPU::CheckAMDGCNBuiltinFunctionCall(unsigned BuiltinID,
            << ArgExpr->getType();
 
   return false;
+}
+
+bool SemaAMDGPU::checkMovDPPFunctionCall(CallExpr *TheCall, unsigned NumArgs,
+                                         unsigned NumDataArgs) {
+  assert(NumDataArgs <= 2);
+  if (SemaRef.checkArgCountRange(TheCall, NumArgs, NumArgs))
+    return true;
+  Expr *Args[2];
+  QualType ArgTys[2];
+  for (unsigned I = 0; I != NumDataArgs; ++I) {
+    Args[I] = TheCall->getArg(I);
+    ArgTys[I] = Args[I]->getType();
+    // TODO: Vectors can also be supported.
+    if (!ArgTys[I]->isArithmeticType() || ArgTys[I]->isAnyComplexType()) {
+      SemaRef.Diag(Args[I]->getBeginLoc(),
+                   diag::err_typecheck_cond_expect_int_float)
+          << ArgTys[I] << Args[I]->getSourceRange();
+      return true;
+    }
+  }
+  if (NumDataArgs < 2)
+    return false;
+
+  if (getASTContext().hasSameUnqualifiedType(ArgTys[0], ArgTys[1]))
+    return false;
+
+  if (((ArgTys[0]->isUnsignedIntegerType() &&
+        ArgTys[1]->isSignedIntegerType()) ||
+       (ArgTys[0]->isSignedIntegerType() &&
+        ArgTys[1]->isUnsignedIntegerType())) &&
+      getASTContext().getTypeSize(ArgTys[0]) ==
+          getASTContext().getTypeSize(ArgTys[1]))
+    return false;
+
+  SemaRef.Diag(Args[1]->getBeginLoc(),
+               diag::err_typecheck_call_different_arg_types)
+      << ArgTys[0] << ArgTys[1];
+  return true;
 }
 
 static bool
@@ -322,4 +368,80 @@ void SemaAMDGPU::handleAMDGPUMaxNumWorkGroupsAttr(Decl *D,
   addAMDGPUMaxNumWorkGroupsAttr(D, AL, AL.getArgAsExpr(0), YExpr, ZExpr);
 }
 
+Expr *SemaAMDGPU::ExpandAMDGPUPredicateBI(CallExpr *CE) {
+  ASTContext &Ctx = getASTContext();
+  QualType BoolTy = Ctx.getLogicalOperationType();
+  llvm::APInt False = llvm::APInt::getZero(Ctx.getIntWidth(BoolTy));
+  llvm::APInt True = llvm::APInt::getAllOnes(Ctx.getIntWidth(BoolTy));
+  SourceLocation Loc = CE->getExprLoc();
+
+  if (!CE->getBuiltinCallee())
+    return *ExpandedPredicates
+                .insert(IntegerLiteral::Create(Ctx, False, BoolTy, Loc))
+                .first;
+
+  bool P = false;
+  unsigned BI = CE->getBuiltinCallee();
+  if (Ctx.BuiltinInfo.isAuxBuiltinID(BI))
+    BI = Ctx.BuiltinInfo.getAuxBuiltinID(BI);
+
+  if (BI == AMDGPU::BI__builtin_amdgcn_processor_is) {
+    auto *GFX = dyn_cast<StringLiteral>(CE->getArg(0)->IgnoreParenCasts());
+    if (!GFX) {
+      Diag(Loc, diag::err_amdgcn_processor_is_arg_not_literal);
+      return nullptr;
+    }
+
+    StringRef N = GFX->getString();
+    const TargetInfo &TI = Ctx.getTargetInfo();
+    const TargetInfo *AuxTI = Ctx.getAuxTargetInfo();
+    if (!TI.isValidCPUName(N) && (!AuxTI || !AuxTI->isValidCPUName(N))) {
+      Diag(Loc, diag::err_amdgcn_processor_is_arg_invalid_value) << N;
+      SmallVector<StringRef, 32> ValidList;
+      if (TI.getTriple().getVendor() == llvm::Triple::VendorType::AMD)
+        TI.fillValidCPUList(ValidList);
+      else if (AuxTI) // Since the BI is present it must be and AMDGPU triple.
+        AuxTI->fillValidCPUList(ValidList);
+      if (!ValidList.empty())
+        Diag(Loc, diag::note_amdgcn_processor_is_valid_options)
+            << llvm::join(ValidList, ", ");
+      return nullptr;
+    }
+    if (Ctx.getTargetInfo().getTriple().isSPIRV()) {
+      CE->setType(BoolTy);
+      return *ExpandedPredicates.insert(CE).first;
+    }
+
+    if (auto TID = Ctx.getTargetInfo().getTargetID())
+      P = TID->find(N) == 0;
+  } else {
+    Expr *Arg = CE->getArg(0);
+    if (!Arg || Arg->getType() != Ctx.BuiltinFnTy) {
+      Diag(Loc, diag::err_amdgcn_is_invocable_arg_invalid_value) << Arg;
+      return nullptr;
+    }
+
+    if (Ctx.getTargetInfo().getTriple().isSPIRV()) {
+      CE->setType(BoolTy);
+      return *ExpandedPredicates.insert(CE).first;
+    }
+
+    auto *FD = cast<FunctionDecl>(Arg->getReferencedDeclOfCallee());
+
+    StringRef RF = Ctx.BuiltinInfo.getRequiredFeatures(FD->getBuiltinID());
+    llvm::StringMap<bool> CF;
+    Ctx.getFunctionFeatureMap(CF, FD);
+
+    P = Builtin::evaluateRequiredTargetFeatures(RF, CF);
+  }
+
+  return *ExpandedPredicates
+              .insert(
+                  IntegerLiteral::Create(Ctx, P ? True : False, BoolTy, Loc))
+              .first;
+}
+
+bool SemaAMDGPU::IsPredicate(Expr *E) const {
+  return ExpandedPredicates.contains(E);
+}
 } // namespace clang

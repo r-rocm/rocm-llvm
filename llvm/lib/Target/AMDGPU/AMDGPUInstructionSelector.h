@@ -87,11 +87,13 @@ private:
 
   bool constrainCopyLikeIntrin(MachineInstr &MI, unsigned NewOpc) const;
   bool selectCOPY(MachineInstr &I) const;
+  bool selectCOPY_SCC_VCC(MachineInstr &I) const;
+  bool selectCOPY_VCC_SCC(MachineInstr &I) const;
+  bool selectReadAnyLane(MachineInstr &I) const;
   bool selectPHI(MachineInstr &I) const;
   bool selectG_TRUNC(MachineInstr &I) const;
   bool selectG_SZA_EXT(MachineInstr &I) const;
   bool selectG_FPEXT(MachineInstr &I) const;
-  bool selectG_CONSTANT(MachineInstr &I) const;
   bool selectG_FNEG(MachineInstr &I) const;
   bool selectG_FABS(MachineInstr &I) const;
   bool selectG_AND_OR_XOR(MachineInstr &I) const;
@@ -121,6 +123,7 @@ private:
   bool selectDSOrderedIntrinsic(MachineInstr &MI, Intrinsic::ID IID) const;
   bool selectDSGWSIntrinsic(MachineInstr &MI, Intrinsic::ID IID) const;
   bool selectDSAppendConsume(MachineInstr &MI, bool IsAppend) const;
+  bool selectInitWholeWave(MachineInstr &MI) const;
   bool selectSBarrier(MachineInstr &MI) const;
   bool selectDSBvhStackIntrinsic(MachineInstr &MI) const;
 
@@ -143,14 +146,16 @@ private:
   bool selectG_INSERT_VECTOR_ELT(MachineInstr &I) const;
   bool selectBufferLoadLds(MachineInstr &MI) const;
   bool selectGlobalLoadLds(MachineInstr &MI) const;
-  bool selectBVHIntrinsic(MachineInstr &I) const;
+  bool selectBVHIntersectRayIntrinsic(MachineInstr &I) const;
   bool selectSMFMACIntrin(MachineInstr &I) const;
   bool selectPermlaneSwapIntrin(MachineInstr &I, Intrinsic::ID IntrID) const;
   bool selectWaveAddress(MachineInstr &I) const;
   bool selectBITOP3(MachineInstr &I) const;
   bool selectStackRestore(MachineInstr &MI) const;
+  bool selectNamedBarrierInit(MachineInstr &I, Intrinsic::ID IID) const;
   bool selectNamedBarrierInst(MachineInstr &I, Intrinsic::ID IID) const;
   bool selectSBarrierSignalIsfirst(MachineInstr &I, Intrinsic::ID IID) const;
+  bool selectSGetBarrierState(MachineInstr &I, Intrinsic::ID IID) const;
   bool selectSBarrierLeave(MachineInstr &I) const;
 
   std::pair<Register, unsigned> selectVOP3ModsImpl(Register Src,
@@ -366,8 +371,17 @@ private:
   void renderNegateImm(MachineInstrBuilder &MIB, const MachineInstr &MI,
                        int OpIdx) const;
 
-  void renderBitcastImm(MachineInstrBuilder &MIB, const MachineInstr &MI,
-                        int OpIdx) const;
+  void renderBitcastFPImm(MachineInstrBuilder &MIB, const MachineInstr &MI,
+                          int OpIdx) const;
+
+  void renderBitcastFPImm32(MachineInstrBuilder &MIB, const MachineInstr &MI,
+                            int OpIdx) const {
+    renderBitcastFPImm(MIB, MI, OpIdx);
+  }
+  void renderBitcastFPImm64(MachineInstrBuilder &MIB, const MachineInstr &MI,
+                            int OpIdx) const {
+    renderBitcastFPImm(MIB, MI, OpIdx);
+  }
 
   void renderPopcntImm(MachineInstrBuilder &MIB, const MachineInstr &MI,
                        int OpIdx) const;
@@ -401,7 +415,6 @@ private:
   const AMDGPURegisterBankInfo &RBI;
   const AMDGPUTargetMachine &TM;
   const GCNSubtarget &STI;
-  bool EnableLateStructurizeCFG;
 #define GET_GLOBALISEL_PREDICATES_DECL
 #define AMDGPUSubtarget GCNSubtarget
 #include "AMDGPUGenGlobalISel.inc"
