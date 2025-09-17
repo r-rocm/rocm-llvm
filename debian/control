@@ -33,7 +33,7 @@ Build-Depends:
  python3-myst-parser,
  python3-setuptools,
  python3-sphinx,
- rocm-env (= 7.0.0),
+ rocm-env (>= 7.0.0),
  sharutils,
  swig,
  texinfo,
@@ -48,7 +48,7 @@ Architecture: any
 Depends:
  ${shlibs:Depends},
  ${misc:Depends},
- rocm-env (= 7.0.0),
+ rocm-env (>= 7.0.0),
 Description: AMD Fork of The LLVM Compiler Infrastructure
  The AMD fork aims to contain all of upstream LLVM, and also includes several
  AMD-specific additions in the llvm-project/amd directory.
