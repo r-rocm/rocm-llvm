@@ -1,4 +1,14 @@
+opt/rocm-@ROCM_VERSION@/bin/amdclang
+opt/rocm-@ROCM_VERSION@/bin/amdclang++
+opt/rocm-@ROCM_VERSION@/bin/amdclang-20
+opt/rocm-@ROCM_VERSION@/bin/amdclang-cl
+opt/rocm-@ROCM_VERSION@/bin/amdclang-cpp
+opt/rocm-@ROCM_VERSION@/bin/amdflang
+opt/rocm-@ROCM_VERSION@/bin/amdflang-classic
+opt/rocm-@ROCM_VERSION@/bin/amdflang-new
 opt/rocm-@ROCM_VERSION@/bin/amdgpu-arch
+opt/rocm-@ROCM_VERSION@/bin/amdlld
+opt/rocm-@ROCM_VERSION@/bin/amdllvm
 opt/rocm-@ROCM_VERSION@/bin/analyze-build
 opt/rocm-@ROCM_VERSION@/bin/bbc
 opt/rocm-@ROCM_VERSION@/bin/bugpoint
@@ -8,6 +18,7 @@ opt/rocm-@ROCM_VERSION@/bin/diagtool
 opt/rocm-@ROCM_VERSION@/bin/dsymutil
 opt/rocm-@ROCM_VERSION@/bin/f18-parse-demo
 opt/rocm-@ROCM_VERSION@/bin/fir-opt
+opt/rocm-@ROCM_VERSION@/bin/fir-lsp-server
 opt/rocm-@ROCM_VERSION@/bin/flang*
 opt/rocm-@ROCM_VERSION@/bin/git-clang-format
 opt/rocm-@ROCM_VERSION@/bin/hmaptool
@@ -63,7 +74,8 @@ opt/rocm-@ROCM_VERSION@/lib/objects-Release/
 opt/rocm-@ROCM_VERSION@/lib/libclang*
 opt/rocm-@ROCM_VERSION@/lib/libCUF*
 opt/rocm-@ROCM_VERSION@/lib/libFIR*
-opt/rocm-@ROCM_VERSION@/lib/libflangFrontend*
+opt/rocm-@ROCM_VERSION@/lib/libFlang*
+opt/rocm-@ROCM_VERSION@/lib/libflang*
 opt/rocm-@ROCM_VERSION@/lib/libFortran*
 opt/rocm-@ROCM_VERSION@/lib/libHLFIR*
 opt/rocm-@ROCM_VERSION@/lib/liblld*
